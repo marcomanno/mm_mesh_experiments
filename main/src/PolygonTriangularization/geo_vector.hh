@@ -82,12 +82,7 @@ ValT operator%(const std::array<ValT, 2>& _a, const std::array<ValT, 2>& _b)
 template<typename ValT, size_t N>
 std::ostream& operator<<(std::ostream& _os, const std::array<ValT, N>& _arr)
 {
-  _os << '[';
-  if (_arr.size() > 0)
-  {
-    for (const auto val : _arr) _os << ' ' << *it;
-  }
-  _os << ']';
+  for (const auto& val : _arr) _os << ' ' << val;
   return _os;
 }
 
@@ -109,9 +104,9 @@ ValT length(const std::array<ValT, N>& _a)
 
 typedef std::array<double, 3> Vector3;
 
-double angle(const Vector3& _a, const Vector3& _b)
+inline double angle(const Vector3& _a, const Vector3& _b)
 {
-  return std::atan2(_a * _b, length(_a % _b));
+  return std::atan2(length(_a % _b), _a * _b);
 }
 
-}
+}//namespace Geo

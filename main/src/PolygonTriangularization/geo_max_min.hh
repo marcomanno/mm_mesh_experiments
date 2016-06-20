@@ -18,7 +18,7 @@ public:
       max_ = _val;
       max_idx_ = count_;
     }
-    else if (_val < min_)
+    if (_val < min_)
     {
       min_ = _val;
       min_idx_ = count_;

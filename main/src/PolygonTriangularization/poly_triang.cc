@@ -40,8 +40,8 @@ bool PolygonFilImpl::make_triangle(std::vector<size_t>& _indcs)
   if (_indcs.size() < 3)
     return false;
   Geo::Vector3 vects[2];
-  auto last = _indcs.end();
-  auto orig = pos_[*std::prev(last)];
+  auto last = std::prev(_indcs.end());
+  auto orig = pos_[*last];
   vects[0] = pos_[*std::prev(last)] - orig;
 
   Geo::StatisticsT<double> min_ang;
