@@ -49,24 +49,18 @@ VECT_OPERATOR2(/)
 #undef VECT_OPERATOR
 #undef VECT_OPERATOR2
 
+template <typename ValT>
+std::array<ValT, 3> operator-(const std::array<ValT, 3>& _a)
+{
+  return std::array<ValT, 3>{-_a[0], -_a[1], -_a[2]};
+}
+
 template <typename ValT, size_t N> \
 ValT operator*(const std::array<ValT, N>& _a, const std::array<ValT, N>& _b)
 {
   ValT dot = 0;
   for (size_t i = N; i-- > 0; dot += _a[i] * _b[i]);
   return dot;
-}
-
-template <typename ValT, size_t N> \
-ValT length_square(const std::array<ValT, N>& _a)
-{
-  return _a * _a;
-}
-
-template <typename ValT, size_t N> \
-ValT length(const std::array<ValT, N>& _a)
-{
-  return sqrt(length_square(_a));
 }
 
 template <typename ValT>
@@ -99,5 +93,25 @@ std::ostream& operator<<(std::ostream& _os, const std::array<ValT, N>& _arr)
 
 namespace Geo
 {
+
+template <typename ValT, size_t N> \
+ValT length_square(const std::array<ValT, N>& _a)
+{
+  return _a * _a;
+}
+
+template <typename ValT, size_t N> \
+ValT length(const std::array<ValT, N>& _a)
+{
+  return sqrt(length_square(_a));
+}
+
+
 typedef std::array<double, 3> Vector3;
+
+double angle(const Vector3& _a, const Vector3& _b)
+{
+  return std::atan2(_a * _b, length(_a % _b));
+}
+
 }
