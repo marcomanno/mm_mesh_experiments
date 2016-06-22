@@ -3,7 +3,25 @@
 
 #include <PolygonTriangularization/poly_triang.hh>
 
-TEST_CASE("Factorials are computed", "[factorial]") {
+static void write_obj(const char* _flnm,
+  const std::vector<Geo::Vector3>& _plgn,
+  const std::vector<std::array<size_t, 3>>& _tris)
+{
+  std::ofstream ff(std::string(_flnm) + ".obj");
+  for (const auto& v : _plgn)
+  {
+    ff << "v" << v << "\n";
+  }
+  for (auto f : _tris)
+  {
+    for (auto& fi : f)
+      fi += 1;
+    ff << "f" << f << "\n";
+  }
+
+}
+
+TEST_CASE("1", "[PolyTriang]") {
   auto pf = PolygonFil::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 0, 0, 0 });
@@ -14,15 +32,40 @@ TEST_CASE("Factorials are computed", "[factorial]") {
   pf->init(plgn);
   auto& tris = pf->triangles();
   REQUIRE(tris.size() == 3);
-  std::ofstream ff("pippo.obj");
-  for (const auto& v : plgn)
-  {
-    ff << "v" << v << "\n";
-  }
-  for (auto f : tris)
-  {
-    for (auto& fi : f)
-      fi += 1;
-    ff << "f" << f << "\n";
-  }
+  write_obj("1", plgn, tris);
+}
+
+TEST_CASE("2", "[PolyTriang]") {
+  auto pf = PolygonFil::make();
+  std::vector<Geo::Vector3> plgn;
+  plgn.push_back({  50,   0, 0 });
+  plgn.push_back({  25,  45, 0 });
+  plgn.push_back({ -25,  45, 0 });
+  plgn.push_back({   0,  25, 0 });
+  plgn.push_back({ -50,   0, 0 });
+  plgn.push_back({ -25, -45, 0 });
+  plgn.push_back({  25, -45, 0 });
+  plgn.push_back({   0, -25, 0 });
+
+  pf->init(plgn);
+  auto& tris = pf->triangles();
+  REQUIRE(tris.size() == plgn.size() - 2);
+  write_obj("2", plgn, tris);
+}
+
+TEST_CASE("3", "[PolyTriang]") {
+  auto pf = PolygonFil::make();
+  std::vector<Geo::Vector3> plgn;
+  plgn.push_back({  0,    0,  0 });
+  plgn.push_back({  1,    0,  0 });
+  plgn.push_back({  1,    1, 0 });
+  plgn.push_back({  1.25, 0, 0 });
+  plgn.push_back({  2,    0, 0 });
+  plgn.push_back({  2,    2, 0 });
+  plgn.push_back({  0,    2, 0 });
+
+  pf->init(plgn);
+  auto& tris = pf->triangles();
+  REQUIRE(tris.size() == plgn.size() - 4);
+  write_obj("3", plgn, tris);
 }

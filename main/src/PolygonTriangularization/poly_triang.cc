@@ -1,5 +1,5 @@
 #include "poly_triang.hh"
-#include "geo_max_min.hh"
+#include "statistics.hh"
 #include <numeric>
 
 struct PolygonFilImpl : public PolygonFil
@@ -7,17 +7,26 @@ struct PolygonFilImpl : public PolygonFil
   void init(const std::vector<Geo::Vector3>& _plgn);
   const std::vector<std::array<size_t, 3>>& triangles() const
   {
-    return tri_;
+    return tris_;
   }
   const std::vector<Geo::Vector3>& positions() const
   {
     return pos_;
   }
 
-  std::vector<std::array<size_t, 3>> tri_;
+  std::vector<std::array<size_t, 3>> tris_;
   std::vector<Geo::Vector3> pos_;
+  double area_ = 0;
 private:
-  bool make_triangle(std::vector<size_t>& next);
+  bool add_triangle(std::vector<size_t>& _indcs);
+  double compute_area(
+    const std::vector<std::array<size_t, 3>>& _tris) const;
+  struct Solution
+  {
+    std::vector<std::array<size_t, 3>> tris_;
+    double area_ = 0;
+    std::vector<bool> concav_;
+  };
 };
 
 std::shared_ptr<PolygonFil> PolygonFil::make()
@@ -29,13 +38,13 @@ std::shared_ptr<PolygonFil> PolygonFil::make()
 void PolygonFilImpl::init(const std::vector<Geo::Vector3>& _plgn)
 {
   pos_ = _plgn;
-  tri_.clear();
+  tris_.clear();
   std::vector<size_t> indcs(_plgn.size());
   std::iota(indcs.begin(), indcs.end(), 0);
-  while (make_triangle(indcs));
+  while (add_triangle(indcs));
 }
 
-bool PolygonFilImpl::make_triangle(std::vector<size_t>& _indcs)
+bool PolygonFilImpl::add_triangle(std::vector<size_t>& _indcs)
 {
   if (_indcs.size() < 3)
     return false;
@@ -56,9 +65,8 @@ bool PolygonFilImpl::make_triangle(std::vector<size_t>& _indcs)
   auto idx = min_ang.min_idx();
   auto decrease = [&_indcs](size_t& _idx)
   {
-    if (_idx > 0) --_idx;
-    else _idx = _indcs.size() - 1;
-    return _idx;
+    if (_idx == 0) _idx = _indcs.size();
+    return --_idx;
   };
   std::array<size_t, 3> tri;
   tri[2] = _indcs[idx];
@@ -66,7 +74,20 @@ bool PolygonFilImpl::make_triangle(std::vector<size_t>& _indcs)
   auto rem_idx = idx;
   tri[0] = _indcs[decrease(idx)];
   _indcs.erase(_indcs.begin() + rem_idx);
-  tri_.push_back(tri);
+  if (min_ang.min() > 0)
+    tris_.push_back(tri);
   return true;
 }
 
+double PolygonFilImpl::compute_area(
+  const std::vector<std::array<size_t, 3>>& _tris) const
+{
+  double area = 0;
+  for (const auto& tri : _tris)
+  {
+    const auto v0 = pos_[tri[1]] - pos_[tri[0]];
+    const auto v1 = pos_[tri[2]] - pos_[tri[0]];
+    area += Geo::length(v0 % v1);
+  }
+  return area / 2;
+}
