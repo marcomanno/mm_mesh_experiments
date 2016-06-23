@@ -1,5 +1,6 @@
 #include "poly_triang.hh"
 #include "statistics.hh"
+#include "linear_system.hh"
 #include <numeric>
 
 struct PolygonFilImpl : public PolygonFil
@@ -63,19 +64,17 @@ void PolygonFilImpl::Solution::compute(
       break;
     Geo::Vector3 vects[2];
     auto last = std::prev(indcs_.end());
-    auto orig = _pts[*last];
-    vects[0] = _pts[*std::prev(last)] - orig;
-
+    auto orig_ind = indcs_.back();
+    vects[0] = _pts[*(indcs_.end() - 2)] - _pts[orig_ind];
     Geo::StatisticsT<double> min_ang;
-
     for (const auto& ind : indcs_)
     {
-      vects[1] = _pts[ind] - orig;
+      vects[1] = _pts[ind] - _pts[orig_ind];
       auto angl = Geo::angle(vects[0], vects[1]);
-      if (concave(ind))
-        angl = M_PI - angl;
-      min_ang.add(Geo::angle(vects[0], vects[1]));
-      orig = _pts[ind];
+      if (concave(orig_ind))
+        angl = 2 * M_PI - angl;
+      min_ang.add(angl);
+      orig_ind = ind;
       vects[0] = -vects[1];
     }
     auto idx = min_ang.min_idx();
@@ -103,36 +102,33 @@ void PolygonFilImpl::Solution::compute(
   area_ /= 2;
 }
 namespace {
-bool inside_triangle(const Geo::Vector3& _pt,
-  const Geo::Vector3& _pt0,
-  const Geo::Vector3& _pt1,
-  const Geo::Vector3& _pt2)
+size_t inside_triangle(const Geo::Vector3& _pt,
+  const Geo::Vector3& _vrt0, 
+  const Geo::Vector3& _vrt1, 
+  const Geo::Vector3& _vrt2
+  )
 {
-  auto v0 = _pt1 - _pt0;
-  auto v1 = _pt2 - _pt0;
-  auto x1 = Geo::length(v0);
-  auto n = v0 % v1;
-  n /= Geo::length(n);
-  auto w = _pt - v0;
-  w -= (w * n) * n;
-  auto vn0 = v0 % n;
-  auto ptx = w * v0 / x1;
-  auto pty = w * vn0 / x1;
-  auto x2 = v1 * v0 / x1;
-  auto y2 = v1 * vn0 / x1;
-  if (y2 < 0)
-  {
-    y2 = -y2;
-    pty = -pty;
-  }
-  if (pty < 0 || pty >= y2)
-    return false;
-  auto rat = pty / y2;
-  int inters_nmbr = 0;
-  if (x2 * rat <= ptx)
-    return false;
-  return (x1 - rat * (x2 - x1)) > ptx;
+  const Geo::Vector3 pts[2] = {_vrt1 - _vrt0, _vrt2 - _vrt0}, 
+    b(_pt - _vrt0);
 
+  double A[2][2], B[2], X[2];
+  for (int i = 0; i < 2; ++i)
+  {
+    for (int j = i; j < 2; ++j)
+      A[i][j] = A[j][i] = pts[i] * pts[j];
+    B[i] = pts[i] * b;
+  }
+  if (!Geo::solve_2x2(A, X, B))
+    return 0;
+
+  size_t result = 0;
+  if (X[0] >= 0 && X[1] >= 0 && (X[0] + X[1]) <= 1)
+  {
+    ++result;
+    if (X[0] > 0 && X[1] > 0 && (X[0] + X[1]) < 1)
+      ++result;
+  }
+  return result;
 }
 
 }
@@ -146,11 +142,14 @@ bool PolygonFilImpl::Solution::find_concave(
   for (size_t i = 0; i < _pts.size(); ++i)
   {
     _concav[i] = concave(i);
+    size_t inside = 0;
     for (const auto& tri : tris_)
     {
-      if (std::find(tri.begin(), tri.end(), i) == tri.end())
+      if (std::find(tri.begin(), tri.end(), i) != tri.end())
         continue;
-      if (inside_triangle(_pts[i], _pts[tri[0]], _pts[tri[1]], _pts[tri[2]]))
+      inside += inside_triangle(
+        _pts[i], _pts[tri[0]], _pts[tri[1]], _pts[tri[2]]);
+      if (inside > 1)
       {
         _concav[i] = !_concav[i];
         achange = true;
