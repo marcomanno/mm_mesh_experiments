@@ -66,6 +66,6 @@ TEST_CASE("3", "[PolyTriang]") {
 
   pf->init(plgn);
   auto& tris = pf->triangles();
-  REQUIRE(tris.size() == plgn.size() - 4);
+  REQUIRE(tris.size() == plgn.size() - 2);
   write_obj("3", plgn, tris);
 }

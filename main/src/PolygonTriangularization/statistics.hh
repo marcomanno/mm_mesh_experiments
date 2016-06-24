@@ -10,19 +10,20 @@ template <typename ValueT> class StatisticsT
   ValueT min_ = std::numeric_limits<ValueT>::max();
   ValueT sum_ = 0;
   size_t count_ = 0;
+  const size_t INVALID = std::numeric_limits<size_t>::max();
   size_t max_idx_ = 0, min_idx_ = 0;
 public:
-  void add(const ValueT& _val)
+  void add(const ValueT& _val, size_t _i = INVALID)
   {
     if (max_ < _val)
     {
       max_ = _val;
-      max_idx_ = count_;
+      max_idx_ = _i == INVALID ? count_ : _i;
     }
     if (_val < min_)
     {
       min_ = _val;
-      min_idx_ = count_;
+      min_idx_ = _i == INVALID ? count_ : _i;
     }
     sum_ += _val;
     ++count_;

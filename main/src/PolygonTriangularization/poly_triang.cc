@@ -23,6 +23,10 @@ private:
     {
       return _i < concav_.size() && concav_[_i];
     }
+
+    bool contain_concave(size_t _inds[3], Geo::Vector3 _vects[2],
+      const std::vector<Geo::Vector3>& _pts) const;
+
     bool find_concave(const std::vector<Geo::Vector3>& _pts,
       std::vector<bool>& _concav) const;
 
@@ -40,7 +44,6 @@ std::shared_ptr<PolygonFil> PolygonFil::make()
 {
   return std::make_shared<PolygonFilImpl>();
 }
-
 
 void PolygonFilImpl::init(const std::vector<Geo::Vector3>& _plgn)
 {
@@ -63,18 +66,23 @@ void PolygonFilImpl::Solution::compute(
     if (indcs_.size() < 3)
       break;
     Geo::Vector3 vects[2];
-    auto last = std::prev(indcs_.end());
-    auto orig_ind = indcs_.back();
-    vects[0] = _pts[*(indcs_.end() - 2)] - _pts[orig_ind];
+    size_t inds[3] = { *(indcs_.end() - 2), indcs_.back(), 0 };
+    vects[0] = _pts[inds[0]] - _pts[inds[1]];
     Geo::StatisticsT<double> min_ang;
-    for (const auto& ind : indcs_)
+    for (size_t i = 0; i < indcs_.size(); ++i)
     {
-      vects[1] = _pts[ind] - _pts[orig_ind];
-      auto angl = Geo::angle(vects[0], vects[1]);
-      if (concave(orig_ind))
-        angl = 2 * M_PI - angl;
-      min_ang.add(angl);
-      orig_ind = ind;
+      inds[2] = indcs_[i];
+      if (!concave(inds[1]))
+      {
+        vects[1] = _pts[inds[2]] - _pts[inds[1]];
+        if (!contain_concave(inds, vects, _pts))
+        {
+          auto angl = Geo::angle(vects[0], vects[1]);
+          min_ang.add(angl, i);
+        }
+      }
+      inds[0] = inds[1];
+      inds[1] = inds[2];
       vects[0] = -vects[1];
     }
     auto idx = min_ang.min_idx();
@@ -101,22 +109,20 @@ void PolygonFilImpl::Solution::compute(
   }
   area_ /= 2;
 }
-namespace {
-size_t inside_triangle(const Geo::Vector3& _pt,
-  const Geo::Vector3& _vrt0, 
-  const Geo::Vector3& _vrt1, 
-  const Geo::Vector3& _vrt2
-  )
-{
-  const Geo::Vector3 pts[2] = {_vrt1 - _vrt0, _vrt2 - _vrt0}, 
-    b(_pt - _vrt0);
 
+namespace {
+
+// return 0 - outside, 1 - on boundary, 2 - inside
+size_t inside_triangle(
+  const Geo::Vector3 _vert[2],
+  const Geo::Vector3& _test_pt)
+{
   double A[2][2], B[2], X[2];
   for (int i = 0; i < 2; ++i)
   {
     for (int j = i; j < 2; ++j)
-      A[i][j] = A[j][i] = pts[i] * pts[j];
-    B[i] = pts[i] * b;
+      A[i][j] = A[j][i] = _vert[i] * _vert[j];
+    B[i] = _vert[i] * _test_pt;
   }
   if (!Geo::solve_2x2(A, X, B))
     return 0;
@@ -129,6 +135,16 @@ size_t inside_triangle(const Geo::Vector3& _pt,
       ++result;
   }
   return result;
+}
+
+size_t inside_triangle(const Geo::Vector3& _pt,
+  const Geo::Vector3& _vrt0, 
+  const Geo::Vector3& _vrt1, 
+  const Geo::Vector3& _vrt2
+  )
+{
+  const Geo::Vector3 verts[2] = { _vrt1 - _vrt0, _vrt2 - _vrt0 };
+  return inside_triangle(verts, _pt - _vrt0);
 }
 
 }
@@ -158,4 +174,18 @@ bool PolygonFilImpl::Solution::find_concave(
     }
   }
   return achange;
+}
+
+bool PolygonFilImpl::Solution::contain_concave(
+  size_t _inds[3], Geo::Vector3 _vects[2],
+  const std::vector<Geo::Vector3>& _pts) const
+{
+  for (auto i = 0; i < concav_.size(); ++i)
+  {
+    if (i == _inds[0] || i == _inds[2] || !concav_[i])
+      continue;
+    if (inside_triangle(_vects, _pts[i] - _pts[_inds[1]]))
+      return true;
+  }
+  return false;
 }
