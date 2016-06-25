@@ -1,18 +1,24 @@
 #include "poly_triang.hh"
 #include "statistics.hh"
 #include "linear_system.hh"
+#include "circular.hh"
+#include "area.hh"
 #include <numeric>
 
 struct PolygonFilImpl : public PolygonFil
 {
   void init(const std::vector<Geo::Vector3>& _plgn);
-  const std::vector<std::array<size_t, 3>>& triangles() const
+  virtual const std::vector<std::array<size_t, 3>>& triangles() const
   {
     return sol_.tris_;
   }
-  const std::vector<Geo::Vector3>& positions() const
+  virtual const std::vector<Geo::Vector3>& positions() const
   {
     return pts_;
+  }
+  virtual double area_compute() const
+  {
+    return sol_.area_;
   }
 
 private:
@@ -93,21 +99,16 @@ void PolygonFilImpl::Solution::compute(
     };
     std::array<size_t, 3> tri;
     tri[2] = indcs_[idx];
-    tri[1] = indcs_[decrease(idx)];
+    tri[1] = indcs_[Circular::decrease(idx, indcs_.size())];
     indcs_.erase(indcs_.begin() + idx);
-    tri[0] = indcs_[decrease(idx)];
+    tri[0] = indcs_[Circular::decrease(idx, indcs_.size())];
 
     if (min_ang.min() > 0)
       tris_.push_back(tri);
   }
-  area_ = 0;
+  area_ = 0.;
   for (const auto& tri : tris_)
-  {
-    const auto v0 = _pts[tri[1]] - _pts[tri[0]];
-    const auto v1 = _pts[tri[2]] - _pts[tri[0]];
-    area_ += Geo::length(v0 % v1);
-  }
-  area_ /= 2;
+    area_ += Geo::area_compute(_pts[tri[0]], _pts[tri[1]], _pts[tri[2]]);
 }
 
 namespace {
