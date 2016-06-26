@@ -101,7 +101,6 @@ ValT length(const std::array<ValT, N>& _a)
   return sqrt(length_square(_a));
 }
 
-
 typedef std::array<double, 3> Vector3;
 
 inline double angle(const Vector3& _a, const Vector3& _b)

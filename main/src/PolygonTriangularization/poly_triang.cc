@@ -1,8 +1,8 @@
 #include "poly_triang.hh"
 #include "statistics.hh"
-#include "linear_system.hh"
 #include "circular.hh"
-#include "area.hh"
+#include "Geo/linear_system.hh"
+#include "Geo/area.hh"
 #include <numeric>
 
 struct PolygonFilImpl : public PolygonFil
@@ -56,8 +56,8 @@ void PolygonFilImpl::init(const std::vector<Geo::Vector3>& _plgn)
   pts_ = _plgn;
   sol_.compute(_plgn);
   Solution sol;
-  sol_.find_concave(_plgn, sol.concav_);
-  sol.compute(_plgn);
+  if (sol_.find_concave(_plgn, sol.concav_))
+    sol.compute(_plgn);
   if (sol.area_ < sol_.area_)
     sol_ = sol;
 }

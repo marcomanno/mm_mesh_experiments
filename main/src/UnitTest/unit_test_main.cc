@@ -101,11 +101,11 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
   auto pf = PolygonFil::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 0,   0,   0 });
-  plgn.push_back({ 0,   2,   0 });
+  plgn.push_back({ 2,   0,   0 });
   plgn.push_back({ 2,   1,   0 });
   plgn.push_back({ 1,   1,   0 });
   plgn.push_back({ 2,   2,   0 });
-  plgn.push_back({ 2,   3,   0 });
+  plgn.push_back({ 3,   2,   0 });
   plgn.push_back({ 3,   0,   0 });
   plgn.push_back({ 4,   0,   0 });
   plgn.push_back({ 4,   4,   0 });
