@@ -15,7 +15,6 @@ static void write_obj(const char* _flnm,
       fi += 1;
     ff << "f" << f << "\n";
   }
-
 }
 
 #undef TEST_NAME
@@ -95,3 +94,28 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
   REQUIRE(pf->area_compute() == 3.125);
   write_obj(TEST_NAME, plgn, tris);
 }
+
+#undef TEST_NAME
+#define TEST_NAME "5"
+TEST_CASE(TEST_NAME, "[PolyTriang]") {
+  auto pf = PolygonFil::make();
+  std::vector<Geo::Vector3> plgn;
+  plgn.push_back({ 0,   0,   0 });
+  plgn.push_back({ 0,   2,   0 });
+  plgn.push_back({ 2,   1,   0 });
+  plgn.push_back({ 1,   1,   0 });
+  plgn.push_back({ 2,   2,   0 });
+  plgn.push_back({ 2,   3,   0 });
+  plgn.push_back({ 3,   0,   0 });
+  plgn.push_back({ 4,   0,   0 });
+  plgn.push_back({ 4,   4,   0 });
+  plgn.push_back({ 0,   4,   0 });
+
+  pf->init(plgn);
+  auto& tris = pf->triangles();
+  write_obj(TEST_NAME, plgn, tris);
+  REQUIRE(pf->area_compute() == 13.5);
+  REQUIRE(tris.size() == plgn.size() - 2);
+}
+
+
