@@ -17,7 +17,7 @@ PointInPolygon::Classification PointInPolygon::classify(
     angl += angle(v0, v1);
     v0 = v1;
   }
-
+  return angl > 2 * M_PI ? Inside : Outside;
 }
 
 }//namespace Geo
