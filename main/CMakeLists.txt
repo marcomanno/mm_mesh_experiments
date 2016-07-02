@@ -56,5 +56,6 @@ endif()
 
 add_subdirectory (src/PolygonTriangularization)
 add_subdirectory (src/Geo)
+add_subdirectory (src/Utils)
 add_subdirectory (src/UnitTest)
 # ========================================================================

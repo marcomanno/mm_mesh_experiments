@@ -1,6 +1,9 @@
 
 #pragma once
 
+#include "tolerance.hh"
+#include "pow.hh"
+
 #include <array>
 #include <ostream>
 
@@ -8,7 +11,7 @@
 
 #define VECT_OPERATOR(OP) \
 template <typename ValT, size_t N> \
-std::array<ValT, N>& operator OP##= (std::array<ValT, N>& _a, const std::array<ValT, N>& _b) \
+std::array<ValT, N> operator OP##= (std::array<ValT, N>& _a, const std::array<ValT, N>& _b) \
 { \
   for (size_t i = N; i-- > 0; _a[i] OP##= _b[i]); \
   return _a; \
@@ -49,10 +52,12 @@ VECT_OPERATOR2(/)
 #undef VECT_OPERATOR
 #undef VECT_OPERATOR2
 
-template <typename ValT>
-std::array<ValT, 3> operator-(const std::array<ValT, 3>& _a)
+template <typename ValT, size_t N>
+std::array<ValT, N> operator-(const std::array<ValT, N>& _a)
 {
-  return std::array<ValT, 3>{-_a[0], -_a[1], -_a[2]};
+  auto c(_a);
+  for (auto& e : c) e = -e;
+  return c;
 }
 
 template <typename ValT, size_t N> \
@@ -88,24 +93,52 @@ std::ostream& operator<<(std::ostream& _os, const std::array<ValT, N>& _arr)
 
 namespace Geo
 {
-
-template <typename ValT, size_t N> \
+template <typename ValT, size_t N>
 ValT length_square(const std::array<ValT, N>& _a)
 {
   return _a * _a;
 }
 
-template <typename ValT, size_t N> \
+template <typename ValT, size_t N>
 ValT length(const std::array<ValT, N>& _a)
 {
   return sqrt(length_square(_a));
 }
 
-typedef std::array<double, 3> Vector3;
+template <typename ValT, size_t N>
+bool same(const std::array<ValT, N>& _a, const std::array<ValT, N>& _b, const ValT& _tol)
+{
+  auto diff_sq = length_square(_a - _b);
+  if (_tol < 0)
+    return diff_sq <= std::max(Geo::epsilon(_a), Geo::epsilon(_b));
+  return diff_sq <= Geo::gk_sq(_tol);
+}
 
-inline double angle(const Vector3& _a, const Vector3& _b)
+template <typename ValT, size_t N>
+ValT angle(const std::array<ValT, N>& _a, const std::array<ValT, N>& _b)
 {
   return std::atan2(length(_a % _b), _a * _b);
 }
+
+template <typename ValT, size_t N>
+ValT signed_angle(const std::array<ValT, N>& _a, const std::array<ValT, N>& _b, 
+  std::array<ValT, N>& _norm)
+{
+  auto cross_vect = _a % _b;
+  auto sin_ang = length(cross_vect);
+  if (cross_vect * _norm < 0)
+    sin_ang = -sin_ang;
+  return std::atan2(sin_ang, _a * _b);
+}
+
+/*!Finds _u and _v such that ||_w - _u * _a - _v * _b||^2 is minimal.
+*/
+template<typename ValT, size_t N>
+bool decompose(const std::array<ValT, N>& _w,
+  const std::array<ValT, N>& _a, const std::array<ValT, N>& _b,
+  ValT& _u, ValT& _v);
+
+typedef std::array<double, 3> Vector3;
+
 
 }//namespace Geo

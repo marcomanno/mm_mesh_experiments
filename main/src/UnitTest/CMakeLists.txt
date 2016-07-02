@@ -3,6 +3,7 @@ include (ACGCommon)
 include_directories (
   ..
   ${CMAKE_CURRENT_SOURCE_DIR}
+  C:/Users/marco/OneDrive/Documents/PROJECTS/ThirdParties/boost_1_61_0
 )
 
 # Create new target named unittests_hexmeshing
@@ -14,4 +15,4 @@ acg_add_executable(unittests ${UNITTEST_SRC})
 set (OUTPUT_DIR "${CMAKE_BINARY_DIR}/Unittests")
 set_target_properties(unittests PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR}) 
 
-target_link_libraries(unittests PolygonTriangularization) 
+target_link_libraries(unittests PolygonTriangularization Geo) 

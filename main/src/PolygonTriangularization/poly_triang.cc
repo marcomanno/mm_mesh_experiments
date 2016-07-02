@@ -1,5 +1,5 @@
 #include "poly_triang.hh"
-#include "statistics.hh"
+#include "Utils/statistics.hh"
 #include "circular.hh"
 #include "Geo/linear_system.hh"
 #include "Geo/area.hh"
@@ -74,7 +74,7 @@ void PolygonFilImpl::Solution::compute(
     Geo::Vector3 vects[2];
     size_t inds[3] = { *(indcs_.end() - 2), indcs_.back(), 0 };
     vects[0] = _pts[inds[0]] - _pts[inds[1]];
-    Geo::StatisticsT<double> min_ang;
+    Utils::StatisticsT<double> min_ang;
     for (size_t i = 0; i < indcs_.size(); ++i)
     {
       inds[2] = indcs_[i];
