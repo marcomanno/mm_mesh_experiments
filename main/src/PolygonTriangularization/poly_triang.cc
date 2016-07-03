@@ -57,9 +57,11 @@ void PolygonFilImpl::init(const std::vector<Geo::Vector3>& _plgn)
   sol_.compute(_plgn);
   Solution sol;
   if (sol_.find_concave(_plgn, sol.concav_))
+  {
     sol.compute(_plgn);
-  if (sol.area_ < sol_.area_)
-    sol_ = sol;
+    if (sol.area_ < sol_.area_)
+      sol_ = sol;
+  }
 }
 
 void PolygonFilImpl::Solution::compute(
