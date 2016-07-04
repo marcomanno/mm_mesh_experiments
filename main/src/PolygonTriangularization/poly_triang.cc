@@ -54,17 +54,11 @@ std::shared_ptr<PolygonFil> PolygonFil::make()
   return std::make_shared<PolygonFilImpl>();
 }
 
-void PolygonFilImpl::init(const std::vector<Geo::Vector3>& _plgn)
+void PolygonFilImpl::init(
+  const std::vector<Geo::Vector3>& _plgn)
 {
   pts_ = _plgn;
   sol_.compute(_plgn);
-  Solution sol;
-  if (sol_.find_concave(_plgn, sol.concav_))
-  {
-    sol.compute(_plgn);
-    if (sol.area_ < sol_.area_)
-      sol_ = sol;
-  }
 }
 
 namespace {
@@ -74,8 +68,9 @@ bool valid_triangle(const size_t _i,
   const std::vector<Geo::Vector3>&  _pts,
   const double _tol)
 {
-  auto prev = Circular::decrease(_i, _indcs.size());
-  auto next = Circular::increase(_i, _indcs.size());
+  auto next = _i;
+  auto prev = Circular::decrease(
+    Circular::decrease(_i, _indcs.size()), _indcs.size());
   std::vector<Geo::Vector3> tmp_poly;
   for (const auto& ind : _indcs)
     tmp_poly.push_back(_pts[ind]);
@@ -122,27 +117,18 @@ void PolygonFilImpl::Solution::compute(
     for (size_t i = 0; i < indcs_.size(); ++i)
     {
       inds[2] = indcs_[i];
-      if (!concave(inds[1]))
+      if (valid_triangle(i, indcs_, _pts, tol))
+      //if (!concave(inds[1]))
       {
         vects[1] = _pts[inds[2]] - _pts[inds[1]];
-        if (valid_triangle(i, indcs_, _pts, tol))
-        // if (!contain_concave(inds, vects, _pts))
-        {
-          auto angl = Geo::angle(vects[0], vects[1]);
-          min_ang.add(angl, i);
-        }
+        auto angl = Geo::angle(vects[0], vects[1]);
+        min_ang.add(angl, i);
       }
       inds[0] = inds[1];
       inds[1] = inds[2];
       vects[0] = -vects[1];
     }
     auto idx = min_ang.min_idx();
-    /*
-    auto decrease = [this](size_t& _idx)
-    {
-      if (_idx == 0) _idx = indcs_.size();
-      return --_idx;
-    };*/
     std::array<size_t, 3> tri;
     tri[2] = indcs_[idx];
     tri[1] = indcs_[idx = Circular::decrease(idx, indcs_.size())];

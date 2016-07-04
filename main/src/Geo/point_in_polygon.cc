@@ -39,7 +39,7 @@ PointInPolygon::Classification PointInPolygon::classify(
     angl += curr_angl;
     v0 = v1;
   }
-  return std::fabs(angl) > 2 * M_PI ? Inside : Outside;
+  return std::fabs(angl) > M_PI ? Inside : Outside;
 }
 
 }//namespace Geo
