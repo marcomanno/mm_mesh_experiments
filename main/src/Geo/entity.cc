@@ -71,7 +71,7 @@ bool closest_point(const Segment& _seg_a, const Segment& _seg_b,
   auto A = _seg_a[0] - _seg_b[0];
   auto b = _seg_a[1] - _seg_a[0];
   auto c = _seg_b[1] - _seg_b[0];
-  auto discr = (b * b) * (c * c) - gk_sq(b * c);
+  auto discr = (b * b) * (c * c) - sq(b * c);
   Utils::StatisticsT<double> len_stats;
   len_stats.add(length_square(_seg_a[1]));
   len_stats.add(length_square(_seg_a[1]));

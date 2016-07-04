@@ -11,7 +11,7 @@ struct PointInPolygon
   static Classification classify(
     const std::vector<Geo::Vector3>& _poly,
     const Geo::Vector3& _pt,
-    const double _tol);
+    const double& _tol);
 };
 
 }

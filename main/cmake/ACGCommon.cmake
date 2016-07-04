@@ -774,3 +774,12 @@ function (acg_add_translations _target _languages _sources)
     install (FILES ${_qm_files} DESTINATION "${ACG_PROJECT_DATADIR}/Translations")
   endif ()
 endfunction ()
+
+#generates qt translations
+function (acg_change_compiler_flag _old_flag _new_flag)
+  if(CMAKE_CXX_FLAGS MATCHES _old_flag)
+    string(REGEX REPLACE ${_old_flag} ${_new_flag} CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_new_flag}")
+  endif()
+endfunction () #acg_change_compiler_flag

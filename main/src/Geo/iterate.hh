@@ -13,7 +13,7 @@ template <size_t N> struct iterate_forw
 } ;
 template <> struct iterate_forw<0>
 {
-  template <class operation> static auto eval(const operation & op) { }
+  template <class operation> static auto eval(const operation &) { }
 } ;
 
 template <size_t N> struct iterate_back

@@ -41,12 +41,19 @@ if(NO_DECREMENT_DEPRECATED_WARNINGS)
 endif()
 
 # ========================================================================
-# Windows build style control
+# Warnings
 # ========================================================================
 
-if ( WIN32 )
-  if ( NOT DEFINED OPENMESH_BUILD_SHARED )
-    set( OPENMESH_BUILD_SHARED false CACHE BOOL "Build as shared library(DLL)?" )
+if(MSVC)
+  if(CMAKE_CXX_FLAGS MATCHES "/WX-")
+    string(REGEX REPLACE "/WX-" "/WX" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
+  endif()
+  if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
+    string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
   endif()
 endif()
 

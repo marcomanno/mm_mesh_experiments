@@ -1,8 +1,11 @@
 #include "poly_triang.hh"
-#include "Utils/statistics.hh"
 #include "circular.hh"
-#include "Geo/linear_system.hh"
+#include "Utils/statistics.hh"
 #include "Geo/area.hh"
+#include "Geo/entity.hh"
+#include "Geo/linear_system.hh"
+#include "Geo/point_in_polygon.hh"
+#include "Geo/tolerance.hh"
 #include <numeric>
 
 struct PolygonFilImpl : public PolygonFil
@@ -64,11 +67,50 @@ void PolygonFilImpl::init(const std::vector<Geo::Vector3>& _plgn)
   }
 }
 
+namespace {
+//!Find if the triangle is completely insidethe polygon
+bool valid_triangle(const size_t _i,
+  const std::vector<size_t>& _indcs, 
+  const std::vector<Geo::Vector3>&  _pts,
+  const double _tol)
+{
+  auto prev = Circular::decrease(_i, _indcs.size());
+  auto next = Circular::increase(_i, _indcs.size());
+  std::vector<Geo::Vector3> tmp_poly;
+  for (const auto& ind : _indcs)
+    tmp_poly.push_back(_pts[ind]);
+  auto pt_in = (tmp_poly[prev] + tmp_poly[next]) * 0.5;
+  auto where = Geo::PointInPolygon::classify(tmp_poly, pt_in, _tol);
+  if (where != Geo::PointInPolygon::Inside)
+    return false;
+  auto j = tmp_poly.size() - 1;
+  Geo::Segment segs[2] = {
+    Geo::Segment({tmp_poly[prev], tmp_poly[_i]}),
+    Geo::Segment({tmp_poly[next], tmp_poly[_i]}) };
+  for (size_t i = 0; i < tmp_poly.size(); j = i++)
+  {
+    if (i == next || i == prev || j == next || j == prev)
+      continue;
+    Geo::Segment pol_seg = {tmp_poly[i], tmp_poly[j]};
+    for (const auto& seg : segs)
+    {
+      if (Geo::closest_point(seg, pol_seg))
+        return false;
+    }
+  }
+  return true;
+}
+};
+
 void PolygonFilImpl::Solution::compute(
   const std::vector<Geo::Vector3>& _pts)
 {
   indcs_.resize(_pts.size());
   std::iota(indcs_.begin(), indcs_.end(), 0);
+  Utils::StatisticsT<double> tol_max;
+  for (const auto& pt : _pts)
+    tol_max.add(Geo::epsilon(pt));
+  auto tol = tol_max.max() * 10;
   for (;;)
   {
     if (indcs_.size() < 3)
@@ -83,7 +125,8 @@ void PolygonFilImpl::Solution::compute(
       if (!concave(inds[1]))
       {
         vects[1] = _pts[inds[2]] - _pts[inds[1]];
-        if (!contain_concave(inds, vects, _pts))
+        if (valid_triangle(i, indcs_, _pts, tol))
+        // if (!contain_concave(inds, vects, _pts))
         {
           auto angl = Geo::angle(vects[0], vects[1]);
           min_ang.add(angl, i);
@@ -94,16 +137,17 @@ void PolygonFilImpl::Solution::compute(
       vects[0] = -vects[1];
     }
     auto idx = min_ang.min_idx();
+    /*
     auto decrease = [this](size_t& _idx)
     {
       if (_idx == 0) _idx = indcs_.size();
       return --_idx;
-    };
+    };*/
     std::array<size_t, 3> tri;
     tri[2] = indcs_[idx];
-    tri[1] = indcs_[Circular::decrease(idx, indcs_.size())];
+    tri[1] = indcs_[idx = Circular::decrease(idx, indcs_.size())];
     indcs_.erase(indcs_.begin() + idx);
-    tri[0] = indcs_[Circular::decrease(idx, indcs_.size())];
+    tri[0] = indcs_[idx = Circular::decrease(idx, indcs_.size())];
 
     if (min_ang.min() > 0)
       tris_.push_back(tri);

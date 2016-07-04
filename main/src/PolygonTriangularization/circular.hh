@@ -3,16 +3,14 @@
 namespace Circular
 {
 
-template <typename Index> Index decrease(Index& _ind,const Index _mod)
+template <typename Index> Index decrease(const Index& _ind,const Index _mod)
 {
-  if (_ind == 0) _ind = _mod;
-  return --_ind;
+  return _ind == 0 ? _mod - 1 : _ind - 1;
 }
 
-template <typename Index> Index increase(Index& _ind, const Index _mod)
+template <typename Index> Index increase(const Index& _ind, const Index _mod)
 {
-  if (++_ind == _mod) _ind = 0;
-  return _ind;
+  return _ind == _mod - 1 ?  0 : _ind + 1;
 }
 
 }

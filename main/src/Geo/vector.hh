@@ -111,7 +111,7 @@ bool same(const std::array<ValT, N>& _a, const std::array<ValT, N>& _b, const Va
   auto diff_sq = length_square(_a - _b);
   if (_tol < 0)
     return diff_sq <= std::max(Geo::epsilon(_a), Geo::epsilon(_b));
-  return diff_sq <= Geo::gk_sq(_tol);
+  return diff_sq <= Geo::sq(_tol);
 }
 
 template <typename ValT, size_t N>
