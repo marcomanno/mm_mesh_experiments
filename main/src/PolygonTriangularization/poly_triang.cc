@@ -19,7 +19,7 @@ struct PolygonFilImpl : public PolygonFil
   {
     return pts_;
   }
-  virtual double area_compute() const
+  virtual double area() const
   {
     return sol_.area_;
   }
@@ -117,10 +117,11 @@ void PolygonFilImpl::Solution::compute(
     for (size_t i = 0; i < indcs_.size(); ++i)
     {
       inds[2] = indcs_[i];
+      vects[1] = _pts[inds[2]] - _pts[inds[1]];
       if (valid_triangle(i, indcs_, _pts, tol))
       //if (!concave(inds[1]))
       {
-        vects[1] = _pts[inds[2]] - _pts[inds[1]];
+
         auto angl = Geo::angle(vects[0], vects[1]);
         min_ang.add(angl, i);
       }
@@ -140,7 +141,7 @@ void PolygonFilImpl::Solution::compute(
   }
   area_ = 0.;
   for (const auto& tri : tris_)
-    area_ += Geo::area_compute(_pts[tri[0]], _pts[tri[1]], _pts[tri[2]]);
+    area_ += Geo::area(_pts[tri[0]], _pts[tri[1]], _pts[tri[2]]);
 }
 
 namespace {

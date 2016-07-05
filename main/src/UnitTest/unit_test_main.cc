@@ -30,7 +30,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
   pf->init(plgn);
   auto& tris = pf->triangles();
   REQUIRE(tris.size() == 3);
-  REQUIRE(pf->area_compute() == 0.75);
+  REQUIRE(pf->area() == 0.75);
   write_obj("1", plgn, tris);
 }
 
@@ -51,7 +51,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
   pf->init(plgn);
   auto& tris = pf->triangles();
   REQUIRE(tris.size() == plgn.size() - 2);
-  REQUIRE(pf->area_compute() == 5125);
+  REQUIRE(pf->area() == 5125);
   write_obj("2", plgn, tris);
 }
 
@@ -71,7 +71,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
   pf->init(plgn);
   auto& tris = pf->triangles();
   REQUIRE(tris.size() == plgn.size() - 2);
-  REQUIRE(pf->area_compute() == 3.875);
+  REQUIRE(pf->area() == 3.875);
   write_obj("3", plgn, tris);
 }
 
@@ -91,7 +91,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
   pf->init(plgn);
   auto& tris = pf->triangles();
   REQUIRE(tris.size() == plgn.size() - 2);
-  REQUIRE(pf->area_compute() == 3.125);
+  REQUIRE(pf->area() == 3.125);
   write_obj(TEST_NAME, plgn, tris);
 }
 
@@ -114,7 +114,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
   pf->init(plgn);
   auto& tris = pf->triangles();
   write_obj(TEST_NAME, plgn, tris);
-  REQUIRE(pf->area_compute() == 12.5);
+  REQUIRE(pf->area() == 13.5);
   REQUIRE(tris.size() == plgn.size() - 2);
 }
 

@@ -4,13 +4,13 @@
 namespace Geo
 {
 
-double area_compute(const std::vector<std::array<Geo::Vector3, 3>>& _tris)
+double area(const std::vector<std::array<Geo::Vector3, 3>>& _tris)
 {
-  double area = 0.;
+  double a = 0.;
   for (const auto tri : _tris)
-    area += area_compute(tri);
+    a += area(tri);
 
-  return area;
+  return a;
 }
 
 }
