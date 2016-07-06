@@ -177,7 +177,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 
   auto& tris = pf->triangles();
   write_obj(TEST_NAME, pf->polygon(), tris);
-  REQUIRE(pf->area() == 7.25);
-  REQUIRE(tris.size() == plgn.size() - 2);
+  REQUIRE(pf->area() == 8);
+  REQUIRE(tris.size() == 8);
 }
 
