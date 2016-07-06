@@ -119,3 +119,31 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
 }
 
 
+#undef TEST_NAME
+#define TEST_NAME "6"
+TEST_CASE(TEST_NAME, "[PolyTriang]") {
+  auto pf = PolygonFil::make();
+  std::vector<Geo::Vector3> plgn;
+
+  plgn.push_back({ 0, 0, 0 });
+  plgn.push_back({ 1, 0, 0 });
+  plgn.push_back({ 1, 1, 0 });
+  plgn.push_back({ 0, 2, 0 });
+  plgn.push_back({-1, 2, 0 });
+  plgn.push_back({-2, 0, 0 });
+  plgn.push_back({-2,-2, 0 });
+  plgn.push_back({ 0,-4, 0 });
+  plgn.push_back({ 0,-3, 0 });
+  plgn.push_back({-1,-2, 0 });
+  plgn.push_back({-1,-1, 0 });
+  plgn.push_back({-1.5, 0, 0 });
+  plgn.push_back({-1, 0, 0 });
+  plgn.push_back({ 0, 1, 0 });
+
+  pf->init(plgn);
+  auto& tris = pf->triangles();
+  write_obj(TEST_NAME, plgn, tris);
+  REQUIRE(pf->area() == 13.5);
+  REQUIRE(tris.size() == plgn.size() - 2);
+}
+
