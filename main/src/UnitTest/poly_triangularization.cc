@@ -20,7 +20,8 @@ static void write_obj(const char* _flnm,
 
 #undef TEST_NAME
 #define TEST_NAME "1"
-TEST_CASE(TEST_NAME, "[PolyTriang]") {
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
   auto pf = PolygonFil::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 0, 0, 0 });
@@ -37,7 +38,8 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
 
 #undef TEST_NAME
 #define TEST_NAME "2"
-TEST_CASE(TEST_NAME, "[PolyTriang]") {
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
   auto pf = PolygonFil::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 50,   0, 0 });
@@ -58,7 +60,8 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
 
 #undef TEST_NAME
 #define TEST_NAME "3"
-TEST_CASE(TEST_NAME, "[PolyTriang]") {
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
   auto pf = PolygonFil::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 0,    0,  0 });
@@ -78,7 +81,8 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
 
 #undef TEST_NAME
 #define TEST_NAME "4"
-TEST_CASE(TEST_NAME, "[PolyTriang]") {
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
   auto pf = PolygonFil::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 0,   1.5, 0 });
@@ -98,7 +102,8 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
 
 #undef TEST_NAME
 #define TEST_NAME "5"
-TEST_CASE(TEST_NAME, "[PolyTriang]") {
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
   auto pf = PolygonFil::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 0,   0,   0 });
@@ -122,7 +127,8 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
 
 #undef TEST_NAME
 #define TEST_NAME "6"
-TEST_CASE(TEST_NAME, "[PolyTriang]") {
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
   auto pf = PolygonFil::make();
   std::vector<Geo::Vector3> plgn;
 
@@ -144,6 +150,33 @@ TEST_CASE(TEST_NAME, "[PolyTriang]") {
   pf->add(plgn);
   auto& tris = pf->triangles();
   write_obj(TEST_NAME, plgn, tris);
+  REQUIRE(pf->area() == 7.25);
+  REQUIRE(tris.size() == plgn.size() - 2);
+}
+
+
+#undef TEST_NAME
+#define TEST_NAME "7"
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
+  auto pf = PolygonFil::make();
+
+  std::vector<Geo::Vector3> plgn;
+  plgn.push_back({ 0, 0, 0 });
+  plgn.push_back({ 3, 0, 0 });
+  plgn.push_back({ 3, 3, 0 });
+  plgn.push_back({ 0, 3, 0 });
+  pf->add(plgn);
+
+  plgn.clear();
+  plgn.push_back({ 1, 1, 0 });
+  plgn.push_back({ 2, 1, 0 });
+  plgn.push_back({ 2, 2, 0 });
+  plgn.push_back({ 1, 2, 0 });
+  pf->add(plgn);
+
+  auto& tris = pf->triangles();
+  write_obj(TEST_NAME, pf->polygon(), tris);
   REQUIRE(pf->area() == 7.25);
   REQUIRE(tris.size() == plgn.size() - 2);
 }

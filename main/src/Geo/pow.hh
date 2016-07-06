@@ -4,7 +4,7 @@
 
 namespace Geo
 {
-template <typename numeric_type> class gk_pow
+template <typename numeric_type> class Pow
 {
   template <bool _oddT> static void multply_if_odd(numeric_type&, const numeric_type&) {}
   template <> static void multply_if_odd<true>(numeric_type & _res, const numeric_type & v)
@@ -27,12 +27,12 @@ template <typename numeric_type> class gk_pow
     return v;
   }
 
-  template <int N> static numeric_type geo_pow_priv(const numeric_type & v,
+  template <int N> static numeric_type pow_private(const numeric_type & v,
       std::integral_constant<bool, true>)
   {
     return calc<N>(v);
   }
-  template <int N> static numeric_type geo_pow_priv(const numeric_type & v,
+  template <int N> static numeric_type pow_private(const numeric_type & v,
       std::integral_constant<bool, false>)
   {
     return static_cast<numeric_type>(1) / calc<-N>(v);
@@ -40,13 +40,13 @@ template <typename numeric_type> class gk_pow
 public:
   template <int N> static numeric_type to(const numeric_type & v)
   {
-    return geo_pow_priv<N>(v, std::integral_constant<bool, bool(N>=0)>());
+    return pow_private<N>(v, std::integral_constant<bool, bool(N>=0)>());
   }
 };
 
 template <class num> inline num sq(const num v)
 {
-  return gk_pow<num>::template to<2>(v);
+  return Pow<num>::template to<2>(v);
 }
 } // namespace Geo
 

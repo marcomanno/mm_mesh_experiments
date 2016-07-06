@@ -17,6 +17,11 @@ struct PolygonFilImpl : public PolygonFil
     return sol_.tris_;
   }
 
+  const std::vector<Geo::Vector3>& polygon() override
+  {
+    return loops_[0];
+  }
+
   virtual double area() override
   {
     compute();
@@ -92,7 +97,7 @@ void PolygonFilImpl::compute()
         break;
       }
     }
-    while (loops_.size() > 2)
+    while (loops_.size() > 1)
     {
       Utils::StatisticsT<double> stats;
       auto pt0 = loops_[0].back();
@@ -120,12 +125,12 @@ void PolygonFilImpl::compute()
             {
               continue;
             }
-            if (stats.add(dist_sq) == stats.Smallest)
+            if (stats.add(dist_sq) | stats.Smallest)
               best_conn_info = conn_info;
           }
         }
       }
-      if (std::get<3>(conn_info) < 0.5)
+      if (std::get<3>(best_conn_info) < 0.5)
       {
         if (std::get<0>(best_conn_info) == loops_[0].begin())
           std::get<0>(best_conn_info) == loops_[0].end();
@@ -135,9 +140,12 @@ void PolygonFilImpl::compute()
         std::get<2>(best_conn_info), std::get<1>(best_conn_info)->end());
       std::get<1>(best_conn_info)->push_back(
         std::get<1>(best_conn_info)->front());
-      loops_[0].insert(std::next(std::get<0>(best_conn_info)),
+      std::get<1>(best_conn_info)->insert(
         std::get<1>(best_conn_info)->begin(),
-        std::get<1>(best_conn_info)->end());
+        *std::get<0>(best_conn_info));
+      loops_[0].insert(std::next(std::get<0>(best_conn_info)),
+        std::get<1>(best_conn_info)->crbegin(),
+        std::get<1>(best_conn_info)->crend());
       loops_.erase(std::get<1>(best_conn_info));
     }
   }
