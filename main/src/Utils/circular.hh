@@ -1,6 +1,6 @@
 #pragma once
 
-namespace Circular
+namespace Utils
 {
 
 template <typename Index> Index decrease(const Index& _ind,const Index _mod)

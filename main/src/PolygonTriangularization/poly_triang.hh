@@ -4,9 +4,8 @@
 
 struct PolygonFil
 {
-  virtual void init(const std::vector<Geo::Vector3>& _plgn) = 0;
-  virtual const std::vector<std::array<size_t, 3>>& triangles() const = 0;
-  virtual const std::vector<Geo::Vector3>& positions() const = 0;
-  virtual double area() const = 0;
+  virtual void add(const std::vector<Geo::Vector3>& _plgn) = 0;
+  virtual const std::vector<std::array<size_t, 3>>& triangles() = 0;
+  virtual double area() = 0;
   static std::shared_ptr<PolygonFil> make();
 };//class PolygonFill

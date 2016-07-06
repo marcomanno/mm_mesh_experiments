@@ -1,5 +1,5 @@
 #include "poly_triang.hh"
-#include "circular.hh"
+#include "Utils/circular.hh"
 #include "Utils/statistics.hh"
 #include "Geo/area.hh"
 #include "Geo/entity.hh"
@@ -10,24 +10,24 @@
 
 struct PolygonFilImpl : public PolygonFil
 {
-  void init(const std::vector<Geo::Vector3>& _plgn);
-  virtual const std::vector<std::array<size_t, 3>>& triangles() const
+  virtual void add(const std::vector<Geo::Vector3>& _plgn) override;
+  virtual const std::vector<std::array<size_t, 3>>& triangles() override
   {
+    compute();
     return sol_.tris_;
   }
-  virtual const std::vector<Geo::Vector3>& positions() const
+
+  virtual double area() override
   {
-    return pts_;
-  }
-  virtual double area() const
-  {
+    compute();
     return sol_.area_;
   }
 
 private:
   struct Solution
   {
-    void compute(const std::vector<Geo::Vector3>& _pos);
+    void compute(const std::vector<Geo::Vector3>& _pos,
+      const double _tols);
     bool concave(size_t _i) const
     {
       return _i < concav_.size() && concav_[_i];
@@ -45,7 +45,11 @@ private:
     std::vector<size_t> indcs_;
   };
 
-  std::vector<Geo::Vector3> pts_;
+  void compute();
+
+  typedef std::vector<Geo::Vector3> Polygon;
+  typedef std::vector<Polygon> PolygonVector;
+  PolygonVector loops_;
   Solution sol_;
 };
 
@@ -54,11 +58,90 @@ std::shared_ptr<PolygonFil> PolygonFil::make()
   return std::make_shared<PolygonFilImpl>();
 }
 
-void PolygonFilImpl::init(
+void PolygonFilImpl::add(
   const std::vector<Geo::Vector3>& _plgn)
 {
-  pts_ = _plgn;
-  sol_.compute(_plgn);
+  loops_.push_back(_plgn);
+  sol_.area_ = 0;
+}
+
+void PolygonFilImpl::compute()
+{
+  if (sol_.area_ > 0 || loops_.empty())
+    return; // Triangulation already computed.
+
+  Utils::StatisticsT<double> tol_max;
+  for (const auto& loop : loops_)
+    for (const auto& pt : loop)
+      tol_max.add(Geo::epsilon(pt));
+  const auto tol = tol_max.max() * 10;
+
+  if (loops_.size() > 1)
+  {
+    // Put the auter loop at the begin of the list.
+    auto pt = loops_[0][0];
+    for (auto loop_it = std::next(loops_.begin());
+      loop_it != loops_.end(); 
+      ++loop_it)
+    {
+      auto where = 
+        Geo::PointInPolygon::classify(*loop_it, pt, tol);
+      if (where == Geo::PointInPolygon::Inside)
+      {
+        std::swap(loops_.front(), *loop_it);
+        break;
+      }
+    }
+    while (loops_.size() > 2)
+    {
+      Utils::StatisticsT<double> stats;
+      auto pt0 = loops_[0].back();
+      std::tuple<Polygon::iterator,       // Near segment end on outer loop.
+                 PolygonVector::iterator, // Nearest internal poop
+                 Polygon::iterator,       // Nearest vertex on the intrnal loop
+                 double>                  // Projection parameter
+        conn_info, best_conn_info;
+      for (std::get<0>(conn_info) = loops_[0].begin();
+        std::get<0>(conn_info) != loops_[0].end(); 
+        pt0 = *(std::get<0>(conn_info)++))
+      {
+        Geo::Segment seg = { pt0, *std::get<0>(conn_info) };
+        for (std::get<1>(conn_info) = std::next(loops_.begin());
+          std::get<1>(conn_info) != loops_.end();
+          ++std::get<1>(conn_info))
+        {
+          for (std::get<2>(conn_info) = std::get<1>(conn_info)->begin();
+            std::get<2>(conn_info) != std::get<1>(conn_info)->end();
+            ++std::get<2>(conn_info))
+          {
+            double dist_sq;
+            if (!Geo::closest_point(seg, *std::get<2>(conn_info),
+              nullptr, &std::get<3>(conn_info), &dist_sq))
+            {
+              continue;
+            }
+            if (stats.add(dist_sq) == stats.Smallest)
+              best_conn_info = conn_info;
+          }
+        }
+      }
+      if (std::get<3>(conn_info) < 0.5)
+      {
+        if (std::get<0>(best_conn_info) == loops_[0].begin())
+          std::get<0>(best_conn_info) == loops_[0].end();
+        --std::get<0>(best_conn_info);
+      }
+      std::rotate(std::get<1>(best_conn_info)->begin(),
+        std::get<2>(best_conn_info), std::get<1>(best_conn_info)->end());
+      std::get<1>(best_conn_info)->push_back(
+        std::get<1>(best_conn_info)->front());
+      loops_[0].insert(std::next(std::get<0>(best_conn_info)),
+        std::get<1>(best_conn_info)->begin(),
+        std::get<1>(best_conn_info)->end());
+      loops_.erase(std::get<1>(best_conn_info));
+    }
+  }
+  sol_.compute(loops_[0], tol);
 }
 
 namespace {
@@ -69,8 +152,8 @@ bool valid_triangle(const size_t _i,
   const double _tol)
 {
   auto next = _i;
-  auto prev = Circular::decrease(
-    Circular::decrease(_i, _indcs.size()), _indcs.size());
+  auto prev = Utils::decrease(
+    Utils::decrease(_i, _indcs.size()), _indcs.size());
   std::vector<Geo::Vector3> tmp_poly;
   for (const auto& ind : _indcs)
     tmp_poly.push_back(_pts[ind]);
@@ -98,14 +181,11 @@ bool valid_triangle(const size_t _i,
 };
 
 void PolygonFilImpl::Solution::compute(
-  const std::vector<Geo::Vector3>& _pts)
+  const std::vector<Geo::Vector3>& _pts,
+  const double _tol)
 {
   indcs_.resize(_pts.size());
   std::iota(indcs_.begin(), indcs_.end(), 0);
-  Utils::StatisticsT<double> tol_max;
-  for (const auto& pt : _pts)
-    tol_max.add(Geo::epsilon(pt));
-  auto tol = tol_max.max() * 10;
   for (;;)
   {
     if (indcs_.size() < 3)
@@ -118,7 +198,7 @@ void PolygonFilImpl::Solution::compute(
     {
       inds[2] = indcs_[i];
       vects[1] = _pts[inds[2]] - _pts[inds[1]];
-      if (valid_triangle(i, indcs_, _pts, tol))
+      if (valid_triangle(i, indcs_, _pts, _tol))
       //if (!concave(inds[1]))
       {
 
@@ -132,9 +212,9 @@ void PolygonFilImpl::Solution::compute(
     auto idx = min_ang.min_idx();
     std::array<size_t, 3> tri;
     tri[2] = indcs_[idx];
-    tri[1] = indcs_[idx = Circular::decrease(idx, indcs_.size())];
+    tri[1] = indcs_[idx = Utils::decrease(idx, indcs_.size())];
     indcs_.erase(indcs_.begin() + idx);
-    tri[0] = indcs_[idx = Circular::decrease(idx, indcs_.size())];
+    tri[0] = indcs_[idx = Utils::decrease(idx, indcs_.size())];
 
     if (min_ang.min() > 0)
       tris_.push_back(tri);
