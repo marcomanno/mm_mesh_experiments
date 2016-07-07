@@ -207,7 +207,7 @@ void PolygonFilImpl::Solution::compute(
   std::vector<size_t>& _indcs,
   const double _tol)
 {
-  while (_indcs.size() >= 3)
+  while (_indcs.size() > 3)
   {
     Geo::Vector3 vects[2];
     size_t inds[3] = { *(_indcs.end() - 2), _indcs.back(), 0 };
@@ -230,7 +230,7 @@ void PolygonFilImpl::Solution::compute(
     }
     if (min_ang.count() == 0)
     {
-      //THROW("No good triangle avaliable.");
+      THROW("No good triangle avaliable.");
     }
     std::array<size_t, 3> tri;
     tri[2] = min_ang.min_idx();
