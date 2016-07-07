@@ -1,11 +1,12 @@
 #include "poly_triang.hh"
-#include "Utils/circular.hh"
-#include "Utils/statistics.hh"
 #include "Geo/area.hh"
 #include "Geo/entity.hh"
 #include "Geo/linear_system.hh"
 #include "Geo/point_in_polygon.hh"
 #include "Geo/tolerance.hh"
+#include "Utils/circular.hh"
+#include "Utils/statistics.hh"
+#include <Utils/error_handling.hh>
 #include <numeric>
 
 struct PolygonFilImpl : public PolygonFil
@@ -32,6 +33,7 @@ private:
   struct Solution
   {
     void compute(const std::vector<Geo::Vector3>& _pos,
+      std::vector<size_t>& _indcs,
       const double _tols);
     bool concave(size_t _i) const
     {
@@ -47,7 +49,6 @@ private:
     std::vector<std::array<size_t, 3>> tris_;
     double area_ = 0;
     std::vector<bool> concav_;
-    std::vector<size_t> indcs_;
   };
 
   void compute();
@@ -125,7 +126,7 @@ void PolygonFilImpl::compute()
             {
               continue;
             }
-            if (stats.add(dist_sq) | stats.Smallest)
+            if (stats.add(dist_sq) & stats.Smallest)
               best_conn_info = conn_info;
           }
         }
@@ -133,7 +134,7 @@ void PolygonFilImpl::compute()
       if (std::get<3>(best_conn_info) < 0.5)
       {
         if (std::get<0>(best_conn_info) == loops_[0].begin())
-          std::get<0>(best_conn_info) == loops_[0].end();
+          std::get<0>(best_conn_info) = loops_[0].end();
         --std::get<0>(best_conn_info);
       }
       std::rotate(std::get<1>(best_conn_info)->begin(),
@@ -149,7 +150,24 @@ void PolygonFilImpl::compute()
       loops_.erase(std::get<1>(best_conn_info));
     }
   }
-  sol_.compute(loops_[0], tol);
+  std::vector<rsize_t> indcs;
+  indcs.reserve(loops_[0].size());
+  auto prev = &loops_[0].back();
+  for (size_t i = 0, j; i < loops_[0].size(); prev = &loops_[0][i++])
+  {
+    for (j = 0; j < i; ++j)
+    {
+      if (loops_[0][i] == loops_[0][j])
+      {
+        indcs.push_back(j);
+        loops_[0].erase(loops_[0].begin() + (i--));
+        break;
+      }
+    }
+    if (j == i)
+      indcs.push_back(j);
+  }
+  sol_.compute(loops_[0], indcs, tol);
 }
 
 namespace {
@@ -170,19 +188,15 @@ bool valid_triangle(const size_t _i,
   if (where != Geo::PointInPolygon::Inside)
     return false;
   auto j = tmp_poly.size() - 1;
-  Geo::Segment segs[2] = {
-    Geo::Segment({tmp_poly[prev], tmp_poly[_i]}),
-    Geo::Segment({tmp_poly[next], tmp_poly[_i]}) };
+  Geo::Segment seg = {tmp_poly[prev], tmp_poly[next]};
   for (size_t i = 0; i < tmp_poly.size(); j = i++)
   {
-    if (i == next || i == prev || j == next || j == prev)
+    if (_indcs[i] == _indcs[next] || _indcs[i] == _indcs[prev] ||
+      _indcs[j] == _indcs[next] || _indcs[j] == _indcs[prev])
       continue;
     Geo::Segment pol_seg = {tmp_poly[i], tmp_poly[j]};
-    for (const auto& seg : segs)
-    {
-      if (Geo::closest_point(seg, pol_seg))
-        return false;
-    }
+    if (Geo::closest_point(seg, pol_seg))
+      return false;
   }
   return true;
 }
@@ -190,23 +204,20 @@ bool valid_triangle(const size_t _i,
 
 void PolygonFilImpl::Solution::compute(
   const std::vector<Geo::Vector3>& _pts,
+  std::vector<size_t>& _indcs,
   const double _tol)
 {
-  indcs_.resize(_pts.size());
-  std::iota(indcs_.begin(), indcs_.end(), 0);
-  for (;;)
+  while (_indcs.size() >= 3)
   {
-    if (indcs_.size() < 3)
-      break;
     Geo::Vector3 vects[2];
-    size_t inds[3] = { *(indcs_.end() - 2), indcs_.back(), 0 };
+    size_t inds[3] = { *(_indcs.end() - 2), _indcs.back(), 0 };
     vects[0] = _pts[inds[0]] - _pts[inds[1]];
     Utils::StatisticsT<double> min_ang;
-    for (size_t i = 0; i < indcs_.size(); ++i)
+    for (size_t i = 0; i < _indcs.size(); ++i)
     {
-      inds[2] = indcs_[i];
+      inds[2] = _indcs[i];
       vects[1] = _pts[inds[2]] - _pts[inds[1]];
-      if (valid_triangle(i, indcs_, _pts, _tol))
+      if (valid_triangle(i, _indcs, _pts, _tol))
       //if (!concave(inds[1]))
       {
 
@@ -217,15 +228,27 @@ void PolygonFilImpl::Solution::compute(
       inds[1] = inds[2];
       vects[0] = -vects[1];
     }
-    auto idx = min_ang.min_idx();
+    if (min_ang.count() == 0)
+    {
+      //THROW("No good triangle avaliable.");
+    }
     std::array<size_t, 3> tri;
-    tri[2] = indcs_[idx];
-    tri[1] = indcs_[idx = Utils::decrease(idx, indcs_.size())];
-    indcs_.erase(indcs_.begin() + idx);
-    tri[0] = indcs_[idx = Utils::decrease(idx, indcs_.size())];
-
+    tri[2] = min_ang.min_idx();
+    tri[1] = Utils::decrease(tri[2], _indcs.size());
+    auto to_rem = tri[1];
     if (min_ang.min() > 0)
+    {
+      tri[0] = Utils::decrease(tri[1], _indcs.size());
+      for (auto& pt_ind : tri) pt_ind = _indcs[pt_ind];
       tris_.push_back(tri);
+    }
+    _indcs.erase(_indcs.begin() + to_rem);
+  }
+  if (_indcs.size() == 3)
+  {
+    std::array<size_t, 3> tri = { 0, 1, 2 };
+    for (auto& pt_ind : tri) pt_ind = _indcs[pt_ind];
+    tris_.push_back(tri);
   }
   area_ = 0.;
   for (const auto& tri : tris_)

@@ -181,3 +181,55 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   REQUIRE(tris.size() == 8);
 }
 
+#undef TEST_NAME
+#define TEST_NAME "8"
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
+  auto pf = PolygonFil::make();
+  {
+    std::vector<Geo::Vector3> plgn =
+    {
+      { 1, 0, 0 },
+      { 2, 1, 0 },
+      { 1, 2, 0 },
+      { 2, 3, 0 },
+      { 1, 4, 0 },
+      { 2, 5, 0 },
+      { 1, 6, 0 },
+      {-1, 6, 0 },
+      {-2, 5, 0 },
+      {-1, 4, 0 },
+      {-2, 3, 0 },
+      {-1, 2, 0 },
+      {-2, 1, 0 },
+      {-1, 0, 0 }
+    };
+    pf->add(plgn);
+  }
+  {
+    std::vector<Geo::Vector3> plgn =
+    {
+      { -0.5,  0.5, 0 },
+      {  0.5,  0.5, 0 },
+      {  0.5,  1.5, 0 },
+      { -0.5,  1.5, 0 }
+    };
+    pf->add(plgn);
+  }
+  {
+    std::vector<Geo::Vector3> plgn =
+    {
+      { -0.5,  3.5, 0 },
+      {  0.5,  3.5, 0 },
+      {  0.5,  4.5, 0 },
+      { -0.5,  4.5, 0 }
+    };
+    pf->add(plgn);
+  }
+
+  auto& tris = pf->triangles();
+  write_obj(TEST_NAME, pf->polygon(), tris);
+  REQUIRE(tris.size() == 24);
+  REQUIRE(pf->area() == 16);
+}
+
