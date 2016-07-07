@@ -218,9 +218,7 @@ void PolygonFilImpl::Solution::compute(
       inds[2] = _indcs[i];
       vects[1] = _pts[inds[2]] - _pts[inds[1]];
       if (valid_triangle(i, _indcs, _pts, _tol))
-      //if (!concave(inds[1]))
       {
-
         auto angl = Geo::angle(vects[0], vects[1]);
         min_ang.add(angl, i);
       }
@@ -230,7 +228,7 @@ void PolygonFilImpl::Solution::compute(
     }
     if (min_ang.count() == 0)
     {
-      THROW("No good triangle avaliable.");
+      THROW("No good triangle found.");
     }
     std::array<size_t, 3> tri;
     tri[2] = min_ang.min_idx();
