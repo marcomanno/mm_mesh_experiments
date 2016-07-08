@@ -22,12 +22,12 @@ struct Object
   virtual Type type() const = 0;
   virtual SubType sub_type() const = 0;
 
-  virtual bool operator<(const Object& _oth) const { return this < &_oth; }
-  virtual bool operator==(const Object& _oth) const { return this == &_oth; }
+  virtual bool operator<(const Object& _oth) const;
+  virtual bool operator==(const Object& _oth) const;
 
 protected:
-  Object() : ref_(1) {}
-  virtual ~Object() {}
+  Object();
+  virtual ~Object();
 
 private:
   static void* operator new(std::size_t sz) { return ::operator new(sz); }
@@ -35,6 +35,7 @@ private:
 
 private:
   size_t ref_;
+  size_t id_;
 };
 
 struct IBase : public Object

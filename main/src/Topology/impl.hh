@@ -153,6 +153,13 @@ template <Type typeT> struct UpEntity : public Base<typeT>
     return low_elems_.rend() - it - 1;
   }
 
+  virtual bool remove()
+  {
+    for (size_t i = size(Direction::Down); i-- > 0;)
+      remove_child(i);
+    return Base<typeT>::remove();
+  }
+
 protected:
   std::vector<IBase*> low_elems_;
 };

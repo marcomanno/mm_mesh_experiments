@@ -253,9 +253,6 @@ void Selection::apply_selection()
   for (auto face : faces_to_remove_)
   {
     face->remove();
-    auto n = face->size(Topo::Direction::Down);
-    while (n-- > 0)
-      face->remove_child(n);
   }
   for (auto face : faces_to_invert_)
   {

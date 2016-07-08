@@ -82,6 +82,7 @@ struct Iterator<Type::BODY, Type::FACE>::Impl : public BodyIteratorBase<Type::FA
   }
 };
 
+
 template <> 
 struct Iterator<Type::BODY, Type::EDGE>::Impl : public BodyIteratorBase<Type::EDGE>
 {
@@ -90,10 +91,31 @@ struct Iterator<Type::BODY, Type::EDGE>::Impl : public BodyIteratorBase<Type::ED
     clear();
     if (_from->sub_type() != SubType::BODY)
       throw;
+
+    typedef std::array<Object*, 2> Key;
+    struct less_key
+    {
+      bool operator()(const Key& _a, const Key& _b) const
+      {
+        if (less_ptr(_a[0], _b[0]))
+          return true;
+        if (less_ptr(_b[0], _a[0]))
+          return false;
+        return less_ptr(_a[1], _b[1]);
+      }
+      bool less_ptr(const Object* _ob0, const Object* _ob1) const
+      {
+        if (_ob0 == _ob1 || _ob1 == nullptr)
+          return false;
+        if (_ob0 == nullptr)
+          return true;
+        return *_ob0 < *_ob1;
+      }
+    };
+
     auto body = static_cast<const EE<Type::BODY>*>(_from.get());
     auto face_nmbr = body->size(Direction::Down);
-    typedef std::array<Object*, 2> Key;
-    typedef std::map<Key, Wrap<Type::EDGE>> EdgeMap;
+    typedef std::map<Key, Wrap<Type::EDGE>, less_key> EdgeMap;
     EdgeMap edges;
     for (size_t i = 0; i < face_nmbr; ++i)
     {

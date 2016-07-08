@@ -81,8 +81,6 @@ bool Split<Type::FACE>::operator()(VertexChains& _chains)
     }
     new_faces_.emplace_back(new_face);
   }
-  for (size_t i = face_->size(Direction::Down); i-- > 0;)
-    face_->remove_child(i);
   face_->remove();
   return true;
 }
