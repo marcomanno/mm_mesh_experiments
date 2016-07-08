@@ -177,8 +177,13 @@ void Selection::select_faces(
       vcts.face_inside_dir_ = vcts.face_norm_ % vcts.coe_dir_;
       vcts.face_ = face;
     }
-    THROW_IF(coe_vects[0].size() != 2 || coe_vects[1].size() != 2, 
-      "Not supporing open bodies - common edges must have 4 faces.");
+    if (coe_vects[0].size() != 2 || coe_vects[1].size() != 2)
+    {
+      static std::string err_mess("Not supporing open bodies - common edges must have 4 faces.");
+      err_mess += std::to_string(coe_vects[0].size()) + " " + 
+        std::to_string(coe_vects[1].size());
+      THROW(err_mess.c_str());
+    }
     for (int i = 0; i < 2; ++i)
     {
       for (int j = 0; j < 2; ++j)
