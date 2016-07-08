@@ -26,4 +26,4 @@ size_t comb(size_t _n, size_t _k)
   return res;
 }
 
-} // namespace geo
+} // namespace Geo
