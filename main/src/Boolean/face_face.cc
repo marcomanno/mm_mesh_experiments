@@ -327,7 +327,7 @@ std::shared_ptr<Geo::IPolygonalFace> make_polygonal_face(
   std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _verts)
 {
   std::vector<Geo::Point> pts;
-  pts.resize(_verts.size());
+  pts.reserve(_verts.size());
   for (auto& vert : _verts)
   {
     pts.emplace_back();
@@ -434,7 +434,7 @@ void resolve_ambiguities(
           }
         }
       }
-      THROW_IF(!located, "Reversec loop not loacated!")
+      THROW_IF(!located, "Reversed loop not loacated!")
     }
     for (size_t i_ch = 0; i_ch < _split_chains.size(); ++i_ch)
     {

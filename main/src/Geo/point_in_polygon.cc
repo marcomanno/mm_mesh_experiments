@@ -53,7 +53,7 @@ Classification classify(
     if (v0 * v1 < 0)
     {
       double h = 0.25 * length_square(v0 % v1) / 
-        length_square(v0 + v1);
+        length_square(v0 - v1);
       if (h < tol_sq)
         return On;
     }
