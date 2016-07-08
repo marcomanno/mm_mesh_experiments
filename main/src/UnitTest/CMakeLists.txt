@@ -15,4 +15,4 @@ acg_add_executable(unittests ${UNITTEST_SRC})
 set (OUTPUT_DIR "${CMAKE_BINARY_DIR}/Unittests")
 set_target_properties(unittests PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR}) 
 
-target_link_libraries(unittests PolygonTriangularization Geo) 
+target_link_libraries(unittests PolygonTriangularization Geo Boolean Topology) 

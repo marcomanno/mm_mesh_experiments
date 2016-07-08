@@ -61,8 +61,10 @@ endif()
 # Call the subdirectories with there projects
 # ========================================================================
 
-add_subdirectory (src/PolygonTriangularization)
+add_subdirectory (src/Boolean)
 add_subdirectory (src/Geo)
-add_subdirectory (src/Utils)
+add_subdirectory (src/PolygonTriangularization)
+add_subdirectory (src/Topology)
 add_subdirectory (src/UnitTest)
+add_subdirectory (src/Utils)
 # ========================================================================

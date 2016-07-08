@@ -1,6 +1,7 @@
 #pragma once
 
 #include <limits>
+#include <initializer_list>
 
 namespace Utils
 {
@@ -40,6 +41,92 @@ public:
   const ValueT& sum() const { return sum_; }
   const ValueT& average() const { return sum_ / count_; }
   const size_t count() { return count_; }
+};
+
+
+template <typename NumericT>
+struct Amount
+{
+  Amount(double _val) : val_(_val) {}
+  NumericT operator()() const { return val_; }
+protected:
+  NumericT val_;
+};
+
+template <typename NumericT>
+struct FindMax : public Amount<NumericT>
+{
+  static constexpr  NumericT default_value() { return std::numeric_limits<NumericT>::min(); }
+
+  FindMax(const std::initializer_list<NumericT>& _l) : Amount(default_value())
+  {
+    for (auto v : _l) add(v);
+  }
+
+  FindMax(NumericT _val = default_value()) : Amount(_val) {}
+
+  bool add(const NumericT& _val)
+  {
+    if (val_ >= _val)
+      return false;
+    val_ = _val;
+    return true;
+  }
+};
+
+template <typename NumericT>
+struct FindMaxAbs : public Amount<NumericT>
+{
+  static constexpr  NumericT default_value() { return 0; }
+
+  FindMaxAbs(const std::initializer_list<NumericT>& _l) : Amount(default_value())
+  {
+    for (auto v : _l) add(v);
+  }
+
+  FindMaxAbs(NumericT _val = default_value()) : Amount(_val) {}
+
+  bool add(const NumericT& _val)
+  {
+    const NumericT val = std::abs(_val);
+    if (val >= _val)
+      return false;
+    val_ = val;
+    return true;
+  }
+};
+
+template <typename NumericT>
+struct FindMin : public Amount<NumericT>
+{
+  static constexpr  NumericT default_value() { return std::numeric_limits<NumericT>::max(); }
+
+  FindMin(const std::initializer_list<NumericT>& _l) : Amount(default_value())
+  {
+    for (auto v : _l) add(v);
+  }
+
+  FindMin(NumericT _val = default_value()) : Amount(_val) {}
+
+  bool add(const NumericT& _val)
+  {
+    if (val_ <= _val)
+      return false;
+    val_ = _val;
+    return true;
+  }
+};
+
+
+template <typename NumericT>
+struct FindMinMax : public FindMax<NumericT>, FindMin<NumericT>
+{
+  void add(const NumericT& _val)
+  {
+    auto b_max = FindMax::add(_val);
+    auto b_min = FindMin::add(_val);
+    return b_max || b_min;
+  }
 };
 
 }//namespace Geo

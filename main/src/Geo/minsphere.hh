@@ -1,7 +1,7 @@
 #pragma once
 
-#include "pow.h"
-#include "linear_system.h"
+#include "Geo/pow.hh"
+#include "Geo/linear_system.hh"
 
 namespace Geo {
 
@@ -15,7 +15,7 @@ struct MinSphereT
   double radius_ = -1.;
   bool contains(const Point& _pt) const
   {
-    return radius_ >= 0 && length_square(_pt - centre_) <= (1 + gk_sq(radius_)) * 1e-8;
+    return radius_ >= 0 && length_square(_pt - centre_) <= (1 + Geo::sq(radius_)) * 1e-8;
   }
 };
 
@@ -53,7 +53,7 @@ MinSphereT<Point>::MinSphereT(const Point* _pts, const size_t _pts_num)
       for (int j = 0; j < 3; ++j)
       {
         A[i][j] = _pts[i][j] - _pts[points_on_sphere][j];
-        B[i] += (gk_sq(_pts[i][j]) - gk_sq(_pts[points_on_sphere][j]));
+        B[i] += (Geo::sq(_pts[i][j]) - Geo::sq(_pts[points_on_sphere][j]));
       }
       B[i] /= 2;
     }
