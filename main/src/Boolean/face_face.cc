@@ -99,8 +99,8 @@ bool FaceVersus::face_intersect(
       if (v_inters.size() < 2)
         continue;
 
-      face_new_edge_map.add_face_edge(face_a, v_inters, 0);
-      face_new_edge_map.add_face_edge(face_b, v_inters, 1);
+      face_new_edge_map.add_face_edge(face_a, v_inters, false);
+      face_new_edge_map.add_face_edge(face_b, v_inters, true);
     }
   }
   face_new_edge_map.init_map();

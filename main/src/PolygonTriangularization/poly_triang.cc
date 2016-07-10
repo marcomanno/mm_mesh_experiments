@@ -9,7 +9,7 @@
 #include <Utils/error_handling.hh>
 #include <numeric>
 
-struct PolygonFilImpl : public PolygonFil
+struct PolygonTriangulation : public IPolygonTriangulation
 {
   virtual void add(const std::vector<Geo::Vector3>& _plgn) override;
   virtual const std::vector<std::array<size_t, 3>>& triangles() override
@@ -59,19 +59,19 @@ private:
   Solution sol_;
 };
 
-std::shared_ptr<PolygonFil> PolygonFil::make()
+std::shared_ptr<IPolygonTriangulation> IPolygonTriangulation::make()
 {
-  return std::make_shared<PolygonFilImpl>();
+  return std::make_shared<PolygonTriangulation>();
 }
 
-void PolygonFilImpl::add(
+void PolygonTriangulation::add(
   const std::vector<Geo::Vector3>& _plgn)
 {
   loops_.push_back(_plgn);
   sol_.area_ = 0;
 }
 
-void PolygonFilImpl::compute()
+void PolygonTriangulation::compute()
 {
   if (sol_.area_ > 0 || loops_.empty())
     return; // Triangulation already computed.
@@ -202,7 +202,7 @@ bool valid_triangle(const size_t _i,
 }
 };
 
-void PolygonFilImpl::Solution::compute(
+void PolygonTriangulation::Solution::compute(
   const std::vector<Geo::Vector3>& _pts,
   std::vector<size_t>& _indcs,
   const double _tol)
@@ -292,7 +292,7 @@ size_t inside_triangle(const Geo::Vector3& _pt,
 
 }
 
-bool PolygonFilImpl::Solution::find_concave(
+bool PolygonTriangulation::Solution::find_concave(
   const std::vector<Geo::Vector3>& _pts,
   std::vector<bool>& _concav) const
 {
@@ -319,7 +319,7 @@ bool PolygonFilImpl::Solution::find_concave(
   return achange;
 }
 
-bool PolygonFilImpl::Solution::contain_concave(
+bool PolygonTriangulation::Solution::contain_concave(
   size_t _inds[3], Geo::Vector3 _vects[2],
   const std::vector<Geo::Vector3>& _pts) const
 {

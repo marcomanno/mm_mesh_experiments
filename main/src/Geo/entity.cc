@@ -4,6 +4,7 @@
 #include <pow.hh>
 #include <linear_system.hh>
 #include <Utils/statistics.hh>
+#include "PolygonTriangularization/poly_triang.hh"
 
 #include <vector>
 
@@ -124,27 +125,18 @@ private:
 
 void PolygonalFace::finalize()
 {
-  // This is not efficient at all. Cache the angle computed in previous iteration.
-  while (pts_.size() > 3)
+  if (pts_.size() < 3)
+    return;
+  auto ptg = IPolygonTriangulation::make();
+  ptg->add(pts_);
+  const auto& tris = ptg->triangles();
+  const auto& poly = ptg->polygon();
+  for (const auto& tri : tris)
   {
-    auto index = [this](size_t _i, size_t _back_off)
-    {
-      if (_i >= _back_off) return _i - _back_off;
-      return pts_.size() - 1 - _back_off - _i;
-    };
-    Utils::StatisticsT<double> angl_stat;
-    for (size_t i = 0; i < pts_.size(); ++i)
-    {
-      auto vp = pts_[index(i, 2)] - pts_[index(i, 1)];
-      auto vn = pts_[index(i, 0)] - pts_[index(i, 1)];
-      angl_stat.add(angle(vp, vn));
-    }
-    auto min_ind = angl_stat.min_idx();
     tris_.push_back({
-      pts_[index(min_ind, 2)], 
-      pts_[index(min_ind, 1)], 
-      pts_[index(min_ind, 0)] });
-    pts_.erase(pts_.begin() + index(min_ind, 1));
+      poly[tri[0]],
+      poly[tri[1]],
+      poly[tri[2]] });
   }
 }
 
@@ -204,16 +196,19 @@ bool closest_point(const IPolygonalFace& _face, const Point& _pt,
   Utils::StatisticsT<double> dist_stats;
   Triangle tri;
   Point clsst_pt;
-  for (size_t i = 0; i < _face.triangle_number(); ++i)
+  const auto tri_nmbr = _face.triangle_number();
+  for (size_t i = 0; i < tri_nmbr; ++i)
   {
     if (!_face.triangle(i, tri))
       continue;
     double dist_sq = 0;
     if (!closest_point(tri, _pt, &clsst_pt, &dist_sq))
       continue;
-    if (dist_stats.add(dist_sq) & dist_stats.Smallest && _clsst_pt != nullptr)
+    if ((dist_stats.add(dist_sq) & dist_stats.Smallest) && _clsst_pt != nullptr)
       *_clsst_pt = clsst_pt;
   }
+  if (dist_stats.count() == 0)
+    return false;
   if (_dist_sq != nullptr)
     *_dist_sq = dist_stats.min();
   return true;
@@ -246,7 +241,7 @@ bool closest_point(const Triangle& _tri, const Segment& _seg,
   A[0][1] = A[1][0] = cc + ab - ac - bc;
   A[0][2] = A[1][2] = cp - ap - bp;
   A[2][0] = cp - ap;
-  A[2][0] = cp - bp;
+  A[2][1] = cp - bp;
   A[2][2] = p * p;
   double B[3] = { cc - ac, cc - bc, cp };
   double uvt[3];
