@@ -175,7 +175,11 @@ TEST_CASE("8 VE intersections", "[Bool]")
 
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(body_1, body_2);
-  bool_solver->compute(Boolean::Operation::UNION);
+  auto result = bool_solver->compute(Boolean::Operation::UNION);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 16);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
+  REQUIRE(be_it.size() == 28);
 }
 
 TEST_CASE("4 EE intersections", "[Bool]")
@@ -185,12 +189,11 @@ TEST_CASE("4 EE intersections", "[Bool]")
 
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(body_1, body_2);
-  bool_solver->compute(Boolean::Operation::UNION);
+  auto result = bool_solver->compute(Boolean::Operation::UNION);
 
-  Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it;
-  be_it.reset(body_1);
-  REQUIRE(be_it.size() == 16);
-  be_it.reset(body_2);
-  REQUIRE(be_it.size() == 16);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 14);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
+  REQUIRE(be_it.size() == 32);
 }
 
