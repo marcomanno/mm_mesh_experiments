@@ -17,11 +17,6 @@ include (ACGCommon)
 acg_get_version ()
 
 
-# Disable package building when built as an external library
-if(${PROJECT_NAME} MATCHES "OpenMesh")
-    include(OpenMeshPackage)
-endif()
-
 include (ACGOutput)
 
 # ========================================================================
@@ -67,4 +62,5 @@ add_subdirectory (src/PolygonTriangularization)
 add_subdirectory (src/Topology)
 add_subdirectory (src/UnitTest)
 add_subdirectory (src/Utils)
+add_subdirectory (src/App)
 # ========================================================================

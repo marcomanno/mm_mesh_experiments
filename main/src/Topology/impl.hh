@@ -179,7 +179,6 @@ template <> struct EE<Type::FACE> : public UpEntity<Type::FACE>
     std::reverse(low_elems_.begin(), low_elems_.end());
     return true; 
   }
-
 };
 
 template <> struct EE<Type::EDGE> : public UpEntity<Type::EDGE>
