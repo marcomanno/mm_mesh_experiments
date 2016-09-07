@@ -13,6 +13,8 @@ MAKE_ENUM(Type, VERTEX, EDGE, COEDGE, FACE, SHELL, BODY)
 
 MAKE_ENUM(Direction, Up, Down );
 
+typedef unsigned __int64 Identifier;
+
 struct Object
 {
   template <Type typeT> friend class Wrap;
@@ -25,6 +27,8 @@ struct Object
   virtual bool operator<(const Object& _oth) const;
   virtual bool operator==(const Object& _oth) const;
 
+  Identifier id() const { return id_; }
+
 protected:
   Object();
   virtual ~Object();
@@ -35,7 +39,7 @@ private:
 
 private:
   size_t ref_;
-  size_t id_;
+  Identifier id_;
 };
 
 struct IBase : public Object

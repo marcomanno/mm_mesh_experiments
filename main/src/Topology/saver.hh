@@ -2,13 +2,13 @@
 #include "topology.hh"
 
 #include <memory>
+#include <ostream>
 
 namespace Topo
 {
 struct ISaver
 {
-  virtual void add_element(Object* _el) = 0;
-  virtual bool save() = 0;
-  static std::shared_ptr<ISaver> make();
+  virtual void save(const Object* _el) = 0;
+  static std::shared_ptr<ISaver> make(std::ostream& _str);
 };
 }
