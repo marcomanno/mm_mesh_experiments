@@ -1,11 +1,11 @@
 
 #include "impl.hh"
+#include "saver.hh"
 #include <Utils/error_handling.hh>
 #include <Utils/statistics.hh>
-
+#include <Geo/vector.hh>
 
 namespace Topo {
-
 
 bool EE<Type::EDGE>::geom(Geo::Segment& /*_seg*/) const
 {
@@ -50,6 +50,8 @@ void EdgeRef::finalise()
     std::swap(verts_[0], verts_[1]);
 }
 
+namespace {
+
 struct Vertices
 {
   Vertices(const Wrap<Type::FACE>& _face, size_t _ind)
@@ -69,6 +71,7 @@ struct Vertices
   }
   Wrap<Type::VERTEX> verts_[2];
 };
+}//namespace
   
 bool CoEdgeRef::geom(Geo::Segment& _seg) const
 {
@@ -93,9 +96,54 @@ bool CoEdgeRef::operator<(const Object& _oth) const
 bool CoEdgeRef::operator==(const Object& _oth) const
 {
   if (_oth.sub_type() != SubType::COEDGE_REF)
-    return E<Type::COEDGE>::operator<(_oth);
+    return false;
   auto oth = static_cast<const CoEdgeRef&>(_oth);
   return face_ == oth.face_ && ind_ == oth.ind_;
+}
+
+void saveUpEntity(std::ostream& _ostr,
+  const EE<Type::VERTEX>* _vert, ISaver* _psav)
+{
+  _ostr; _psav; _vert;
+}
+
+
+
+template <> void object_saver<SubType::VERTEX>(
+  std::ostream& _ostr, const Object* _obj, ISaver* _psav)
+{
+  auto vert = static_cast<const EE<Type::VERTEX>*>(_obj);
+  saveUpEntity(_ostr, vert, _psav);
+  Geo::Point pt;
+  vert->geom(pt);
+  _ostr << int(SubType::VERTEX);
+  _ostr << pt;
+  _ostr << Utils::BinData<double>(vert->tolerance());
+}
+
+template <> void object_saver<SubType::EDGE>(std::ostream&, const Object*, ISaver*)
+{
+
+}
+
+template <> void object_saver<SubType::EDGE_REF>(std::ostream&, const Object*, ISaver*)
+{
+
+}
+
+template <> void object_saver<SubType::COEDGE_REF>(std::ostream&, const Object*, ISaver*)
+{
+
+}
+
+template <> void object_saver<SubType::FACE>(std::ostream&, const Object*, ISaver*)
+{
+
+}
+
+template <> void object_saver<SubType::BODY>(std::ostream&, const Object*, ISaver*)
+{
+
 }
 
 }//namespace Topo

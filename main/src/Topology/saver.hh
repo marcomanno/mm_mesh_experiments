@@ -11,4 +11,7 @@ struct ISaver
   virtual void save(const Object* _el) = 0;
   static std::shared_ptr<ISaver> make(std::ostream& _str);
 };
+
+template <SubType> void object_saver(std::ostream&, const Object*, ISaver*);
+
 }

@@ -10,10 +10,7 @@ namespace Topo
 namespace
 {
 
-typedef void(*SaveFunction)(std::ostream&, const Object*);
-
-template <SubType> void object_saver(std::ostream&, const Object*)
-{}
+typedef void(*SaveFunction)(std::ostream&, const Object*, ISaver*);
 
 struct SaveMap
 {
@@ -63,7 +60,7 @@ void Saver::save(const Object* _obj)
   if (!it.second)
     return;
   static SaveMap sm;
-  (*sm[_obj->sub_type()])(*str_, _obj);
+  (*sm[_obj->sub_type()])(*str_, _obj, this);
 }
 
 }//banespace Topo

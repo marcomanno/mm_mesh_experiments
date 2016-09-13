@@ -191,7 +191,7 @@ template <> struct EE<Type::EDGE> : public UpEntity<Type::EDGE>
   double tol_;
 };
 
-template <> struct EE<Type::VERTEX> : public UpEntity<Type::VERTEX>
+template <> struct EE<Type::VERTEX> : public Base<Type::VERTEX>
 {
   virtual bool geom(Geo::Point& _pt) const { _pt = pt_; return true; }
   virtual bool set_geom(const Geo::Point& _pt) { pt_ = _pt; return true; }

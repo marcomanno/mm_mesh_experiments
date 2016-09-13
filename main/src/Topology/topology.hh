@@ -1,7 +1,6 @@
 #pragma once
 
 #include "subtype.hh"
-#include "Utils/enum.hh"
 #include "Geo/entity.hh"
 
 #include <array>
