@@ -101,19 +101,29 @@ bool CoEdgeRef::operator==(const Object& _oth) const
   return face_ == oth.face_ && ind_ == oth.ind_;
 }
 
-void saveUpEntity(std::ostream& _ostr,
-  const EE<Type::VERTEX>* _vert, ISaver* _psav)
+void save_pbject(std::ostream& _ostr, const Object* _obj)
 {
-  _ostr; _psav; _vert;
+  _ostr << Utils::BinData<size_t>(_obj->id());
 }
 
-
+template<Type typeT>
+void save_base_entity(std::ostream& _ostr, const Base<typeT>* _base_ent, ISaver* _psav)
+{
+  save_pbject(_ostr, _base_ent);
+  const auto elem_nmbr = _base_ent->size(Direction::Up);
+  _ostr << Utils::BinData<size_t>(elem_nmbr);
+  for (size_t i = 0; i < elem_nmbr; ++i)
+  {
+    auto up_el = _base_ent->get(Direction::Up, i);
+    _psav->save(up_el);
+  }
+}
 
 template <> void object_saver<SubType::VERTEX>(
   std::ostream& _ostr, const Object* _obj, ISaver* _psav)
 {
   auto vert = static_cast<const EE<Type::VERTEX>*>(_obj);
-  saveUpEntity(_ostr, vert, _psav);
+  save_base_entity<Type::VERTEX>(_ostr, vert, _psav);
   Geo::Point pt;
   vert->geom(pt);
   _ostr << int(SubType::VERTEX);
