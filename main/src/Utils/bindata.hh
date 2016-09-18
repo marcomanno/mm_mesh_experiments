@@ -12,7 +12,7 @@ template <typename Data> struct BinData
     _str.write(reinterpret_cast<const char*>(&_dat.dat_), sizeof(Data));
     return _str;
   }
-  friend std::ostream& operator >>(std::istream& _str, BinData<Data>& _dat)
+  friend std::istream& operator >>(std::istream& _str, BinData<Data>& _dat)
   {
     _str.read(reinterpret_cast<char*>(&_dat.dat_), sizeof(Data));
     return _str;

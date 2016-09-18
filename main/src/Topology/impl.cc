@@ -1,6 +1,6 @@
 
 #include "impl.hh"
-#include "saver.hh"
+#include "persistence.hh"
 #include <Utils/error_handling.hh>
 #include <Utils/statistics.hh>
 #include <Geo/vector.hh>
@@ -101,15 +101,9 @@ bool CoEdgeRef::operator==(const Object& _oth) const
   return face_ == oth.face_ && ind_ == oth.ind_;
 }
 
-void save_pbject(std::ostream& _ostr, const Object* _obj)
-{
-  _ostr << Utils::BinData<size_t>(_obj->id());
-}
-
 template<Type typeT>
 void save_base_entity(std::ostream& _ostr, const Base<typeT>* _base_ent, ISaver* _psav)
 {
-  save_pbject(_ostr, _base_ent);
   const auto elem_nmbr = _base_ent->size(Direction::Up);
   _ostr << Utils::BinData<size_t>(elem_nmbr);
   for (size_t i = 0; i < elem_nmbr; ++i)
@@ -126,34 +120,38 @@ template <> void object_saver<SubType::VERTEX>(
   save_base_entity<Type::VERTEX>(_ostr, vert, _psav);
   Geo::Point pt;
   vert->geom(pt);
-  _ostr << int(SubType::VERTEX);
   _ostr << pt;
   _ostr << Utils::BinData<double>(vert->tolerance());
 }
 
 template <> void object_saver<SubType::EDGE>(std::ostream&, const Object*, ISaver*)
 {
-
 }
 
 template <> void object_saver<SubType::EDGE_REF>(std::ostream&, const Object*, ISaver*)
 {
+}
 
+template <> void object_saver<SubType::COEDGE>(std::ostream&, const Object*, ISaver*)
+{
 }
 
 template <> void object_saver<SubType::COEDGE_REF>(std::ostream&, const Object*, ISaver*)
 {
-
 }
 
-template <> void object_saver<SubType::FACE>(std::ostream&, const Object*, ISaver*)
+template <> void object_saver<SubType::FACE>(
+  std::ostream& _ostr, const Object* _obj, ISaver* _psav)
 {
-
+  save_base_entity<Type::FACE>(
+    _ostr, static_cast<const EE<Type::FACE>*>(_obj), _psav);
 }
 
-template <> void object_saver<SubType::BODY>(std::ostream&, const Object*, ISaver*)
+template <> void object_saver<SubType::BODY>(
+  std::ostream& _ostr, const Object* _obj, ISaver* _psav)
 {
-
+  save_base_entity<Type::BODY>(
+    _ostr, static_cast<const EE<Type::BODY>*>(_obj), _psav);
 }
 
 }//namespace Topo
