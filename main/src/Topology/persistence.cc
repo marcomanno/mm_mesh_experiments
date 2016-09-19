@@ -12,29 +12,37 @@ namespace
 {
 
 typedef void(*SaveFunction)(std::ostream&, const Object*, ISaver*);
+typedef Object*(*LoadFunction)(std::istream&, ILoader*);
 
-struct SaveMap
+struct PersistenceFunctions
 {
-  SaveMap()
+  SaveFunction _sav_fun;
+  LoadFunction _load_fun;
+};
+
+struct PersistenceMap
+{
+  PersistenceMap()
   {
-    fill_save_map<int(SubType::ENUM_SIZE) - 1>();
+    fill_persistence_map<int(SubType::ENUM_SIZE) - 1>();
   }
-  SaveFunction operator[](SubType _sb)
+  const PersistenceFunctions& operator[](SubType _sb)
   {
     return save_functs_[_sb];
   }
 
 private:
-  typedef std::map<SubType, SaveFunction> SaveMapInt;
+  typedef std::map<SubType, PersistenceFunctions> SaveMapInt;
   SaveMapInt save_functs_;
 
-  template <int _sb> void fill_save_map()
+  template <int _sb> void fill_persistence_map()
   {
-    SaveMapInt::value_type x(SubType(_sb), object_saver<SubType(_sb)>);
-    save_functs_.insert(x);
-    fill_save_map<_sb - 1>();
+    auto& pers_funs = save_functs_[SubType(_sb)];
+    pers_funs._load_fun = object_loader<SubType(_sb)>;
+    pers_funs._sav_fun = object_saver<SubType(_sb)>;
+    fill_persistence_map<_sb - 1>();
   }
-  template <> void fill_save_map<-1>() {}
+  template <> void fill_persistence_map<-1>() {}
 };
 }// namespace
 
@@ -42,7 +50,6 @@ struct Saver : public ISaver
 {
   Saver(std::ostream* _str) : str_(_str) {}
   void save(const Object* _obj) override;
-  bool already_saved(const Object* _el);
 private:
   std::ostream* str_;
   std::set<const Object*> saved_objs_;
@@ -56,17 +63,11 @@ std::shared_ptr<ISaver> ISaver::make(std::ostream& _str)
 void Saver::save(const Object* _obj)
 {
   *str_ << Utils::BinData<size_t>(_obj->id());
-  if (already_saved(_obj))
+  if (!saved_objs_.insert(_obj).second)
     return;
   *str_ << Utils::BinData<size_t>(size_t(_obj->sub_type()));
-  static SaveMap sm;
-  (*sm[_obj->sub_type()])(*str_, _obj, this);
-}
-
-bool Saver::already_saved(const Object* _el)
-{
-  auto ins = saved_objs_.insert(_el);
-  return ins.second;
+  static PersistenceMap sm;
+  sm[_obj->sub_type()]._sav_fun(*str_, _obj, this);
 }
 
 struct Loader : public ILoader
