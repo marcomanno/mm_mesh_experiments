@@ -7,9 +7,10 @@ include_directories (
 )
 
 # Create new target named unittests_hexmeshing
-FILE(GLOB UNITTEST_SRC *.cc)
+FILE(GLOB UNITTEST_CC *.cc)
+FILE(GLOB UNITTEST_HH *.hh)
 # Create unittest executable
-acg_add_executable(unittests ${UNITTEST_SRC})
+acg_add_executable(unittests ${UNITTEST_CC} ${UNITTEST_HH})
 
 # Set output directory to ${BINARY_DIR}/Unittests
 set (OUTPUT_DIR "${CMAKE_BINARY_DIR}/Unittests")

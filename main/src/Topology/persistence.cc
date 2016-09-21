@@ -44,6 +44,9 @@ private:
   }
   template <> void fill_persistence_map<-1>() {}
 };
+
+static PersistenceMap pers_map__;
+
 }// namespace
 
 struct Saver : public ISaver
@@ -66,8 +69,7 @@ void Saver::save(const Object* _obj)
   if (!saved_objs_.insert(_obj).second)
     return;
   *str_ << Utils::BinData<size_t>(size_t(_obj->sub_type()));
-  static PersistenceMap sm;
-  sm[_obj->sub_type()]._sav_fun(*str_, _obj, this);
+  pers_map__[_obj->sub_type()]._sav_fun(*str_, _obj, this);
 }
 
 struct Loader : public ILoader
@@ -91,8 +93,10 @@ Object* Loader::load()
   auto it = loaded_objs_.emplace(id, nullptr);
   if (it.second)
   {
+    size_t sub_ty;
+    *str_ >> Utils::BinData<size_t>(sub_ty);
     it.first->second =
-      object_loader<SubType::VERTEX>(*str_, this);
+      pers_map__[Topo::SubType(sub_ty)]._load_fun(*str_, this);
   }
   return it.first->second;
 }
