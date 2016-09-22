@@ -3,7 +3,7 @@
 namespace Topo
 {
 
-Object::Object() : ref_(1)
+Object::Object() : ref_(0)
 {
   static size_t progr_id;
   id_ = progr_id++;

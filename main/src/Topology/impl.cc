@@ -119,8 +119,8 @@ void load_base_entity(std::istream& _istr, IBase* _base_ent, ILoader* _pload)
   _istr >> Utils::BinData<size_t>(elem_nmbr);
   for (size_t i = 0; i < elem_nmbr; ++i)
   {
-    auto obj = static_cast<IBase*>(_pload->load());
-    _base_ent->insert_child(obj);
+    auto obj = _pload->load();
+    _base_ent->insert_child(static_cast<IBase*>(obj.get()));
   }
 }
 
@@ -135,11 +135,11 @@ template <> void object_saver<SubType::VERTEX>(
   _ostr << Utils::BinData<double>(vert->tolerance());
 }
 
-template <> Object* object_loader<SubType::VERTEX>(std::istream& _istr, ILoader* _pload)
+template <> WrapObject
+object_loader<SubType::VERTEX>(std::istream& _istr, ILoader* _pload)
 {
-  Topo::Wrap<Type::VERTEX> vert_wrap;
-  auto vert = vert_wrap.make<EE<Type::VERTEX>>();
-  load_base_entity(_istr, vert, _pload);
+  Topo::Wrap<Type::VERTEX> vert;
+  load_base_entity(_istr, vert.make<EE<Type::VERTEX>>(), _pload);
 
   Geo::Point pt;
   _istr >> pt;
@@ -147,14 +147,15 @@ template <> Object* object_loader<SubType::VERTEX>(std::istream& _istr, ILoader*
   double tol;
   _istr >> Utils::BinData<double>(tol);
   vert->set_tolerance(tol);
-  return vert;
+  return WrapObject(vert.get());
 }
 
 template <> void object_saver<SubType::EDGE>(std::ostream&, const Object*, ISaver*)
 {
 }
 
-template <> Object* object_loader<SubType::EDGE>(std::istream& _istr, ILoader* _pload)
+template <> WrapObject 
+object_loader<SubType::EDGE>(std::istream& _istr, ILoader* _pload)
 {
   _istr; _pload;
   return nullptr;
@@ -164,7 +165,8 @@ template <> void object_saver<SubType::EDGE_REF>(std::ostream&, const Object*, I
 {
 }
 
-template <> Object* object_loader<SubType::EDGE_REF>(std::istream& _istr, ILoader* _pload)
+template <> WrapObject 
+object_loader<SubType::EDGE_REF>(std::istream& _istr, ILoader* _pload)
 {
   _istr; _pload;
   return nullptr;
@@ -174,7 +176,8 @@ template <> void object_saver<SubType::COEDGE>(std::ostream&, const Object*, ISa
 {
 }
 
-template <> Object* object_loader<SubType::COEDGE>(std::istream& _istr, ILoader* _pload)
+template <> WrapObject
+object_loader<SubType::COEDGE>(std::istream& _istr, ILoader* _pload)
 {
   _istr; _pload;
   return nullptr;
@@ -184,7 +187,8 @@ template <> void object_saver<SubType::COEDGE_REF>(std::ostream&, const Object*,
 {
 }
 
-template <> Object* object_loader<SubType::COEDGE_REF>(std::istream& _istr, ILoader* _pload)
+template <> WrapObject
+object_loader<SubType::COEDGE_REF>(std::istream& _istr, ILoader* _pload)
 {
   _istr; _pload;
   return nullptr;
@@ -197,12 +201,12 @@ template <> void object_saver<SubType::FACE>(
     _ostr, static_cast<const EE<Type::FACE>*>(_obj), _psav);
 }
 
-template <> Object* object_loader<SubType::FACE>(std::istream& _istr, ILoader* _pload)
+template <> WrapObject
+object_loader<SubType::FACE>(std::istream& _istr, ILoader* _pload)
 {
-  Topo::Wrap<Type::FACE> face_wrap;
-  auto face = face_wrap.make<EE<Type::FACE>>();
-  load_base_entity(_istr, face, _pload);
-  return face;
+  Topo::Wrap<Type::FACE> face;
+  load_base_entity(_istr, face.make<EE<Type::FACE>>(), _pload);
+  return face.get();
 }
 
 template <> void object_saver<SubType::BODY>(
@@ -212,11 +216,11 @@ template <> void object_saver<SubType::BODY>(
     _ostr, static_cast<const EE<Type::BODY>*>(_obj), _psav);
 }
 
-template <> Object* object_loader<SubType::BODY>(std::istream& _istr, ILoader* _pload)
+template <> WrapObject
+object_loader<SubType::BODY>(std::istream& _istr, ILoader* _pload)
 {
-  Topo::Wrap<Type::BODY> body_wrap;
-  auto body = body_wrap.make<EE<Type::BODY>>();
-  load_base_entity(_istr, body, _pload);
-  return body;
+  Topo::Wrap<Type::BODY> body;
+  load_base_entity(_istr, body.make<EE<Type::BODY>>(), _pload);
+  return body.get();
 }
 }//namespace Topo

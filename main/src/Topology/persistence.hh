@@ -16,9 +16,10 @@ template <SubType> void object_saver(std::ostream&, const Object*, ISaver*);
 
 struct ILoader
 {
-  virtual Object* load() = 0;
+  virtual WrapObject load() = 0;
   static std::shared_ptr<ILoader> make(std::istream& _str);
 };
 
-template <SubType> Object* object_loader(std::istream&, ILoader*);
+template <SubType> Topo::WrapObject
+  object_loader(std::istream&, ILoader*);
 }

@@ -11,8 +11,8 @@ namespace Topo
 namespace
 {
 
-typedef void(*SaveFunction)(std::ostream&, const Object*, ISaver*);
-typedef Object*(*LoadFunction)(std::istream&, ILoader*);
+typedef void (*SaveFunction)(std::ostream&, const Object*, ISaver*);
+typedef WrapObject (*LoadFunction)(std::istream&, ILoader*);
 
 struct PersistenceFunctions
 {
@@ -75,10 +75,10 @@ void Saver::save(const Object* _obj)
 struct Loader : public ILoader
 {
   Loader(std::istream* _str) : str_(_str) {}
-  virtual Object* load() override;
+  virtual WrapObject load() override;
 private:
   std::istream* str_;
-  std::map<size_t, Object*> loaded_objs_;
+  std::map<size_t, WrapObject> loaded_objs_;
 };
 
 std::shared_ptr<ILoader> ILoader::make(std::istream& _str)
@@ -86,7 +86,7 @@ std::shared_ptr<ILoader> ILoader::make(std::istream& _str)
   return std::make_shared<Loader>(&_str);
 }
 
-Object* Loader::load()
+WrapObject Loader::load()
 {
   size_t id;
   *str_ >> Utils::BinData<size_t>(id);

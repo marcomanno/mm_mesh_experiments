@@ -19,7 +19,12 @@ struct Object
   template <Type typeT> friend class Wrap;
 
   void add_ref() { ++ref_; }
-  void release_ref() { if (--ref_ == 0) delete this; }
+  void release_ref() 
+  {
+    auto refs = --ref_;
+    if (refs == 0)
+      delete this;
+  }
   virtual Type type() const = 0;
   virtual SubType sub_type() const = 0;
 
@@ -39,6 +44,71 @@ private:
 private:
   size_t ref_;
   Identifier id_;
+};
+
+class WrapObject
+{
+  Object* ptr_ = nullptr;
+
+public:
+  WrapObject() { }
+  WrapObject(Object* _ptr) { reset(_ptr); }
+  WrapObject(const WrapObject& _oth)
+  {
+    reset(_oth.ptr_);
+  }
+  ~WrapObject()
+  {
+    if (ptr_)
+      ptr_->release_ref();
+  }
+
+  WrapObject& operator=(const WrapObject& _oth)
+  {
+    reset(_oth.ptr_);
+    return *this;
+  }
+
+  Object* operator->() { return get(); }
+
+  const Object* operator->() const { return get(); }
+
+  Object* get() { return ptr_; }
+
+  const Object* get() const { return ptr_; }
+
+  explicit operator bool() const { return ptr_ != nullptr; }
+
+  void reset(Object* _ptr)
+  {
+    if (ptr_ != _ptr)
+    {
+      if (ptr_ != nullptr) ptr_->release_ref();
+      ptr_ = _ptr;
+      if (ptr_ != nullptr) ptr_->add_ref();
+    }
+  }
+
+  bool operator<(const WrapObject& _oth) const
+  {
+    if (ptr_ == _oth.ptr_)
+      return false;
+    if (ptr_ != nullptr && _oth.ptr_ != nullptr)
+      return *ptr_ < *_oth.ptr_;
+    return ptr_ == nullptr;
+  }
+
+  bool operator==(const WrapObject& _oth) const
+  {
+    if (ptr_ == _oth.ptr_)
+      return true;
+    if (ptr_ != nullptr && _oth.ptr_ != nullptr)
+      return *ptr_ == *_oth.ptr_;
+    return false;
+  }
+
+  bool operator!=(const WrapObject& _oth) const { return !(*this == _oth); }
+
 };
 
 struct IBase : public Object
@@ -130,7 +200,7 @@ public:
       ptr_->release_ref();
   }
 
-  Wrap& operator=(const Wrap& _oth)
+  Wrap& operator=(const Wrap<typeT>& _oth)
   {
     reset(_oth.ptr_);
     return *this;
