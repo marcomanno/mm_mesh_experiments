@@ -18,4 +18,4 @@ include_directories (
 
 set (app_name "vtk_cad")
 add_executable(${app_name} MACOSX_BUNDLE ${app_name}.cc)
-target_link_libraries(${app_name} ${VTK_LIBRARIES} )
+target_link_libraries(${app_name} ${VTK_LIBRARIES} Import PolygonTriangularization Geo Boolean Topology)

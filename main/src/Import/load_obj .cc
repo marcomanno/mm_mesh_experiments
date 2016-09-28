@@ -40,7 +40,7 @@ Topo::Wrap<Topo::Type::BODY> load_obj(const char* _flnm)
       size_t vert_idx;
       while (buf >> vert_idx)
       {
-        face->insert_child(verts[vert_idx].get());
+        face->insert_child(verts[vert_idx - 1].get());
         char c;
         while (buf >> c && c != ' ' && buf >> vert_idx);
       }
