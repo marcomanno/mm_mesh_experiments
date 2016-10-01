@@ -53,24 +53,15 @@ int main()
 }
 
 namespace {
-void render_actor(vtkPolyData *_ply_dat)
+
+template <class T> struct deleter
 {
-  // The mapper is responsible for pushing the geometry into the graphics
-  // library. It may also do color mapping, if scalars or other attributes
-  // are defined.
-  //
-  vtkPolyDataMapper *actor_map = vtkPolyDataMapper::New();
-  actor_map->SetInputData(_ply_dat);
+  void operator()(T* _vpdm) { _vpdm->Delete(); }
+};
+template<typename T> using VtkUniquePtr = std::unique_ptr<T, deleter<T>>;
 
-  // The actor is a grouping mechanism: besides the geometry (mapper), it
-  // also has a property, transformation matrix, and/or texture map.
-  // Here we set its color and rotate it -22.5 degrees.
-  vtkActor *actor = vtkActor::New();
-  actor->SetMapper(actor_map);
-  actor->GetProperty()->SetColor(1.0000, 0.3882, 0.2784);
-  actor->RotateX(30.0);
-  actor->RotateY(-45.0);
-
+void render_actor(std::vector<vtkPolyData*>& _ply_dats)
+{
   // Create the graphics structure. The renderer renders into the
   // render window. The render window interactor captures mouse events
   // and will perform appropriate camera or actor manipulation
@@ -82,9 +73,31 @@ void render_actor(vtkPolyData *_ply_dat)
   vtkRenderWindowInteractor *iren = vtkRenderWindowInteractor::New();
   iren->SetRenderWindow(renWin);
 
-  // Add the actors to the renderer, set the background and size
-  //
-  ren1->AddActor(actor);
+  std::vector<std::tuple<VtkUniquePtr<vtkPolyDataMapper>, VtkUniquePtr<vtkActor>>>
+    vtk_del;
+  for (auto ply_dat : _ply_dats)
+  {
+    // The mapper is responsible for pushing the geometry into the graphics
+    // library. It may also do color mapping, if scalars or other attributes
+    // are defined.
+    //
+    vtkPolyDataMapper* actor_map = vtkPolyDataMapper::New();
+    actor_map->SetInputData(ply_dat);
+    // The actor is a grouping mechanism: besides the geometry (mapper), it
+    // also has a property, transformation matrix, and/or texture map.
+    // Here we set its color and rotate it -22.5 degrees.
+    vtkActor* actor = vtkActor::New();
+    vtk_del.emplace_back(actor_map, actor);
+    actor->SetMapper(actor_map);
+    actor->GetProperty()->SetColor(1.0000, 0.3882, 0.2784);
+    actor->RotateX(30.0);
+    actor->RotateY(-45.0);
+
+    // Add the actors to the renderer, set the background and size
+    //
+    ren1->AddActor(actor);
+    }
+
   ren1->SetBackground(0.1, 0.2, 0.4);
   renWin->SetSize(200, 200);
 
@@ -99,8 +112,6 @@ void render_actor(vtkPolyData *_ply_dat)
 
   // Exiting from here, we have to delete all the instances that
   // have been created.
-  actor_map->Delete();
-  actor->Delete();
   ren1->Delete();
   renWin->Delete();
   iren->Delete();
@@ -205,7 +216,8 @@ EXAMPLE(0)
 
   poly_dat->SetPolys(newPolys);
   newPolys->Delete();
-  render_actor(poly_dat);
+  std::vector<vtkPolyData*> poly_dats{ poly_dat };
+  render_actor(poly_dats);
 }
 
 EXAMPLE(1)
@@ -213,5 +225,27 @@ EXAMPLE(1)
   auto body = Import::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
   vtkPolyData* poly_dat = make_tessellation(body);
-  render_actor(poly_dat);
+  std::vector<vtkPolyData*> poly_dats{ poly_dat };
+  render_actor(poly_dats);
+}
+
+EXAMPLE(2)
+{
+  auto body0 = Import::load_obj(
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
+  auto body1 = Import::load_obj(
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
+  const Geo::Vector3 oofs{ .1, .1, .1 };
+  for (size_t i = 0; i < vert_it.size(); ++i)
+  {
+    Geo::Point pt;
+    vert_it.get(i)->geom(pt);
+    pt += oofs;
+    vert_it.get(i)->set_geom(pt);
+  }
+  std::vector<vtkPolyData*> poly_dats;
+  poly_dats.push_back(make_tessellation(body0));
+  poly_dats.push_back(make_tessellation(body1));
+  render_actor(poly_dats);
 }

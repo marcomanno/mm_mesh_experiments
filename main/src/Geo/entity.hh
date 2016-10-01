@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Geo/vector.hh"
+
 #include <array>
 #include <memory>
 
 namespace Geo {
 
-typedef std::array<double, 3> Point;
+typedef Vector3 Point;
 typedef std::array<Point, 2> Segment;
 typedef std::array<Point, 3> Triangle;
 
