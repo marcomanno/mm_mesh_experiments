@@ -37,12 +37,14 @@ Topo::Wrap<Topo::Type::BODY> load_obj(const char* _flnm)
       Topo::Wrap<Topo::Type::FACE> face;
       face.make<Topo::EE<Topo::Type::FACE>>();
       new_body->insert_child(face.get());
-      size_t vert_idx;
+      int vert_idx;
       while (buf >> vert_idx)
       {
-        face->insert_child(verts[vert_idx - 1].get());
+        face->insert_child(verts[vert_idx-1].get());
         char c;
-        while (buf >> c && c != ' ' && buf >> vert_idx);
+        while (buf >> c && c == '/')
+          buf >> vert_idx;
+        buf.putback(c);
       }
     }
   }

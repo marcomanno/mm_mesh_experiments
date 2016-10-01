@@ -106,6 +106,52 @@ void render_actor(vtkPolyData *_ply_dat)
   iren->Delete();
 }
 
+vtkPolyData* make_tessellation(Topo::Wrap<Topo::Type::BODY> _body)
+{
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(_body);
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>> all_verts;
+  for (size_t i = 0; i < vert_it.size(); ++i)
+    all_verts.push_back(vert_it.get(i));
+  std::sort(all_verts.begin(), all_verts.end());
+  all_verts.erase(std::unique(all_verts.begin(), all_verts.end()), all_verts.end());
+
+  vtkPolyData* poly_dat = vtkPolyData::New();
+
+  auto newPoints = vtkPoints::New();
+  newPoints->Allocate(all_verts.size());
+  for (auto v : all_verts)
+  {
+    Geo::Point pt;
+    v->geom(pt);
+    newPoints->InsertNextPoint(pt[0], pt[1], pt[2]);
+  }
+  poly_dat->SetPoints(newPoints);
+  newPoints->Delete();
+
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> face_it(_body);
+  auto newPolys = vtkCellArray::New();
+  newPolys->Allocate(face_it.size());
+  for (size_t i = 0; i < face_it.size(); ++i)
+  {
+    std::vector<vtkIdType> pts;
+    auto f = face_it.get(i);
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv(f);
+    for (size_t j = 0; j < fv.size(); ++j)
+    {
+      auto v = fv.get(j);
+      auto it =
+        std::lower_bound(all_verts.begin(), all_verts.end(), v);
+      if (it != all_verts.end() && *it == v)
+      {
+        pts.push_back(it - all_verts.begin());
+      }
+    }
+    newPolys->InsertNextCell(pts.size(), pts.data());
+  }
+  poly_dat->SetPolys(newPolys);
+  return poly_dat;
+}
+
 }
 
 EXAMPLE(0)
@@ -166,46 +212,6 @@ EXAMPLE(1)
 {
   auto body = Import::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
-  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body);
-  std::vector<Topo::Wrap<Topo::Type::VERTEX>> all_verts;
-  for (size_t i = 0; i < vert_it.size(); ++i)
-    all_verts.push_back(vert_it.get(i));
-  std::sort(all_verts.begin(), all_verts.end());
-  all_verts.erase(std::unique(all_verts.begin(), all_verts.end()), all_verts.end());
-
-  vtkPolyData *poly_dat = vtkPolyData::New();
-
-  auto newPoints = vtkPoints::New();
-  newPoints->Allocate(all_verts.size());
-  for (auto v : all_verts)
-  {
-    Geo::Point pt;
-    v->geom(pt);
-    newPoints->InsertNextPoint(pt[0], pt[1], pt[2]);
-  }
-  poly_dat->SetPoints(newPoints);
-  newPoints->Delete();
-
-  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> face_it(body);
-  auto newPolys = vtkCellArray::New();
-  newPolys->Allocate(face_it.size());
-  for (size_t i = 0; i < face_it.size(); ++i)
-  {
-    std::vector<vtkIdType> pts;
-    auto f = face_it.get(i);
-    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv(f);
-    for (size_t j = 0; j < fv.size(); ++j)
-    {
-      auto v = fv.get(j);
-      auto it = 
-        std::lower_bound(all_verts.begin(), all_verts.end(), v);
-      if (it != all_verts.end() && *it == v)
-      {
-        pts.push_back(it - all_verts.begin());
-      }
-    }
-    newPolys->InsertNextCell(pts.size(), pts.data());
-  }
-  poly_dat->SetPolys(newPolys);
+  vtkPolyData* poly_dat = make_tessellation(body);
   render_actor(poly_dat);
 }
