@@ -188,7 +188,7 @@ template <> struct EE<Type::EDGE> : public UpEntity<Type::EDGE>
   virtual bool set_geom(const Geo::Segment&);
   virtual double tolerance() const { return tol_; }
   virtual bool set_tolerance(const double _tol) { tol_ = _tol; return true; }
-  double tol_;
+  double tol_ = 0;
 };
 
 template <> struct EE<Type::VERTEX> : public Base<Type::VERTEX>
@@ -200,7 +200,7 @@ template <> struct EE<Type::VERTEX> : public Base<Type::VERTEX>
   virtual SubType sub_type() const { return SubType::VERTEX; }
 private:
   Geo::Point pt_;
-  double tol_;
+  double tol_ = 0;
 };
 
 struct EdgeRef : public E<Type::EDGE>

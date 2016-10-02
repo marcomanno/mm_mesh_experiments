@@ -217,33 +217,26 @@ bool closest_point(const IPolygonalFace& _face, const Point& _pt,
 bool closest_point(const Triangle& _tri, const Segment& _seg,
   Point* _clsst_pt, double * _t, double * _dist_sq)
 {
-  auto a = _tri[0] - _seg[0];
-  auto b = _tri[1] - _seg[0];
-  auto c = _tri[2] - _seg[0];
-  auto p = _seg[1] - _seg[0];
+  const auto a = _tri[0] - _seg[0];
+  const auto b = _tri[1] - _seg[0];
+  const auto c = _tri[2] - _seg[0];
+  const auto p = _seg[1] - _seg[0];
 
   // Minimize ||a * u + b * v + c * (1 - u - v) - p * t||^2 in u, v, t
-  auto aa = a * a;
-  auto ab = a * b;
-  auto ac = a * c;
-  auto bb = b * b;
-  auto bc = b * c;
-  auto cc = c * c;
-  auto ap = a * p;
-  auto bp = b * p;
-  auto cp = c * p;
-
+  const auto al = a - c;
+  const auto be = b - c;
   // A[0] = d/du = 0, A[1] = d/dv= 0, A[2] = d/dt = 0
   double A[3][3];
-  A[0][0] = A[1][1] = cc - 2 * ac;
-  A[0][0] += aa;
-  A[1][1] += bb;
-  A[0][1] = A[1][0] = cc + ab - ac - bc;
-  A[0][2] = A[1][2] = cp - ap - bp;
-  A[2][0] = cp - ap;
-  A[2][1] = cp - bp;
-  A[2][2] = p * p;
-  double B[3] = { cc - ac, cc - bc, cp };
+  A[0][0] = al * al;
+  A[0][1] = A[1][0] = al * be;
+  A[0][2] = -al *p;
+  A[1][1] = be * be;
+  A[1][2] = -be * p;
+  A[2][0] = al * p;
+  A[2][1] = be * p;
+  A[2][2] = -p * p;
+  double B[3] = { -al * c, -be * c, -p * c };
+
   double uvt[3];
   if (!solve_3x3(A, uvt, B))
     return false;

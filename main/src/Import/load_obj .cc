@@ -43,7 +43,11 @@ Topo::Wrap<Topo::Type::BODY> load_obj(const char* _flnm)
         face->insert_child(verts[vert_idx-1].get());
         char c;
         while (buf >> c && c == '/')
+        {
+          while (buf >> c && c == '/');// skip multiple occurrences of /
+          buf.putback(c);
           buf >> vert_idx;
+        }
         buf.putback(c);
       }
     }

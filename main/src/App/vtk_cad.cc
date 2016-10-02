@@ -13,6 +13,7 @@
 
 #include "Topology/iterator.hh"
 #include "Import/import.hh"
+#include "Boolean/boolean.hh"
 
 #include <map>
 #include <iostream>
@@ -245,7 +246,69 @@ EXAMPLE(2)
     vert_it.get(i)->set_geom(pt);
   }
   std::vector<vtkPolyData*> poly_dats;
+  //poly_dats.push_back(make_tessellation(body0));
+  //poly_dats.push_back(make_tessellation(body1));
+  auto booler = Boolean::ISolver::make();
+  booler->init(body0, body1);
+  auto inters = booler->compute(Boolean::Operation::INTERSECTION);
+  poly_dats.push_back(make_tessellation(inters));
+
+  render_actor(poly_dats);
+}
+
+EXAMPLE(3)
+{
+  auto body0 = Import::load_obj(
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube.obj");
+  auto body1 = Import::load_obj(
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube.obj");
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
+  const Geo::Vector3 oofs{ .5, .5, .5 };
+  for (size_t i = 0; i < vert_it.size(); ++i)
+  {
+    Geo::Point pt;
+    vert_it.get(i)->geom(pt);
+    pt += oofs;
+    vert_it.get(i)->set_geom(pt);
+  }
+  std::vector<vtkPolyData*> poly_dats;
+#if 0
   poly_dats.push_back(make_tessellation(body0));
   poly_dats.push_back(make_tessellation(body1));
+#else
+  auto booler = Boolean::ISolver::make();
+  booler->init(body0, body1);
+  auto inters = booler->compute(Boolean::Operation::INTERSECTION);
+  poly_dats.push_back(make_tessellation(inters));
+#endif
+  render_actor(poly_dats);
+}
+
+EXAMPLE(4)
+{
+  auto body0 = Import::load_obj(
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube_00.obj");
+  auto body1 = Import::load_obj(
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube_00.obj");
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
+  const Geo::Vector3 oofs{ .5, .5, .5 };
+  for (size_t i = 0; i < vert_it.size(); ++i)
+  {
+    Geo::Point pt;
+    vert_it.get(i)->geom(pt);
+    pt += oofs;
+    vert_it.get(i)->set_geom(pt);
+  }
+  std::vector<vtkPolyData*> poly_dats;
+#if 0
+  poly_dats.push_back(make_tessellation(body0));
+  poly_dats.push_back(make_tessellation(body1));
+#else
+  auto booler = Boolean::ISolver::make();
+  booler->init(body0, body1);
+  auto inters = booler->compute(Boolean::Operation::INTERSECTION);
+  poly_dats.push_back(make_tessellation(inters));
+  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube_00_out.obj", inters);
+#endif
   render_actor(poly_dats);
 }
