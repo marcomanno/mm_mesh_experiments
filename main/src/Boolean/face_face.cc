@@ -262,43 +262,56 @@ typedef std::vector<FaceEdgeMap::NewEdges::iterator> EdgeChain;
 
 // Finds a set of connected edges (couple of vertices) and using the Edges in _pt_sets
 bool find_edge_chain(
-  const Topo::Wrap<Topo::Type::VERTEX>& /*_vert*/,
-  FaceEdgeMap::NewEdges& _pt_sets,
+  const Topo::Wrap<Topo::Type::VERTEX>& _vert,
+  FaceEdgeMap::NewEdges& _ed_sets,
   Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX>& _fv_it,
   EdgeChain& _edge_ch,
   Topo::Wrap<Topo::Type::VERTEX>*& _last_vert)
 {
-  std::vector<bool> used(_pt_sets.size(), false);
+  auto edge_ptr = _ed_sets.end();
+  for (auto pt_it = _ed_sets.begin(); pt_it != _ed_sets.end(); ++pt_it)
+  {
+    if (pt_it->size() != 2)
+      continue;
+    auto iter = std::find(pt_it->begin(), pt_it->end(), _vert);
+    if (iter != pt_it->end())
+    {
+      edge_ptr = pt_it;
+      if (iter != pt_it->begin())
+        std::swap((*pt_it)[1], (*pt_it)[0]);
+      _edge_ch.push_back(edge_ptr);
+      break;
+    }
+  }
+  if (edge_ptr == _ed_sets.end())
+    return false;
+  std::vector<bool> used(_ed_sets.size(), false);
+  used[edge_ptr - _ed_sets.begin()] = true;
   for (;;)
   {
-    auto edge_ptr = _pt_sets.end();
-    for (auto pt_set_it = _pt_sets.begin(); pt_set_it != _pt_sets.end(); ++pt_set_it)
+    _last_vert = std::find(_fv_it.begin(), _fv_it.end(), (*edge_ptr)[1]);
+    if (_last_vert != _fv_it.end())
+      break;
+
+    bool found = false;
+    for (auto pt_set_it = _ed_sets.begin(); pt_set_it != _ed_sets.end(); ++pt_set_it)
     {
-      if (used[pt_set_it - _pt_sets.begin()] || pt_set_it->size() != 2)
+      if (used[pt_set_it - _ed_sets.begin()] || pt_set_it->size() != 2)
         continue;
       auto& pt_set = *pt_set_it;
-      auto vert_it = std::find(_fv_it.begin(), _fv_it.end(), pt_set[0]);
-      if (vert_it == _fv_it.end())
+      if (pt_set[0] == (*edge_ptr)[1] || pt_set[1] == (*edge_ptr)[1])
       {
-        vert_it = std::find(_fv_it.begin(), _fv_it.end(), pt_set[1]);
-        if (vert_it == _fv_it.end())
-          continue;
-        std::swap(pt_set[0], pt_set[1]);
+        edge_ptr = pt_set_it;
+        used[edge_ptr - _ed_sets.begin()] = true;
+        if (pt_set[1] == (*edge_ptr)[1])
+          std::swap(pt_set[1], pt_set[0]);
+        _edge_ch.push_back(edge_ptr);
+        found = true;
+        break;
       }
-      edge_ptr = pt_set_it;
-      break;
     }
-    if (edge_ptr == _pt_sets.end())
+    if (!found)
       return false;
-    used[edge_ptr - _pt_sets.begin()] = true;
-    _edge_ch.push_back(edge_ptr);
-    auto vert = (*edge_ptr)[1];
-    auto it = std::find(_fv_it.begin(), _fv_it.end(), vert);
-    if (it != _fv_it.end())
-    {
-      _last_vert = it;
-      break;
-    }
   }
 
   // Check that the chain is inside the face.
@@ -477,22 +490,21 @@ void FaceEdgeMap::split_with_chains()
             split_chains[1] = split_chains[0];
 
             Topo::Wrap<Topo::Type::VERTEX>* first_vert_it = vert_it;
-            if (first_vert_it > last_vert_it)
+            std::reverse(split_chains[1].begin(), split_chains[1].end());
+            auto complete_chain = [&fv_it](Topo::Wrap<Topo::Type::VERTEX>* _first,
+              Topo::Wrap<Topo::Type::VERTEX>* _last, Topo::VertexChain& _chain)
             {
-              std::swap(first_vert_it, last_vert_it);
-              std::reverse(split_chains[0].begin(), split_chains[0].end());
-            }
-            else
-              std::reverse(split_chains[1].begin(), split_chains[1].end());
+              auto v_it = _first;
+              while (++v_it != _last && v_it != fv_it.end())
+                _chain.push_back(*v_it);
+              if (v_it == _last)
+                return;
+              for (v_it = fv_it.begin(); v_it != _last; ++v_it)
+                _chain.push_back(*v_it);
+            };
             if (last_vert_it != first_vert_it)
-            {
-              for (auto v_it = last_vert_it; --v_it != first_vert_it; )
-                split_chains[0].push_back(*v_it);
-            }
-            for (auto v_it = last_vert_it; ++v_it != fv_it.end(); )
-              split_chains[1].push_back(*v_it);
-            for (auto v_it = fv_it.begin(); v_it != first_vert_it; ++v_it)
-              split_chains[1].push_back(*v_it);
+              complete_chain(first_vert_it, last_vert_it, split_chains[1]);
+            complete_chain(last_vert_it, first_vert_it, split_chains[0]);
 
             auto norm = std::get<Normal>(face_info.second);
             resolve_ambiguities(
