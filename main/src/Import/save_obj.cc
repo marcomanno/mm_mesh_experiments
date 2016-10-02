@@ -21,6 +21,7 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
     auto v = vert_it.get(i);
     verts.emplace_back(v);
   }
+  std::sort(verts.begin(), verts.end());
   verts.erase(std::unique(verts.begin(), verts.end()), verts.end());
   for (const auto& v : verts)
   {
@@ -38,7 +39,7 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
     {
       auto v = ve_it.get(j);
       auto idx = 
-        std::lower_bound(ve_it.begin(), ve_it.end(), v) - ve_it.begin() + 1;
+        std::lower_bound(verts.begin(), verts.end(), v) - verts.begin() + 1;
       fstr << " " << idx;
     }
     fstr << "\n";

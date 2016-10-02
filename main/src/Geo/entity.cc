@@ -11,8 +11,8 @@
 namespace Geo {
 
 namespace {
-double check_par(double _t) { return _t >= 0 && _t <= 1; }
-double check_par(double _u, double _v)
+bool check_par(double _t) { return _t >= 0 && _t <= 1; }
+bool check_par(double _u, double _v)
 {
   return _u >= 0 && _v >= 0 && (1 - _u - _v) >= 0;
 }
@@ -240,7 +240,7 @@ bool closest_point(const Triangle& _tri, const Segment& _seg,
   double uvt[3];
   if (!solve_3x3(A, uvt, B))
     return false;
-  if (!check_par(uvt[0], uvt[1]) && !check_par(uvt[2]))
+  if (!check_par(uvt[0], uvt[1]) || !check_par(uvt[2]))
     return false;
   auto pt_seg = evaluate(_seg, uvt[2]);
   auto pt_tri = evaluate(_tri, uvt[0], uvt[1]);
