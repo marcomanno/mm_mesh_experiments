@@ -61,7 +61,7 @@ template <class T> struct deleter
 };
 template<typename T> using VtkUniquePtr = std::unique_ptr<T, deleter<T>>;
 
-void render_actor(std::vector<vtkPolyData*>& _ply_dats)
+void render_actors(std::vector<vtkPolyData*>& _ply_dats)
 {
   // Create the graphics structure. The renderer renders into the
   // render window. The render window interactor captures mouse events
@@ -93,6 +93,8 @@ void render_actor(std::vector<vtkPolyData*>& _ply_dats)
     actor->GetProperty()->SetColor(1.0000, 0.3882, 0.2784);
     actor->RotateX(30.0);
     actor->RotateY(-45.0);
+
+    actor->GetProperty()->SetRepresentationToWireframe();
 
     // Add the actors to the renderer, set the background and size
     //
@@ -218,7 +220,7 @@ EXAMPLE(0)
   poly_dat->SetPolys(newPolys);
   newPolys->Delete();
   std::vector<vtkPolyData*> poly_dats{ poly_dat };
-  render_actor(poly_dats);
+  render_actors(poly_dats);
 }
 
 EXAMPLE(1)
@@ -227,7 +229,7 @@ EXAMPLE(1)
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
   vtkPolyData* poly_dat = make_tessellation(body);
   std::vector<vtkPolyData*> poly_dats{ poly_dat };
-  render_actor(poly_dats);
+  render_actors(poly_dats);
 }
 
 EXAMPLE(2)
@@ -250,10 +252,12 @@ EXAMPLE(2)
   //poly_dats.push_back(make_tessellation(body1));
   auto booler = Boolean::ISolver::make();
   booler->init(body0, body1);
-  auto inters = booler->compute(Boolean::Operation::INTERSECTION);
+  auto inters = booler->compute(Boolean::Operation::DIFFERENCE);
   poly_dats.push_back(make_tessellation(inters));
 
-  render_actor(poly_dats);
+  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA_00_out.obj", inters);
+
+  render_actors(poly_dats);
 }
 
 EXAMPLE(3)
@@ -281,7 +285,7 @@ EXAMPLE(3)
   auto inters = booler->compute(Boolean::Operation::INTERSECTION);
   poly_dats.push_back(make_tessellation(inters));
 #endif
-  render_actor(poly_dats);
+  render_actors(poly_dats);
 }
 
 EXAMPLE(4)
@@ -306,9 +310,9 @@ EXAMPLE(4)
 #else
   auto booler = Boolean::ISolver::make();
   booler->init(body0, body1);
-  auto inters = booler->compute(Boolean::Operation::INTERSECTION);
+  auto inters = booler->compute(Boolean::Operation::DIFFERENCE);
   poly_dats.push_back(make_tessellation(inters));
   Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube_00_out.obj", inters);
 #endif
-  render_actor(poly_dats);
+  render_actors(poly_dats);
 }

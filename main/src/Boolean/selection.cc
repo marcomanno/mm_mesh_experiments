@@ -39,13 +39,13 @@ const Choice selection_table[2][Operation::ENUM_SIZE][FaceClassification::ENUM_S
   // Selection first solid
   {// In    Out   Ovrl  AntiOvrlp
     { REMV, KEEP, KEEP, REMV }, // Union
-    { INVR, REMV, REMV, REMV }, // Intersection
+    { KEEP, REMV, KEEP, REMV }, // Intersection
     { REMV, KEEP, REMV, KEEP }  // Difference
   },
   // Selection second solid
   {// In    Out   Ovrl  AntiOvrlp
     { REMV, KEEP, REMV, REMV }, // Union
-    { INVR, REMV, REMV, REMV }, // Intersection
+    { KEEP, REMV, REMV, REMV }, // Intersection
     { INVR, REMV, REMV, REMV }  // Difference
   }
 };
