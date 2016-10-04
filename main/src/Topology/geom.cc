@@ -6,7 +6,7 @@ namespace Topo {
 
 Geo::Point face_normal(Topo::Wrap<Topo::Type::FACE> _face)
 {
-  Iterator<Type::FACE, Type::VERTEX> fv_it;
+  Iterator<Type::FACE, Type::VERTEX> fv_it(_face);
   std::vector<Geo::Point> verts;
   for (auto vert : fv_it)
   {
