@@ -15,7 +15,7 @@ double cube_00(size_t i, size_t _i_xyz) // Unit cube in (0, 1), (0, 1), (0, 1)
 
 double cube_01(size_t i, size_t _i_xyz) // Unit cube in (0, -1), (0, 1), (0, 1)
 {
-  auto coord = (i & (size_t(1) << _i_xyz)) > 0 ? 1. : 0.;
+  auto coord = (i & (size_t(1) << _i_xyz)) == 0 ? 1. : 0.;
   if (_i_xyz == 0)
     coord *= -1;
   return coord;

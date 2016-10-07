@@ -5,6 +5,7 @@
 #include <Topology/iterator.hh>
 #include <Boolean/boolean.hh>
 #include <Geo/vector.hh>
+#include <Import/import.hh>
 
 using namespace UnitTest;
 
@@ -71,6 +72,8 @@ TEST_CASE("4 VV intersections", "[Bool]")
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::UNION);
 
+  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv;
   bv.reset(result);
   REQUIRE(bv.size() == 12);
@@ -85,7 +88,7 @@ TEST_CASE("8 VE intersections", "[Bool]")
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::UNION);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 16);
+  REQUIRE(bf_it.size() == 14);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
   REQUIRE(be_it.size() == 28);
 }
@@ -98,6 +101,8 @@ TEST_CASE("4 EE intersections", "[Bool]")
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::UNION);
+
+  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
 
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   REQUIRE(bf_it.size() == 14);

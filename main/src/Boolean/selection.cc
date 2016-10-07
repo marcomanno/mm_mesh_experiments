@@ -89,10 +89,8 @@ void Selection::select_overlap_faces(const OverlapFces& _overlap_faces)
         if (anti_overlap)
         {
           if (it_1_r == fv_it_1.begin())
-            it_1_r = std::prev(fv_it_1.end());
-          else
-            --it_1_r;
-          anti_overlap &= *it_1_r == *it_0;
+            it_1_r = fv_it_1.end();
+          anti_overlap &= (*--it_1_r) == *it_0;
         }
       }
 
