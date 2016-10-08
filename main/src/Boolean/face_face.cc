@@ -268,7 +268,62 @@ bool find_edge_chain(
   EdgeChain& _edge_ch,
   Topo::Wrap<Topo::Type::VERTEX>*& _last_vert)
 {
-  auto edge_ptr = _ed_sets.end();
+  auto follow_chain = [&_ed_sets,&_fv_it, &_last_vert](
+    FaceEdgeMap::NewEdges::iterator _edge_itr,
+    EdgeChain& _edge_ch)
+  {
+    std::vector<bool> used(_ed_sets.size(), false);
+    used[_edge_itr - _ed_sets.begin()] = true;
+    _edge_ch.push_back(_edge_itr);
+    for (;;)
+    {
+      _last_vert = std::find(_fv_it.begin(), _fv_it.end(), (*_edge_itr)[1]);
+      if (_last_vert != _fv_it.end())
+        break;
+
+      bool found = false;
+      for (auto pt_set_it = _ed_sets.begin(); pt_set_it != _ed_sets.end(); ++pt_set_it)
+      {
+        if (used[pt_set_it - _ed_sets.begin()] || pt_set_it->size() != 2)
+          continue;
+        auto& pt_set = *pt_set_it;
+        if (pt_set[0] == (*_edge_itr)[1] || pt_set[1] == (*_edge_itr)[1])
+        {
+          if (pt_set[1] == (*_edge_itr)[1])
+            std::swap(pt_set[1], pt_set[0]);
+          _edge_itr = pt_set_it;
+          used[_edge_itr - _ed_sets.begin()] = true;
+          _edge_ch.push_back(_edge_itr);
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+        return false;
+    }
+    // Check that the chain is inside the face.
+    std::vector<Geo::Point> polygon;
+    polygon.reserve(_fv_it.size());
+    for (auto vert : _fv_it)
+    {
+      polygon.emplace_back();
+      vert->geom(polygon.back());
+    }
+    Geo::Point pt;
+    (*_edge_ch[0])[1]->geom(pt);
+    if (_edge_ch.size() == 1)
+    {
+      Geo::Point pt0;
+      (*_edge_ch[0])[0]->geom(pt0);
+      pt = (pt + pt0) * 0.5;
+    }
+    if (Geo::PointInPolygon::classify(polygon, pt) == Geo::PointInPolygon::Inside)
+      return true;
+    else
+      return false;
+  };
+
+  auto edge_itr = _ed_sets.end();
   for (auto pt_it = _ed_sets.begin(); pt_it != _ed_sets.end(); ++pt_it)
   {
     if (pt_it->size() != 2)
@@ -276,65 +331,20 @@ bool find_edge_chain(
     auto iter = std::find(pt_it->begin(), pt_it->end(), _vert);
     if (iter != pt_it->end())
     {
-      edge_ptr = pt_it;
+      edge_itr = pt_it;
       if (iter != pt_it->begin())
         std::swap((*pt_it)[1], (*pt_it)[0]);
-      _edge_ch.push_back(edge_ptr);
-      break;
-    }
-  }
-  if (edge_ptr == _ed_sets.end())
-    return false;
-  std::vector<bool> used(_ed_sets.size(), false);
-  used[edge_ptr - _ed_sets.begin()] = true;
-  for (;;)
-  {
-    _last_vert = std::find(_fv_it.begin(), _fv_it.end(), (*edge_ptr)[1]);
-    if (_last_vert != _fv_it.end())
-      break;
 
-    bool found = false;
-    for (auto pt_set_it = _ed_sets.begin(); pt_set_it != _ed_sets.end(); ++pt_set_it)
-    {
-      if (used[pt_set_it - _ed_sets.begin()] || pt_set_it->size() != 2)
-        continue;
-      auto& pt_set = *pt_set_it;
-      if (pt_set[0] == (*edge_ptr)[1] || pt_set[1] == (*edge_ptr)[1])
+      EdgeChain edge_ch;
+      if (follow_chain(edge_itr, edge_ch))
       {
-        edge_ptr = pt_set_it;
-        used[edge_ptr - _ed_sets.begin()] = true;
-        if (pt_set[1] == (*edge_ptr)[1])
-          std::swap(pt_set[1], pt_set[0]);
-        _edge_ch.push_back(edge_ptr);
-        found = true;
-        break;
+        _edge_ch = std::move(edge_ch);
+        return true;
       }
     }
-    if (!found)
-      return false;
   }
-
-  // Check that the chain is inside the face.
-  std::vector<Geo::Point> polygon;
-  polygon.reserve(_fv_it.size());
-  for (auto vert : _fv_it)
-  {
-    polygon.emplace_back();
-    vert->geom(polygon.back());
-  }
-  Geo::Point pt;
-  (*_edge_ch[0])[1]->geom(pt);
-  if (_edge_ch.size() == 1)
-  {
-    Geo::Point pt0;
-    (*_edge_ch[0])[0]->geom(pt0);
-    pt = (pt + pt0) * 0.5;
-  }
-  if (Geo::PointInPolygon::classify(polygon, pt) == Geo::PointInPolygon::Inside)
-    return true;
-  else
-    return false;
-}
+  return false;
+ }
 
 std::shared_ptr<Geo::IPolygonalFace> make_polygonal_face(
   std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _verts)

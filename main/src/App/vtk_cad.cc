@@ -316,3 +316,12 @@ EXAMPLE(4)
 #endif
   render_actors(poly_dats);
 }
+
+EXAMPLE(5)
+{
+  auto body0 = Import::load_obj(
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj");
+  std::vector<vtkPolyData*> poly_dats;
+  poly_dats.push_back(make_tessellation(body0));
+  render_actors(poly_dats);
+}

@@ -100,7 +100,7 @@ TEST_CASE("4 EE intersections", "[Bool]")
 
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(body_1, body_2);
-  auto result = bool_solver->compute(Boolean::Operation::UNION);
+  auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
 
   Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
 
