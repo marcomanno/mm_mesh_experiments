@@ -105,8 +105,8 @@ TEST_CASE("4 EE intersections", "[Bool]")
   Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
 
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 14);
+  REQUIRE(bf_it.size() == 8);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
-  REQUIRE(be_it.size() == 32);
+  REQUIRE(be_it.size() == 18);
 }
 
