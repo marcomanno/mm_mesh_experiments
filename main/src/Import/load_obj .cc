@@ -29,8 +29,10 @@ Topo::Wrap<Topo::Type::BODY> load_obj(const char* _flnm)
       for (auto& coord : pt)
         buf >> coord;
       verts.emplace_back();
-      verts.back().make<Topo::EE<Topo::Type::VERTEX>>();
-      verts.back()->set_geom(pt);
+      auto& new_vert = verts.back();
+      new_vert.make<Topo::EE<Topo::Type::VERTEX>>();
+      new_vert->set_geom(pt);
+      new_vert->set_tolerance(Geo::epsilon(pt));
     }
     else if (line[0] == 'f')
     {

@@ -110,3 +110,27 @@ TEST_CASE("4 EE intersections", "[Bool]")
   REQUIRE(be_it.size() == 18);
 }
 
+TEST_CASE("pyramid", "[Bool]")
+{
+  auto pyr1 = Import::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/pyramid.obj");
+  auto pyr2 = Import::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/pyramid.obj");
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(pyr2);
+  for (auto& x : bv_it)
+  {
+    Geo::Point pt;
+    x->geom(pt);
+    pt[2] = -pt[2];
+    x->set_geom(pt);
+  }
+  // !!! Attention, pyr2 is inverted.
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(pyr1, pyr2);
+  auto result = bool_solver->compute(Boolean::Operation::INTERSECTION);
+  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 9);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
+  REQUIRE(be_it.size() == 16);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
+  REQUIRE(bv1_it.size() == 9);
+}

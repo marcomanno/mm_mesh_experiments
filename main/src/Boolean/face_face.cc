@@ -90,7 +90,8 @@ bool FaceVersus::face_intersect(
     auto vert_set_a = face_vertices(f_vert_info_[face_a].new_vert_list_, face_a);
     for (auto face_b : _face_it_b)
     {
-      auto vert_set_b = face_vertices(f_vert_info_[face_b].new_vert_list_, face_b);
+      const auto& vert_set_b = 
+        face_vertices(f_vert_info_[face_b].new_vert_list_, face_b);
       std::vector<Topo::Wrap<Topo::Type::VERTEX>> v_inters;
       std::set_intersection(
         vert_set_a.begin(), vert_set_a.end(),
