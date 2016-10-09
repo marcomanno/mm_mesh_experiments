@@ -484,12 +484,15 @@ void FaceEdgeMap::split_with_chains()
         {
           Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(face);
           auto& pt_sets = std::get<NewEdges>(face_info.second);
-          for (auto vert_it = fv_it.begin(); vert_it != fv_it.end(); ++vert_it)
+          for (auto vert_it = fv_it.begin(); vert_it != fv_it.end(); )
           {
             EdgeChain edge_ch;
             Topo::Wrap<Topo::Type::VERTEX>* last_vert_it;
             if (!find_edge_chain(*vert_it, pt_sets, fv_it, edge_ch, last_vert_it))
+            {
+              ++vert_it; // Try next vertex.
               continue;
+            }
 
             Topo::VertexChains split_chains;
             split_chains.resize(2);
@@ -525,7 +528,8 @@ void FaceEdgeMap::split_with_chains()
             std::sort(edge_ch.begin(), edge_ch.end());
             for (auto it = edge_ch.rbegin(); it != edge_ch.rend(); ++it)
               pt_sets.erase(*it);
-            break;
+            if (pt_sets.empty())
+              break;
           }
         }
         if (face_splitter_list.empty())

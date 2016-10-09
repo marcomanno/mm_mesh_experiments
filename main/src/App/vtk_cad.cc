@@ -10,6 +10,8 @@
 #include "vtkRenderWindowInteractor.h"
 #include "vtkProperty.h"
 #include "vtkCamera.h"
+#include "vtkTextActor.h"
+#include "vtkTextProperty.h"
 
 #include "Topology/iterator.hh"
 #include "Import/import.hh"
@@ -27,8 +29,8 @@ static std::map<size_t, ExamplePtr>& example_table()
   static std::map<size_t, ExamplePtr> exmpls_;
   return exmpls_;
 }
-template <size_t nmbrT>
-struct Examples
+
+template <size_t nmbrT> struct Examples
 {
   Examples()
   {
@@ -68,11 +70,20 @@ void render_actors(std::vector<vtkPolyData*>& _ply_dats)
   // and will perform appropriate camera or actor manipulation
   // depending on the nature of the events.
   //
-  vtkRenderer *ren1 = vtkRenderer::New();
+  vtkRenderer *renderer = vtkRenderer::New();
   vtkRenderWindow *renWin = vtkRenderWindow::New();
-  renWin->AddRenderer(ren1);
+  renWin->AddRenderer(renderer);
   vtkRenderWindowInteractor *iren = vtkRenderWindowInteractor::New();
   iren->SetRenderWindow(renWin);
+
+  //// Setup the text and add it to the renderer
+  //vtkSmartPointer<vtkTextActor> textActor = vtkSmartPointer<vtkTextActor>::New();
+  //textActor->SetInput("Hello world");
+  //textActor->SetPosition2(10, 40);
+  //textActor->GetTextProperty()->SetFontSize(24);
+  //textActor->GetTextProperty()->SetColor(1.0, 0.0, 0.0);
+  //renderer->AddActor2D(textActor);
+
 
   std::vector<std::tuple<VtkUniquePtr<vtkPolyDataMapper>, VtkUniquePtr<vtkActor>>>
     vtk_del;
@@ -98,16 +109,16 @@ void render_actors(std::vector<vtkPolyData*>& _ply_dats)
 
     // Add the actors to the renderer, set the background and size
     //
-    ren1->AddActor(actor);
+    renderer->AddActor(actor);
     }
 
-  ren1->SetBackground(0.1, 0.2, 0.4);
-  renWin->SetSize(200, 200);
+  renderer->SetBackground(0.1, 0.2, 0.4);
+  renWin->SetSize(800, 800);
 
   // We'll zoom in a little by accessing the camera and invoking a "Zoom"
   // method on it.
-  ren1->ResetCamera();
-  ren1->GetActiveCamera()->Zoom(1.5);
+  renderer->ResetCamera();
+  renderer->GetActiveCamera()->Zoom(1.5);
   renWin->Render();
 
   // This starts the event loop and as a side effect causes an initial render.
@@ -115,7 +126,7 @@ void render_actors(std::vector<vtkPolyData*>& _ply_dats)
 
   // Exiting from here, we have to delete all the instances that
   // have been created.
-  ren1->Delete();
+  renderer->Delete();
   renWin->Delete();
   iren->Delete();
 }
@@ -170,6 +181,15 @@ vtkPolyData* make_tessellation(Topo::Wrap<Topo::Type::BODY> _body)
 
 EXAMPLE(0)
 {
+  auto body0 = Import::load_obj(
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj");
+  std::vector<vtkPolyData*> poly_dats;
+  poly_dats.push_back(make_tessellation(body0));
+  render_actors(poly_dats);
+}
+
+EXAMPLE(1)
+{
   // This creates a polygonal cylinder model with eight circumferential facets.
   //
   vtkPolyData *poly_dat = vtkPolyData::New();
@@ -223,16 +243,16 @@ EXAMPLE(0)
   render_actors(poly_dats);
 }
 
-EXAMPLE(1)
+EXAMPLE(2)
 {
   auto body = Import::load_obj(
-    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/pyramid.OBJ");
   vtkPolyData* poly_dat = make_tessellation(body);
   std::vector<vtkPolyData*> poly_dats{ poly_dat };
   render_actors(poly_dats);
 }
 
-EXAMPLE(2)
+EXAMPLE(3)
 {
   auto body0 = Import::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
@@ -255,12 +275,12 @@ EXAMPLE(2)
   auto inters = booler->compute(Boolean::Operation::DIFFERENCE);
   poly_dats.push_back(make_tessellation(inters));
 
-  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA_00_out.obj", inters);
+  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", inters);
 
   render_actors(poly_dats);
 }
 
-EXAMPLE(3)
+EXAMPLE(4)
 {
   auto body0 = Import::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube.obj");
@@ -288,7 +308,7 @@ EXAMPLE(3)
   render_actors(poly_dats);
 }
 
-EXAMPLE(4)
+EXAMPLE(5)
 {
   auto body0 = Import::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube_00.obj");
@@ -317,11 +337,3 @@ EXAMPLE(4)
   render_actors(poly_dats);
 }
 
-EXAMPLE(5)
-{
-  auto body0 = Import::load_obj(
-    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj");
-  std::vector<vtkPolyData*> poly_dats;
-  poly_dats.push_back(make_tessellation(body0));
-  render_actors(poly_dats);
-}
