@@ -20,6 +20,7 @@ struct PolygonTriangulation : public IPolygonTriangulation
 
   const std::vector<Geo::Vector3>& polygon() override
   {
+    compute();
     return loops_[0];
   }
 
@@ -84,7 +85,7 @@ void PolygonTriangulation::compute()
 
   if (loops_.size() > 1)
   {
-    // Put the auter loop at the begin of the list.
+    // Put the outer loop at the begin of the list.
     auto pt = loops_[0][0];
     for (auto loop_it = std::next(loops_.begin());
       loop_it != loops_.end(); 
