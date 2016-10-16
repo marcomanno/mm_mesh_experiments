@@ -147,7 +147,7 @@ bool decompose(const std::array<ValT, N>& _w,
   const std::array<ValT, N>& _a, const std::array<ValT, N>& _b,
   ValT& _u, ValT& _v);
 
-typedef std::array<double, 3> Vector3;
-
+template <size_t dimT> using Vector = std::array<double, dimT>;
+typedef Vector<3> Vector3;
 
 }//namespace Geo

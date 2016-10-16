@@ -16,6 +16,8 @@
 #include "Topology/iterator.hh"
 #include "Import/import.hh"
 #include "Boolean/boolean.hh"
+#include "Geo/bspline_fiting.hh"
+
 
 #include <map>
 #include <iostream>
@@ -337,3 +339,50 @@ EXAMPLE(5)
   render_actors(poly_dats);
 }
 
+EXAMPLE(6)
+{
+  auto body0 = Import::load_obj(
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Banana_00.obj");
+  auto body1 = Import::load_obj(
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Banana_00.obj");
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
+  const Geo::Vector3 oofs{ 0.1, 0.1, 0.1 };
+  for (size_t i = 0; i < vert_it.size(); ++i)
+  {
+    Geo::Point pt;
+    vert_it.get(i)->geom(pt);
+    pt += oofs;
+    vert_it.get(i)->set_geom(pt);
+  }
+  std::vector<vtkPolyData*> poly_dats;
+#if 0
+  poly_dats.push_back(make_tessellation(body0));
+  poly_dats.push_back(make_tessellation(body1));
+#else
+  auto booler = Boolean::ISolver::make();
+  booler->init(body0, body1);
+  auto result = booler->compute(Boolean::Operation::UNION);
+  poly_dats.push_back(make_tessellation(result));
+  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+#endif
+  render_actors(poly_dats);
+}
+
+EXAMPLE(7)
+{
+  std::vector<double> knots = { 0,0,0,0,1,1,1,1 };
+  std::vector<Geo::Vector<2>> opt_ctr_pts;
+  auto eval_function = [](const double _t)
+  {
+    return Geo::Vector<2>{sin(_t), sin(_t)};
+  };
+  Geo::BsplineFItting::solve<2>(3, 1, eval_function, knots, opt_ctr_pts);
+  for (auto a : knots)
+    std::cout << " " << a;
+  for (auto a : opt_ctr_pts)
+  {
+    std::cout << "\n";
+    for (auto b : a)
+      std::cout << " " << b;
+  }
+}
