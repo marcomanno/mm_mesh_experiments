@@ -370,13 +370,13 @@ EXAMPLE(6)
 
 EXAMPLE(7)
 {
-  std::vector<double> knots = { 0,0,0,0,1,1,1,1 };
+  std::vector<double> knots = { 0, 0, 1, 1 };
   std::vector<Geo::Vector<2>> opt_ctr_pts;
   auto eval_function = [](const double _t)
   {
-    return Geo::Vector<2>{sin(_t), sin(_t)};
+    return Geo::Vector<2>{sin(_t), cos(_t)};
   };
-  Geo::BsplineFItting::solve<2>(3, 1, eval_function, knots, opt_ctr_pts);
+  Geo::BsplineFItting::solve<2>(2, eval_function, knots, opt_ctr_pts);
   for (auto a : knots)
     std::cout << " " << a;
   for (auto a : opt_ctr_pts)

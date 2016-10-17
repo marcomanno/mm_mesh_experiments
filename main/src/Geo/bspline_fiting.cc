@@ -16,26 +16,22 @@ namespace {
 template<size_t dimT>
 struct LSQ
 {
-  LSQ(const size_t _refn_lev,
-    const size_t _deg,
-    const std::vector<double>& _knots,
-    Function<dimT>* _f) :
-    refn_lev_(_refn_lev), deg_(_deg), knots_(_knots), f_(_f)
+  LSQ(const size_t _deg, const std::vector<double>& _knots, 
+    Function<dimT>* _f) :  deg_(_deg), knots_(_knots), f_(_f)
   {
-    find_equations(0);
+    find_equations();
   }
   void solve();
   const std::vector<Vector<dimT>>& X() const { return X_; }
   Vector<dimT> eval(const double _t);
 private:
-  void find_equations(int _refn, const double _next_wi = 0);
+  void find_equations();
   double N(size_t _i, size_t _k, double _t);
 
   std::vector<std::vector<double>> A_;
   const std::vector<double>& knots_;
   std::vector<Vector<dimT>> B_;
   std::vector<Vector<dimT>> X_;
-  const size_t refn_lev_;
   const size_t deg_;
   Function<dimT>* f_;
 };
@@ -61,28 +57,27 @@ double LSQ<dimT>::N(size_t _i, size_t _p, double _t)
 }
 
 template<size_t dimT>
-void LSQ<dimT>::find_equations(int _refn, const double _next_wi)
+void LSQ<dimT>::find_equations()
 {
-  const double step = 0.25;
-  const auto refn_fctor = std::pow(2, -_refn);
-  const double  w = step * refn_fctor;
-  for (double x = 0; x < 1; x += step)
+  double w_prev = 0;
+  for (size_t i = 1; i < knots_.size(); ++i)
   {
-    double  wi = w;
-    if (x == 0)
-      wi /= 2;
-    if (x < 0.5 && _refn < refn_lev_)
-      find_equations(_refn + 1, wi);
-    else
+    auto w = knots_[i] - knots_[i - 1];
+    const size_t SMPL_NMBR = 4;
+    const double step = 1. / SMPL_NMBR;
+    const double w_step = w * step;
+    auto wi = w_prev + w_step / 2;
+    for (double x = 0; x < 1; x += step)
     {
-      if (x == 1)
-        wi = wi / 2 + _next_wi;
-      const auto t = x * refn_fctor;
+      auto t = knots_[i - 1] + w * x;
       A_.emplace_back();
-      for (int i = 0; i < knots_.size() - deg_ - 1; ++i)
-        A_.back().push_back(N(i, deg_, t) * wi);
-      B_.emplace_back(f_(t) * wi);
+      const auto wi_sqr = sqrt(wi);
+      for (int j = 0; j < knots_.size() - deg_ - 1; ++j)
+        A_.back().push_back(N(j, deg_, t) * wi_sqr);
+      B_.emplace_back(f_(t) * wi_sqr);
+      wi = w_step;
     }
+    w_prev = w_step / 2;
   }
 }
 
@@ -122,45 +117,25 @@ Vector<dimT> LSQ<dimT>::eval(const double _t)
 
 }//namespace
 
-#if 0
-void minimize()
-{
-  pts.resize(DEG + 1);
-  LSQ lsq(0);
-  lsq.solve();
-  std::ofstream bspl("b0.txt");
-  for (auto k : knots_)
-    bspl << " " << k;
-  bspl << std::endl;
-  for (const auto& pt : lsq.X)
-    for (const auto& coo : pt)
-      bspl << " " << coo;
-  bspl << std::endl;
-}
-#endif
-
 template <size_t dimT> bool solve(
-  const size_t _deg, const size_t _ref_lev,
-  Function<dimT>* _f,
-  std::vector<double>& _knots,
+  const size_t _deg, Function<dimT>* _f,
+  const std::vector<double>& _knots,
   std::vector<Vector<dimT>>& _opt_ctr_pts)
 {
-  std::vector<double> knots(_deg + 1, 0.);
-  for (auto ref = _ref_lev; ref > 0; --ref)
-    knots.push_back(std::pow(2., -double(ref)));
-  knots.insert(knots.end(), _deg + 1, 1.);
-  LSQ<dimT> lsq(_ref_lev, _deg, knots, _f);
+  std::vector<double> knots;
+  knots.push_back(_knots.front());
+  knots.insert(knots.end(), _knots.begin(), _knots.end());
+  knots.push_back(_knots.back());
+  LSQ<dimT> lsq(_deg, knots, _f);
   lsq.solve();
   _opt_ctr_pts = lsq.X();
-  _knots.assign(std::next(knots.begin()), std::prev(knots.end()));
   return true;
 }
 
-#define INSTANTIATE_SOLVE(N)                \
-template bool solve<N>(                     \
-  const size_t _deg, const size_t _ref_lev, \
-  Function<N>* _f,                          \
-  std::vector<double>& _knots,              \
+#define INSTANTIATE_SOLVE(N)             \
+template bool solve<N>(                  \
+  const size_t _deg, Function<N>* _f,    \
+  const std::vector<double>& _knots,     \
   std::vector<Vector<N>>& _opt_ctr_pts);
 
 INSTANTIATE_SOLVE(2)
