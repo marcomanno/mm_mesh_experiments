@@ -25,7 +25,7 @@ TEST_CASE("Evaluate nurbs", "[NURBS]" )
 
   std::vector<double> knots{0., 1.};
   std::vector<Pt> points{2, 3};
-  Geo::nub<Pt, double, mypoly> my_nrb;
+  Geo::Nub<Pt, double, mypoly> my_nrb;
   REQUIRE( my_nrb.init(points, knots) == true ); // Nurb (2 * (1-t) + 3 * t)
   mypoly result[2];
   

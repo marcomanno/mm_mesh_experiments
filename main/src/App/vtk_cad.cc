@@ -17,6 +17,7 @@
 #include "Import/import.hh"
 #include "Boolean/boolean.hh"
 #include "Geo/bspline_fiting.hh"
+#include "Geo/evalnurbs.hh"
 
 
 #include <map>
@@ -377,6 +378,22 @@ EXAMPLE(7)
     return Geo::Vector<2>{sin(_t), cos(_t)};
   };
   Geo::BsplineFItting::solve<2>(2, eval_function, knots, opt_ctr_pts);
+
+  Geo::Nub<Geo::Vector<2>, double> ev_nub;
+  ev_nub.init(opt_ctr_pts, knots);
+
+  for (double x = 0; x <= 1.; x += 1. / 64)
+  {
+    const double t = knots.back() * x + knots.front() * (1 - x);
+    auto pt0 = eval_function(t);
+    Geo::Vector<2> pt1;
+    ev_nub.eval(t, &pt1, &pt1 + 1);
+  }
+
+
+
+  std::vector<vtkPolyData*> poly_dats;
+
   for (auto a : knots)
     std::cout << " " << a;
   for (auto a : opt_ctr_pts)

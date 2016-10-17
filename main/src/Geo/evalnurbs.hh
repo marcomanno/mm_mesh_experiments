@@ -40,7 +40,7 @@ inline void * zero_ptr()
   return p;
 }
 
-template <typename Pt, typename Par, typename Res = Pt> class nub
+template <typename Pt, typename Par, typename Res = Pt> class Nub
 {
   enum { MAX_DEG = 25 } ;
   const Par * m_k;
@@ -48,7 +48,7 @@ template <typename Pt, typename Par, typename Res = Pt> class nub
   size_t m_nk, m_np, m_deg;
 
 public:
-  nub() : m_k(0), m_p(0)
+  Nub() : m_k(0), m_p(0)
   {
     m_nk = m_np = m_deg = 0;
   }
@@ -67,7 +67,8 @@ public:
     return true;
   }
   template <class iter, typename tPar> 
-  bool eval(const tPar & t, iter beg, iter end, const Par * _tspan) const
+  bool eval(const tPar & t, iter beg, iter end, 
+    const Par * _tspan = nullptr) const
   {
     if (m_nk != m_np + m_deg - 1 || m_deg > MAX_DEG || beg == end)
       return false;
@@ -98,18 +99,19 @@ public:
       factor *= Par(m_deg - ider + 1);
       *beg = coe[0] * factor;
     }
-    while (beg != end) *beg++ = Res(0);
+
+    while (beg != end) *beg++ = Res{ 0 };
 
     //for (auto i = comb(m_deg, 2); --i >= 0; result[i].~Res());
     return true;
   }
-} ;
+};
 
 template <typename Pt, typename Par, typename Res = Pt> class nub_cv
 {
   std::vector<Pt>   m_ctrp;
   std::vector<Par>  m_kn;
-  nub<Pt, Par, Res> m_ev;
+  Nub<Pt, Par, Res> m_ev;
 
 public:
   template <class PtIt, class ParIt> void init(
@@ -121,7 +123,7 @@ public:
     std::copy(par_begin, par_end, std::back_inserter<std::vector < Par >> (m_kn));
     m_ev.init(m_ctrp, m_kn);
   }
-  const nub<Pt, Par, Res> & ev()
+  const Nub<Pt, Par, Res> & ev()
   {
     return m_ev;
   }
