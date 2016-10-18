@@ -66,7 +66,7 @@ template <class T> struct deleter
 };
 template<typename T> using VtkUniquePtr = std::unique_ptr<T, deleter<T>>;
 
-void render_actors(std::vector<vtkPolyData*>& _ply_dats)
+void render_actors(std::vector<vtkPolyData*>& _ply_dats, Geo::Vector3* _clrs = nullptr)
 {
   // Create the graphics structure. The renderer renders into the
   // render window. The render window interactor captures mouse events
@@ -87,7 +87,6 @@ void render_actors(std::vector<vtkPolyData*>& _ply_dats)
   //textActor->GetTextProperty()->SetColor(1.0, 0.0, 0.0);
   //renderer->AddActor2D(textActor);
 
-
   std::vector<std::tuple<VtkUniquePtr<vtkPolyDataMapper>, VtkUniquePtr<vtkActor>>>
     vtk_del;
   for (auto ply_dat : _ply_dats)
@@ -104,9 +103,12 @@ void render_actors(std::vector<vtkPolyData*>& _ply_dats)
     vtkActor* actor = vtkActor::New();
     vtk_del.emplace_back(actor_map, actor);
     actor->SetMapper(actor_map);
-    actor->GetProperty()->SetColor(1.0000, 0.3882, 0.2784);
-    actor->RotateX(30.0);
-    actor->RotateY(-45.0);
+    if (_clrs != nullptr)
+      actor->GetProperty()->SetColor((_clrs++)->data());
+    else
+      actor->GetProperty()->SetColor(1.0000, 0.3882, 0.2784);
+    //actor->RotateX(30.0);
+    //actor->RotateY(-45.0);
 
     actor->GetProperty()->SetRepresentationToWireframe();
 
@@ -382,24 +384,43 @@ EXAMPLE(7)
   Geo::Nub<Geo::Vector<2>, double> ev_nub;
   ev_nub.init(opt_ctr_pts, knots);
 
+  std::vector<vtkPolyData*> poly_dats = { vtkPolyData::New(), vtkPolyData::New() };
+
+  vtkPoints* newPoints[2];
+  vtkCellArray* newPolys[2];
+
+  for (auto i : { 0, 1 })
+  {
+    newPoints[i] = vtkPoints::New();
+    newPoints[i]->Allocate(130);
+    newPolys[i] = vtkCellArray::New();
+    newPolys[i]->Allocate(64);
+  }
+
+  vtkIdType idxs[4] = { 0, 2, 3, 1 };
   for (double x = 0; x <= 1.; x += 1. / 64)
   {
     const double t = knots.back() * x + knots.front() * (1 - x);
-    auto pt0 = eval_function(t);
-    Geo::Vector<2> pt1;
-    ev_nub.eval(t, &pt1, &pt1 + 1);
+    Geo::Vector<2> pt[2];
+    pt[0] = eval_function(t);
+    ev_nub.eval(t, &pt[1], &pt[1] + 1);
+    for (auto i : { 0, 1 })
+    {
+      for (auto z : { 0., 0.1 })
+        newPoints[i]->InsertNextPoint(pt[i][0], pt[i][1], i * 0.1 + z);
+      if (x > 0)
+        newPolys[i]->InsertNextCell(4, idxs);
+    }
+    if (x > 0)
+      for (auto& idx : idxs) idx += 2;
   }
-
-
-
-  std::vector<vtkPolyData*> poly_dats;
-
-  for (auto a : knots)
-    std::cout << " " << a;
-  for (auto a : opt_ctr_pts)
+  for (auto i : { 0, 1 })
   {
-    std::cout << "\n";
-    for (auto b : a)
-      std::cout << " " << b;
+    poly_dats[i]->SetPoints(newPoints[i]);
+    newPoints[i]->Delete();
+    poly_dats[i]->SetPolys(newPolys[i]);
+    newPolys[i]->Delete();
   }
+  Geo::Vector3 cols[2] = { { 1, 0, 0 },{ 0, 0, 1 } };
+  render_actors(poly_dats, cols);
 }
