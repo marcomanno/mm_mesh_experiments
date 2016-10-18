@@ -59,26 +59,33 @@ double LSQ<dimT>::N(size_t _i, size_t _p, double _t)
 template<size_t dimT>
 void LSQ<dimT>::find_equations()
 {
+  auto add_equation = [this](const double _t, const double _wi)
+  {
+    A_.emplace_back();
+    const auto wi_sqr = sqrt(_wi);
+    for (int j = 0; j < knots_.size() - deg_ - 1; ++j)
+      A_.back().push_back(N(j, deg_, _t) * wi_sqr);
+    B_.emplace_back(f_(_t) * wi_sqr);
+  };
   double w_prev = 0;
   for (size_t i = 1; i < knots_.size(); ++i)
   {
-    auto w = knots_[i] - knots_[i - 1];
+    auto dw = knots_[i] - knots_[i - 1];
+    if (dw <= 0)
+      continue;
     const size_t SMPL_NMBR = 4;
     const double step = 1. / SMPL_NMBR;
-    const double w_step = w * step;
+    const double w_step = dw * step;
     auto wi = w_prev + w_step / 2;
     for (double x = 0; x < 1; x += step)
     {
-      auto t = knots_[i - 1] + w * x;
-      A_.emplace_back();
-      const auto wi_sqr = sqrt(wi);
-      for (int j = 0; j < knots_.size() - deg_ - 1; ++j)
-        A_.back().push_back(N(j, deg_, t) * wi_sqr);
-      B_.emplace_back(f_(t) * wi_sqr);
+      auto t = knots_[i - 1] * (1 - x) + knots_[i] * x;
+      add_equation(t, wi);
       wi = w_step;
     }
     w_prev = w_step / 2;
   }
+  add_equation(knots_.back(), w_prev);
 }
 
 template<size_t dimT>

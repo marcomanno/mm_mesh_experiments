@@ -377,7 +377,7 @@ EXAMPLE(7)
   std::vector<Geo::Vector<2>> opt_ctr_pts;
   auto eval_function = [](const double _t)
   {
-    return Geo::Vector<2>{sin(_t), cos(_t)};
+    return Geo::Vector<2>{sin(_t * 4), cos(_t * 4)};
   };
   Geo::BsplineFItting::solve<2>(2, eval_function, knots, opt_ctr_pts);
 
@@ -407,7 +407,7 @@ EXAMPLE(7)
     for (auto i : { 0, 1 })
     {
       for (auto z : { 0., 0.1 })
-        newPoints[i]->InsertNextPoint(pt[i][0], pt[i][1], i * 0.1 + z);
+        newPoints[i]->InsertNextPoint(pt[i][0], pt[i][1], z);
       if (x > 0)
         newPolys[i]->InsertNextCell(4, idxs);
     }
