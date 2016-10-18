@@ -373,7 +373,7 @@ EXAMPLE(6)
 
 EXAMPLE(7)
 {
-  std::vector<double> knots = { 0, 0, 1, 1 };
+  std::vector<double> knots = { 0, 0, 1./32, 0.0625, 0.125, 0.25, 0.5, 1, 1 };
   std::vector<Geo::Vector<2>> opt_ctr_pts;
   auto eval_function = [](const double _t)
   {
@@ -407,7 +407,7 @@ EXAMPLE(7)
     for (auto i : { 0, 1 })
     {
       for (auto z : { 0., 0.1 })
-        newPoints[i]->InsertNextPoint(pt[i][0], pt[i][1], z);
+        newPoints[i]->InsertNextPoint(pt[i][0], pt[i][1], 0.1* i + z);
       if (x > 0)
         newPolys[i]->InsertNextCell(4, idxs);
     }

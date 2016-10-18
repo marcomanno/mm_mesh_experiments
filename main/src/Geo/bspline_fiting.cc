@@ -26,7 +26,7 @@ struct LSQ
   Vector<dimT> eval(const double _t);
 private:
   void find_equations();
-  double N(size_t _i, size_t _k, double _t);
+  double N(size_t _i, const size_t _k, const double _t);
 
   std::vector<std::vector<double>> A_;
   const std::vector<double>& knots_;
@@ -37,10 +37,14 @@ private:
 };
 
 template<size_t dimT>
-double LSQ<dimT>::N(size_t _i, size_t _p, double _t)
+double LSQ<dimT>::N(size_t _i, const size_t _p, const double _t)
 {
   if (_p == 0)
-    return _t >= knots_[_i] && _t < knots_[_i + 1] ? 1. : 0.;
+  {
+    if (_t < knots_[_i] || _t >= knots_[_i + 1])
+      return 0;
+    return 1;
+  }
   double res = 0;
 
   auto b = N(_i, _p - 1, _t);
@@ -68,7 +72,8 @@ void LSQ<dimT>::find_equations()
     B_.emplace_back(f_(_t) * wi_sqr);
   };
   double w_prev = 0;
-  for (size_t i = 1; i < knots_.size(); ++i)
+  const auto last_idx = knots_.size() - 2;
+  for (size_t i = 2; i <= last_idx; ++i)
   {
     auto dw = knots_[i] - knots_[i - 1];
     if (dw <= 0)
@@ -85,7 +90,7 @@ void LSQ<dimT>::find_equations()
     }
     w_prev = w_step / 2;
   }
-  add_equation(knots_.back(), w_prev);
+  add_equation(knots_[last_idx], w_prev);
 }
 
 template<size_t dimT>
@@ -129,10 +134,13 @@ template <size_t dimT> bool solve(
   const std::vector<double>& _knots,
   std::vector<Vector<dimT>>& _opt_ctr_pts)
 {
+  if (_knots.size() == 0)
+    return false;
+  double dt = _knots.back() - _knots.front();
   std::vector<double> knots;
-  knots.push_back(_knots.front());
+  knots.push_back(_knots.front() - dt);
   knots.insert(knots.end(), _knots.begin(), _knots.end());
-  knots.push_back(_knots.back());
+  knots.push_back(_knots.back() + dt);
   LSQ<dimT> lsq(_deg, knots, _f);
   lsq.solve();
   _opt_ctr_pts = lsq.X();
