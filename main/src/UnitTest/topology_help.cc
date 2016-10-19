@@ -37,6 +37,13 @@ double cube_03(size_t i, size_t _i_xyz) // Unit cube in (-0.5, 0.5), (-0.5, 0.5)
   return coord;
 };
 
+double cube_04(size_t i, size_t _i_xyz) // Unit cube in (-0.5, 0.5), (-0.5, 0.5), (-0.5, 0.5)
+{
+  auto coord = (i & (size_t(1) << _i_xyz)) > 0 ? 1. : 0.;
+  coord -= 0.5;
+  return coord;
+};
+
 Topo::Wrap<Topo::Type::BODY> make_cube(IndexToPoint idx_to_pt)
 {
   Topo::Wrap<Topo::Type::BODY> body;

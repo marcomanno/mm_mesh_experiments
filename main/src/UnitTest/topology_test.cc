@@ -110,6 +110,23 @@ TEST_CASE("4 EE intersections", "[Bool]")
   REQUIRE(be_it.size() == 18);
 }
 
+TEST_CASE("3 FF intersections", "[Bool]")
+{
+  body_1 = make_cube(cube_00);
+  body_2 = make_cube(cube_04);
+
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(body_1, body_2);
+  auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
+
+  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 8);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
+  REQUIRE(be_it.size() == 18);
+}
+
 TEST_CASE("pyramid", "[Bool]")
 {
   auto pyr1 = Import::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/pyramid.obj");
