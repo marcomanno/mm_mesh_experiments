@@ -13,6 +13,16 @@
 #include "vtkTextActor.h"
 #include "vtkTextProperty.h"
 
+#include <vtkVersion.h>
+#include <vtkSmartPointer.h>
+#include <vtkChartXY.h>
+#include <vtkTable.h>
+#include <vtkPlot.h>
+#include <vtkFloatArray.h>
+#include <vtkContextView.h>
+#include <vtkContextScene.h>
+#include <vtkPen.h>
+
 #include "Topology/iterator.hh"
 #include "Import/import.hh"
 #include "Boolean/boolean.hh"
@@ -124,6 +134,7 @@ void render_actors(std::vector<vtkPolyData*>& _ply_dats, Geo::Vector3* _clrs = n
   // method on it.
   renderer->ResetCamera();
   renderer->GetActiveCamera()->Zoom(1.5);
+  renderer->GetActiveCamera()->SetParallelProjection(1);
   renWin->Render();
 
   // This starts the event loop and as a side effect causes an initial render.
@@ -373,7 +384,7 @@ EXAMPLE(6)
 
 EXAMPLE(7)
 {
-  std::vector<double> knots = { 0, 0, 1./32, 0.0625, 0.125, 0.25, 0.5, 1, 1 };
+  std::vector<double> knots = { 0, 0, 1./64, 1./32, 0.0625, 0.125, 0.25, 0.5, 1, 1 };
   std::vector<Geo::Vector<2>> opt_ctr_pts;
   auto eval_function = [](const double _t)
   {
@@ -384,6 +395,58 @@ EXAMPLE(7)
   Geo::Nub<Geo::Vector<2>, double> ev_nub;
   ev_nub.init(opt_ctr_pts, knots);
 
+#if 0
+
+  // Create a table with some points in it
+  vtkSmartPointer<vtkTable> table = vtkSmartPointer<vtkTable>::New();
+
+  auto add_table_row = [&table](const char* _name)
+  {
+    auto row = vtkSmartPointer<vtkFloatArray>::New();
+    row->SetName(_name);
+    table->AddColumn(row);
+    return row;
+  };
+  vtkSmartPointer<vtkFloatArray> arrX = add_table_row("X Axis");
+  vtkSmartPointer<vtkFloatArray> dX = add_table_row("dX");
+  vtkSmartPointer<vtkFloatArray> dY = add_table_row("dY");
+  table->SetNumberOfRows(257);
+
+  for (auto i = 0; i <= 256; ++i)
+  {
+    const double x = i * 1. / 256;
+    const double t = knots.back() * x + knots.front() * (1 - x);
+    Geo::Vector<2> pt[2];
+    pt[0] = eval_function(t);
+    ev_nub.eval(t, &pt[1], &pt[1] + 1);
+    auto dist = pt[0] - pt[1];
+    table->SetValue(i, 0, t);
+    table->SetValue(i, 1, dist[0]);
+    table->SetValue(i, 2, dist[1]);
+  }
+  // Set up the view
+  vtkSmartPointer<vtkContextView> view = vtkSmartPointer<vtkContextView>::New();
+  view->GetRenderer()->SetBackground(1.0, 1.0, 1.0);
+
+  // Add multiple line plots, setting the colors etc
+  vtkSmartPointer<vtkChartXY> chart = vtkSmartPointer<vtkChartXY>::New();
+  view->GetScene()->AddItem(chart);
+
+  auto add_line = [&chart, &table](int i)
+  {
+    vtkPlot *line = chart->AddPlot(vtkChart::LINE);
+    line->SetInputData(table, 0, i);
+    line->SetColor(255 * i, 255 * (1 - i), 0, 255);
+    line->SetWidth(1.0);
+  };
+  add_line(0);
+  add_line(1);
+
+  // Start interactor
+  view->GetInteractor()->Initialize();
+  view->GetInteractor()->Start();
+
+#else
   std::vector<vtkPolyData*> poly_dats = { vtkPolyData::New(), vtkPolyData::New() };
 
   vtkPoints* newPoints[2];
@@ -398,12 +461,16 @@ EXAMPLE(7)
   }
 
   vtkIdType idxs[4] = { 0, 2, 3, 1 };
-  for (double x = 0; x <= 1.; x += 1. / 64)
+  std::ofstream plot("table.txt");
+  for (double x = 0; x <= 1.; x += 1. / 256)
   {
     const double t = knots.back() * x + knots.front() * (1 - x);
     Geo::Vector<2> pt[2];
     pt[0] = eval_function(t);
     ev_nub.eval(t, &pt[1], &pt[1] + 1);
+    auto dd = pt[1] - pt[0];
+#define SEP << " " <<
+    plot << t SEP Geo::length(dd) SEP dd[0] SEP dd[1] << std::endl;
     for (auto i : { 0, 1 })
     {
       for (auto z : { 0., 0.1 })
@@ -423,4 +490,5 @@ EXAMPLE(7)
   }
   Geo::Vector3 cols[2] = { { 1, 0, 0 },{ 0, 0, 1 } };
   render_actors(poly_dats, cols);
+#endif
 }

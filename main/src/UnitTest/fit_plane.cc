@@ -1,7 +1,7 @@
 #include "catch/catch.hpp"
 
 #include "Geo/entity.hh"
-#include <Geo/point_fitting.hh>
+#include <Geo/plane_fitting.hh>
 #include "Geo/vector.hh"
 
 #include <iostream>

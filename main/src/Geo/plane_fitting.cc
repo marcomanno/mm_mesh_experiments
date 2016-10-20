@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "point_fitting.hh"
+#include "plane_fitting.hh"
 #include "iterate.hh"
 #include <Utils/error_handling.hh>
 #include "Eigen/SVD"

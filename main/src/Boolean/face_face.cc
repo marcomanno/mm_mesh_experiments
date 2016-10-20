@@ -1,5 +1,5 @@
 #include "face_intersections.hh"
-#include "Geo/point_fitting.hh"
+#include "Geo/plane_fitting.hh"
 #include "Geo/vector.hh"
 #include <Geo/point_in_polygon.hh>
 #include <Topology/impl.hh>

@@ -27,6 +27,7 @@ struct LSQ
 private:
   void find_equations();
   double N(size_t _i, const size_t _k, const double _t);
+  void add_equation(const double _t, const double _wi);
 
   std::vector<std::vector<double>> A_;
   const std::vector<double>& knots_;
@@ -61,16 +62,21 @@ double LSQ<dimT>::N(size_t _i, const size_t _p, const double _t)
 }
 
 template<size_t dimT>
+void LSQ<dimT>::add_equation(const double _t, const double _wi)
+{
+  A_.emplace_back();
+  const auto wi_sqr = sqrt(_wi);
+  for (int j = 0; j < knots_.size() - deg_ - 1; ++j)
+    A_.back().push_back(N(j, deg_, _t) * wi_sqr);
+  B_.emplace_back(f_(_t) * wi_sqr);
+};
+
+template<size_t dimT>
 void LSQ<dimT>::find_equations()
 {
-  auto add_equation = [this](const double _t, const double _wi)
-  {
-    A_.emplace_back();
-    const auto wi_sqr = sqrt(_wi);
-    for (int j = 0; j < knots_.size() - deg_ - 1; ++j)
-      A_.back().push_back(N(j, deg_, _t) * wi_sqr);
-    B_.emplace_back(f_(_t) * wi_sqr);
-  };
+  const size_t SMPL_NMBR = 32;
+#define TRAP_BOUNDARY
+#ifdef TRAP_BOUNDARY
   double w_prev = 0;
   const auto last_idx = knots_.size() - 2;
   for (size_t i = 2; i <= last_idx; ++i)
@@ -78,7 +84,6 @@ void LSQ<dimT>::find_equations()
     auto dw = knots_[i] - knots_[i - 1];
     if (dw <= 0)
       continue;
-    const size_t SMPL_NMBR = 4;
     const double step = 1. / SMPL_NMBR;
     const double w_step = dw * step;
     auto wi = w_prev + w_step / 2;
@@ -91,6 +96,19 @@ void LSQ<dimT>::find_equations()
     w_prev = w_step / 2;
   }
   add_equation(knots_[last_idx], w_prev);
+#else
+  const auto last_idx = knots_.size() - 2;
+  for (size_t i = 2; i <= last_idx; ++i)
+  {
+    auto dw = knots_[i] - knots_[i - 1];
+    if (dw <= 0)
+      continue;
+    const double step = 1. / SMPL_NMBR;
+    const double wi = dw * step;
+    for (double x = step / 2; x < 1; x += step)
+      add_equation(knots_[i - 1] * (1 - x) + knots_[i] * x, wi);
+  }
+#endif
 }
 
 template<size_t dimT>

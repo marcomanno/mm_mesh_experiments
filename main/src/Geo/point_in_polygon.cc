@@ -1,7 +1,7 @@
 #pragma once
 
 #include "point_in_polygon.hh"
-#include "Geo/point_fitting.hh"
+#include "Geo/plane_fitting.hh"
 #include "Geo/vector.hh"
 #include "Utils/statistics.hh"
 
