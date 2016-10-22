@@ -385,16 +385,25 @@ EXAMPLE(6)
 EXAMPLE(7)
 {
   std::vector<double> knots = { 0, 0, 1./64, 1./32, 0.0625, 0.125, 0.25, 0.5, 1, 1 };
-  std::vector<Geo::Vector<2>> opt_ctr_pts;
-  auto eval_function = [](const double _t, Geo::Vector<2>* _der)
+  struct Function : public Geo::IBsplineFitting<2>::IFunction
   {
-    if (_der != nullptr)
-      *_der = Geo::Vector<2>{ 4 * cos(_t * 4), -4 * sin(_t * 4) };
-    return Geo::Vector<2>{sin(_t * 4), cos(_t * 4)};
+    const double coe_ = M_PI * 3 / 2;
+    virtual Geo::Vector<2> evaluate(const double _t) const
+    {
+      return Geo::Vector<2>{sin(_t * coe_), cos(_t * coe_)};
+    }
+    virtual Geo::Vector<2> closest_point(const Geo::Vector<2>& _pt) const
+    {
+      return _pt / Geo::length(_pt);
+    }
   };
-  Geo::BsplineFItting::solve<2>(2, eval_function, knots, opt_ctr_pts);
+
+  auto bsp_fit = Geo::IBsplineFitting<2>::make();
+  bsp_fit->init(2, knots, Function());
+  bsp_fit->compute();
 
   Geo::Nub<Geo::Vector<2>, double> ev_nub;
+  std::vector<Geo::Vector<2>> opt_ctr_pts(bsp_fit->X());
   ev_nub.init(opt_ctr_pts, knots);
 
 #if 0
@@ -468,12 +477,15 @@ EXAMPLE(7)
   {
     const double t = knots.back() * x + knots.front() * (1 - x);
     Geo::Vector<2> pt[2];
-    pt[0] = eval_function(t, nullptr);
+    pt[0] = Function().evaluate(t);
     ev_nub.eval(t, &pt[1], &pt[1] + 1);
     auto dd = pt[1] - pt[0];
+    double dist = Geo::length(pt[1]) - 1;
+    if (pt[1][1] > 0 && pt[1][0] < 0 || x == 0 || x == 1)
+      dist = Geo::length(pt[1] - pt[0]);
 #define SEP << " " <<
-    plot << t SEP Geo::length(dd) SEP dd[0] SEP dd[1] SEP 
-      Geo::length(pt[1]) - 1 << std::endl;
+    plot << /*t SEP Geo::length(dd) SEP dd[0] SEP dd[1] SEP */
+      dist << std::endl;
     for (auto i : { 0, 1 })
     {
       for (auto z : { 0., 0.1 })

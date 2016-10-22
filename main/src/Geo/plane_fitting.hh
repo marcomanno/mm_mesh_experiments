@@ -26,8 +26,7 @@ struct IPlaneFit
   */
   virtual bool compute(Vector3& _center, Vector3& _normal) = 0;
 
-  /*!Makes an IBestPlane object.
-  */
+  /*! Factory */
   static std::shared_ptr<IPlaneFit> make();
 };
 

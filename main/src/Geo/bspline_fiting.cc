@@ -9,35 +9,56 @@
 #include <fstream>
 #include <vector>
 
-
 namespace Geo {
-namespace BsplineFItting {
-namespace {
 
 template<size_t dimT>
-struct LSQ
+struct BsplineFitting : public IBsplineFitting<dimT>
 {
-  LSQ(const size_t _deg, const std::vector<double>& _knots, 
-    Function<dimT>* _f) :  deg_(_deg), knots_(_knots), f_(_f) { }
-  void solve();
+  bool init(const size_t _deg,
+    const std::vector<double>& _knots, const IFunction& _f)
+  {
+    if (_knots.empty())
+      return false;
+    auto extn = (_knots.back() - _knots.front()) / 2;
+    knots_.push_back(_knots.front() - extn);
+    knots_.insert(knots_.end(), _knots.begin(), _knots.end());
+    knots_.push_back(_knots.back() + extn);
+    deg_ = _deg;
+    f_ = &_f;
+    X_.clear();
+    A_.clear();
+    B_.clear();
+    return true;
+  }
+
+  void set_parameter_correction_iterations(size_t _itr_nmbr) { itr_nmbr_ = _itr_nmbr; }
+  void set_favour_boundaries(const bool _fvr_bndr) { fvr_bndr_ = _fvr_bndr; }
+  void set_samples_per_interval(const size_t _smpl_per_intrvl) 
+  {
+    smpl_per_intrvl_ = _smpl_per_intrvl;
+  }
+
+  void compute();
   const std::vector<Vector<dimT>>& X() const { return X_; }
   Vector<dimT> eval(const double _t);
 private:
   void find_equations();
   double N(size_t _i, const size_t _k, const double _t);
   void add_equation(const double _t, const double _wi);
-  double parameter_correction(const double _t);
 
   std::vector<std::vector<double>> A_;
-  const std::vector<double>& knots_;
+  std::vector<double> knots_;
   std::vector<Vector<dimT>> B_;
   std::vector<Vector<dimT>> X_;
-  const size_t deg_;
-  Function<dimT>* f_;
+  size_t deg_ = 0;
+  const IFunction* f_ = nullptr;
+  size_t itr_nmbr_ = 0;
+  bool fvr_bndr_ = true;
+  size_t smpl_per_intrvl_ = 4;
 };
 
 template<size_t dimT>
-double LSQ<dimT>::N(size_t _i, const size_t _p, const double _t)
+double BsplineFitting<dimT>::N(size_t _i, const size_t _p, const double _t)
 {
   if (_p == 0)
   {
@@ -61,46 +82,29 @@ double LSQ<dimT>::N(size_t _i, const size_t _p, const double _t)
 }
 
 template<size_t dimT>
-double LSQ<dimT>::parameter_correction(const double _t)
-{
-  if (X_.empty() || _t <= 0 || _t >= 1)
-    return _t;
-  auto t = _t;
-  Geo::Vector<dimT> pt_bspl = eval(_t);
-  for (size_t i = 0; i < 5; ++i)
-  {
-    Geo::Vector<dimT> der;
-    auto cv_pt = f_(t, &der);
-    auto dp = pt_bspl - cv_pt;
-    t += (dp * der) / Geo::length_square(der);
-    if (t < 0)
-      t = 0;
-    if (t > 1)
-      t = 1;
-  }
-  return t;
-}
-
-template<size_t dimT>
-void LSQ<dimT>::add_equation(const double _t, const double _wi)
+void BsplineFitting<dimT>::add_equation(const double _t, const double _wi)
 {
   A_.emplace_back();
   const auto wi_sqr = sqrt(_wi);
   for (int j = 0; j < knots_.size() - deg_ - 1; ++j)
     A_.back().push_back(N(j, deg_, _t) * wi_sqr);
-  B_.emplace_back(f_(parameter_correction(_t), nullptr) * wi_sqr);
+
+  const auto pt_bspl = eval(_t);
+  Vector<dimT> pt_crv;
+  if (X_.empty() || (_t == knots_[1]) || (_t == knots_[knots_.size() - 2]))
+    pt_crv = f_->evaluate(_t);
+  else
+    pt_crv = f_->closest_point(pt_bspl);
+  B_.emplace_back((pt_crv - pt_bspl) * wi_sqr);
 };
 
 template<size_t dimT>
-void LSQ<dimT>::find_equations()
+void BsplineFitting<dimT>::find_equations()
 {
   A_.clear();
   B_.clear();
-  const size_t SMPL_NMBR = 4;
-  for (size_t iter = 0; iter < 5; ++iter)
+  if (fvr_bndr_)
   {
-#define TRAP_BOUNDARY
-#ifdef TRAP_BOUNDARY
     double w_prev = 0;
     const auto last_idx = knots_.size() - 2;
     for (size_t i = 2; i <= last_idx; ++i)
@@ -108,7 +112,7 @@ void LSQ<dimT>::find_equations()
       auto dw = knots_[i] - knots_[i - 1];
       if (dw <= 0)
         continue;
-      const double step = 1. / SMPL_NMBR;
+      const double step = 1. / smpl_per_intrvl_;
       const double w_step = dw * step;
       auto wi = w_prev + w_step / 2;
       for (double x = 0; x < 1; x += step)
@@ -120,53 +124,54 @@ void LSQ<dimT>::find_equations()
       w_prev = w_step / 2;
     }
     add_equation(knots_[last_idx], w_prev);
-#else
+  }
+  else
+  {
     const auto last_idx = knots_.size() - 2;
     for (size_t i = 2; i <= last_idx; ++i)
     {
       auto dw = knots_[i] - knots_[i - 1];
       if (dw <= 0)
         continue;
-      const double step = 1. / SMPL_NMBR;
+      const double step = 1. / smpl_per_intrvl_;
       const double wi = dw * step;
       for (double x = step / 2; x < 1; x += step)
         add_equation(knots_[i - 1] * (1 - x) + knots_[i] * x, wi);
     }
-#endif
   }
 }
 
 template<size_t dimT>
-void LSQ<dimT>::solve()
+void BsplineFitting<dimT>::compute()
 {
-  for (size_t iter = 0; iter < 5; ++iter)
+  for (size_t iter = 0; iter <= itr_nmbr_; ++iter)
+  {
+    find_equations();
+    const auto row_nmbr = A_.size();
+    const auto col_nmbr = A_.front().size();
+    Eigen::MatrixXd A(row_nmbr, col_nmbr);
+    for (int i = 0; i < row_nmbr; ++i)
     {
-      find_equations();
-      const auto row_nmbr = A_.size();
-      const auto col_nmbr = A_.front().size();
-      Eigen::MatrixXd A(row_nmbr, col_nmbr);
-      for (int i = 0; i < row_nmbr; ++i)
-      {
-        for (int j = 0; j < col_nmbr; ++j)
-          A(i, j) = A_[i][j];
-      }
-      const auto& jsvd =
-        A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
-      for (int j = 0; j < B_[0].size(); ++j)
-      {
-        Eigen::VectorXd B(B_.size());
-        for (int i = 0; i < row_nmbr; ++i)
-          B(i) = B_[i][j];
-        Eigen::VectorXd res = jsvd.solve(B);
-        X_.resize(col_nmbr);
-        for (int i = 0; i < col_nmbr; ++i)
-          X_[i][j] = res(i);
-      }
+      for (int j = 0; j < col_nmbr; ++j)
+        A(i, j) = A_[i][j];
     }
+    const auto& jsvd =
+      A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
+    for (int j = 0; j < B_[0].size(); ++j)
+    {
+      Eigen::VectorXd B(B_.size());
+      for (int i = 0; i < row_nmbr; ++i)
+        B(i) = B_[i][j];
+      Eigen::VectorXd res = jsvd.solve(B);
+      X_.resize(col_nmbr);
+      for (int i = 0; i < col_nmbr; ++i)
+        X_[i][j] = res(i);
+    }
+  }
 }
 
 template<size_t dimT>
-Vector<dimT> LSQ<dimT>::eval(const double _t)
+Vector<dimT> BsplineFitting<dimT>::eval(const double _t)
 {
   Vector<dimT> res = { 0 };
   for (int i = 0; i < X_.size(); ++i)
@@ -174,35 +179,13 @@ Vector<dimT> LSQ<dimT>::eval(const double _t)
   return res;
 }
 
-}//namespace
-
-template <size_t dimT> bool solve(
-  const size_t _deg, Function<dimT>* _f,
-  const std::vector<double>& _knots,
-  std::vector<Vector<dimT>>& _opt_ctr_pts)
+template<size_t dimT>
+std::shared_ptr<IBsplineFitting<dimT>> IBsplineFitting<dimT>::make()
 {
-  if (_knots.size() == 0)
-    return false;
-  double dt = _knots.back() - _knots.front();
-  std::vector<double> knots;
-  knots.push_back(_knots.front() - dt);
-  knots.insert(knots.end(), _knots.begin(), _knots.end());
-  knots.push_back(_knots.back() + dt);
-  LSQ<dimT> lsq(_deg, knots, _f);
-  lsq.solve();
-  _opt_ctr_pts = lsq.X();
-  return true;
+  return std::make_shared<BsplineFitting<dimT>>();
 }
 
-#define INSTANTIATE_SOLVE(N)             \
-template bool solve<N>(                  \
-  const size_t _deg, Function<N>* _f,    \
-  const std::vector<double>& _knots,     \
-  std::vector<Vector<N>>& _opt_ctr_pts);
+template struct IBsplineFitting<2>;
+template struct IBsplineFitting<3>;
 
-INSTANTIATE_SOLVE(2)
-
-INSTANTIATE_SOLVE(3)
-
-}//namespace BsplineFItting
 }//namespace Geo
