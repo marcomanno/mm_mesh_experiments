@@ -386,8 +386,10 @@ EXAMPLE(7)
 {
   std::vector<double> knots = { 0, 0, 1./64, 1./32, 0.0625, 0.125, 0.25, 0.5, 1, 1 };
   std::vector<Geo::Vector<2>> opt_ctr_pts;
-  auto eval_function = [](const double _t)
+  auto eval_function = [](const double _t, Geo::Vector<2>* _der)
   {
+    if (_der != nullptr)
+      *_der = Geo::Vector<2>{ 4 * cos(_t * 4), -4 * sin(_t * 4) };
     return Geo::Vector<2>{sin(_t * 4), cos(_t * 4)};
   };
   Geo::BsplineFItting::solve<2>(2, eval_function, knots, opt_ctr_pts);
@@ -466,11 +468,12 @@ EXAMPLE(7)
   {
     const double t = knots.back() * x + knots.front() * (1 - x);
     Geo::Vector<2> pt[2];
-    pt[0] = eval_function(t);
+    pt[0] = eval_function(t, nullptr);
     ev_nub.eval(t, &pt[1], &pt[1] + 1);
     auto dd = pt[1] - pt[0];
 #define SEP << " " <<
-    plot << t SEP Geo::length(dd) SEP dd[0] SEP dd[1] << std::endl;
+    plot << t SEP Geo::length(dd) SEP dd[0] SEP dd[1] SEP 
+      Geo::length(pt[1]) - 1 << std::endl;
     for (auto i : { 0, 1 })
     {
       for (auto z : { 0., 0.1 })

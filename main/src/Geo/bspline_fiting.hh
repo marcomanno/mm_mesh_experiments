@@ -7,7 +7,7 @@ namespace Geo {
 namespace BsplineFItting {
 
 template <size_t dimT>
-using Function = Geo::Vector<dimT>(const double _t);
+using Function = Geo::Vector<dimT>(const double _t, Geo::Vector<dimT>* _der);
 
 template <size_t dimT> bool solve(
   const size_t _deg, Function<dimT>* _f,
