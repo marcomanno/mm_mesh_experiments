@@ -52,7 +52,7 @@ public:
   {
     m_nk = m_np = m_deg = 0;
   }
-  bool init(std::vector<Pt> & ctrp, std::vector<Par> & kn)
+  bool init(const std::vector<Pt> & ctrp, const std::vector<Par> & kn)
   {
     m_nk = kn.size();
     m_np = ctrp.size();
