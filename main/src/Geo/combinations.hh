@@ -13,7 +13,7 @@ template <size_t kT> constexpr size_t comb(const size_t _n)
 
 template <> constexpr size_t comb<0>(const size_t) { return 1; }
 
-size_t comb(size_t _n, size_t _k)
+inline size_t comb(size_t _n, size_t _k)
 {
   if (_k > _n)
     return 1;

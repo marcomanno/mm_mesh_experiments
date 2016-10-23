@@ -89,13 +89,15 @@ void BsplineFitting<dimT>::add_equation(const double _t, const double _wi)
   for (int j = 0; j < knots_.size() - deg_ - 1; ++j)
     A_.back().push_back(N(j, deg_, _t) * wi_sqr);
 
-  const auto pt_bspl = eval(_t);
   Vector<dimT> pt_crv;
   if (X_.empty() || (_t == knots_[1]) || (_t == knots_[knots_.size() - 2]))
     pt_crv = f_->evaluate(_t);
   else
+  {
+    const auto pt_bspl = eval(_t);
     pt_crv = f_->closest_point(pt_bspl);
-  B_.emplace_back((pt_crv - pt_bspl) * wi_sqr);
+  }
+  B_.emplace_back(pt_crv * wi_sqr);
 };
 
 template<size_t dimT>
