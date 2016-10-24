@@ -16,4 +16,4 @@ The class provide several options that can be used to set-up the L2 problems:
 
 The parameter correction scheme seems very good. This is what happens approximating a polyline:
 
-["", compare_l2_bspline_fit.jpg]
+![compare_l2_bspline_fit](compare_l2_bspline_fit.jpg)
