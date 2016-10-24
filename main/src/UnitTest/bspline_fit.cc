@@ -41,7 +41,7 @@ void analyse(const std::vector<double>& _knots,
       if (x == 0 || x == 1)
         pt_crv = _func.evaluate(t);
       else
-        pt_crv = _func.closest_point(pt_bspl);
+        pt_crv = _func.closest_point(pt_bspl, t);
       dist = Geo::length(pt_bspl - pt_crv);
       plot << dist << " ";
     }
@@ -63,7 +63,8 @@ TEST_CASE("arc fit", "[BSPLFIT]")
     {
       return Geo::Vector<2>{sin(_t * coe_), cos(_t * coe_)};
     }
-    virtual Geo::Vector<2> closest_point(const Geo::Vector<2>& _pt) const
+    virtual Geo::Vector<2> closest_point(
+      const Geo::Vector<2>& _pt, const double) const
     {
       return _pt / Geo::length(_pt);
     }
@@ -84,19 +85,23 @@ TEST_CASE("poly fit", "[BSPLFIT]")
         return Geo::Vector<2>{ _t * 3, 1 };
       if (_t > two_third)
         return Geo::Vector<2>{ 1. - _t, -1. };
-      return Geo::Vector<2>{ 1., 2. - _t * 3. };
+      return Geo::Vector<2>{ 1., 3. - _t * 6. };
     }
-    virtual Geo::Vector<2> closest_point(const Geo::Vector<2>& _pt) const
+    virtual Geo::Vector<2> closest_point(
+      const Geo::Vector<2>& _pt, const double _t) const
     {
-      if (_pt[1] < 0)
-        return Geo::Vector<2>{ 0., _pt[0] < 0 ? -1. : 1. };
-      if (fabs(_pt[1]) < fabs(_pt[0]))
+      if (_t < one_third)
       {
-        if (fabs(_pt[1]) < 1)
-          return Geo::Vector<2>{ 1., _pt[1] };
-        return Geo::Vector<2>{ 1., _pt[1] > 0 ? 1. : -1. };
+        double x = std::max(std::min(_pt[0], 1.), 0.);
+        return Geo::Vector<2>{ x, 1. };
       }
-      return Geo::Vector<2>{ _pt[0], _pt[1] > 0 ? 1. : -1. };
+      if (_t > two_third)
+      {
+        double x = std::max(std::min(_pt[0], 1.), 0.);
+        return Geo::Vector<2>{ x, -1. };
+      }
+      double y = std::max(std::min(_pt[1], 1.), -1.);
+      return Geo::Vector<2>{ 1., y };
     }
   };
   analyse(knots, Function());

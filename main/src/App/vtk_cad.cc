@@ -385,21 +385,53 @@ EXAMPLE(6)
 EXAMPLE(7)
 {
   std::vector<double> knots = { 0, 0, 1./64, 1./32, 0.0625, 0.125, 0.25, 0.5, 1, 1 };
-  struct Function : public Geo::IBsplineFitting<2>::IFunction
+  struct Function0 : public Geo::IBsplineFitting<2>::IFunction
   {
     const double coe_ = M_PI * 3 / 2;
     virtual Geo::Vector<2> evaluate(const double _t) const
     {
       return Geo::Vector<2>{sin(_t * coe_), cos(_t * coe_)};
     }
-    virtual Geo::Vector<2> closest_point(const Geo::Vector<2>& _pt) const
+    virtual Geo::Vector<2> closest_point(
+      const Geo::Vector<2>& _pt, const double) const
     {
       return _pt / Geo::length(_pt);
     }
   };
+  struct Function1 : public Geo::IBsplineFitting<2>::IFunction
+  {
+    const double one_third = 1. / 3, two_third = 2. / 3;
+    virtual Geo::Vector<2> evaluate(const double _t) const
+    {
+      if (_t < one_third)
+        return Geo::Vector<2>{ _t * 3, 1 };
+      if (_t > two_third)
+        return Geo::Vector<2>{ 1. - _t, -1. };
+      return Geo::Vector<2>{ 1., 3. - _t * 6. };
+    }
+    virtual Geo::Vector<2> closest_point(
+      const Geo::Vector<2>& _pt, const double _t) const
+    {
+      if (_t < one_third)
+      {
+        double x = std::max(std::min(_pt[0], 1.), 0.);
+        return Geo::Vector<2>{ x, 1. };
+      }
+      if (_t > two_third)
+      {
+        double x = std::max(std::min(_pt[0], 1.), 0.);
+        return Geo::Vector<2>{ x, -1. };
+      }
+      double y = std::max(std::min(_pt[1], 1.), -1.);
+      return Geo::Vector<2>{ 1., y };
+    }
+  };
+  const Function1 func;
 
   auto bsp_fit = Geo::IBsplineFitting<2>::make();
-  bsp_fit->init(2, knots, Function());
+  bsp_fit->init(2, knots, func);
+  //bsp_fit->set_parameter_correction_iterations(4);
+  //bsp_fit->set_samples_per_interval(256);
   bsp_fit->compute();
 
   Geo::Nub<Geo::Vector<2>, double> ev_nub;
@@ -477,7 +509,7 @@ EXAMPLE(7)
   {
     const double t = knots.back() * x + knots.front() * (1 - x);
     Geo::Vector<2> pt[2];
-    pt[0] = Function().evaluate(t);
+    pt[0] = func.evaluate(t);
     ev_nub.eval(t, &pt[1], &pt[1] + 1);
     auto dd = pt[1] - pt[0];
     double dist = Geo::length(pt[1]) - 1;

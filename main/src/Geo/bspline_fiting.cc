@@ -93,10 +93,7 @@ void BsplineFitting<dimT>::add_equation(const double _t, const double _wi)
   if (X_.empty() || (_t == knots_[1]) || (_t == knots_[knots_.size() - 2]))
     pt_crv = f_->evaluate(_t);
   else
-  {
-    const auto pt_bspl = eval(_t);
-    pt_crv = f_->closest_point(pt_bspl);
-  }
+    pt_crv = f_->closest_point(eval(_t), _t);
   B_.emplace_back(pt_crv * wi_sqr);
 };
 

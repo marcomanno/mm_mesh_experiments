@@ -11,7 +11,8 @@ struct IBsplineFitting
   struct IFunction
   {
     virtual Geo::Vector<dimT> evaluate(const double _t) const = 0;
-    virtual Geo::Vector<dimT> closest_point(const Geo::Vector<dimT>& _pt) const = 0;
+    virtual Geo::Vector<dimT> closest_point(
+      const Geo::Vector<dimT>& _pt, const double _par) const = 0;
   };
 
   // Setup
