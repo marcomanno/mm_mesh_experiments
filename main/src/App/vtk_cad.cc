@@ -356,11 +356,11 @@ EXAMPLE(5)
 EXAMPLE(6)
 {
   auto body0 = Import::load_obj(
-    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Banana_00.obj");
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
   auto body1 = Import::load_obj(
-    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Banana_00.obj");
+    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
-  const Geo::Vector3 oofs{ 0.1, 0.1, 0.1 };
+  const Geo::Vector3 oofs{ 0.01, 0.01, 0.01 };
   for (size_t i = 0; i < vert_it.size(); ++i)
   {
     Geo::Point pt;
@@ -375,7 +375,7 @@ EXAMPLE(6)
 #else
   auto booler = Boolean::ISolver::make();
   booler->init(body0, body1);
-  auto result = booler->compute(Boolean::Operation::UNION);
+  auto result = booler->compute(Boolean::Operation::DIFFERENCE);
   poly_dats.push_back(make_tessellation(result));
   Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
 #endif
@@ -437,59 +437,6 @@ EXAMPLE(7)
   Geo::Nub<Geo::Vector<2>, double> ev_nub;
   std::vector<Geo::Vector<2>> opt_ctr_pts(bsp_fit->X());
   ev_nub.init(opt_ctr_pts, knots);
-
-#if 0
-
-  // Create a table with some points in it
-  vtkSmartPointer<vtkTable> table = vtkSmartPointer<vtkTable>::New();
-
-  auto add_table_row = [&table](const char* _name)
-  {
-    auto row = vtkSmartPointer<vtkFloatArray>::New();
-    row->SetName(_name);
-    table->AddColumn(row);
-    return row;
-  };
-  vtkSmartPointer<vtkFloatArray> arrX = add_table_row("X Axis");
-  vtkSmartPointer<vtkFloatArray> dX = add_table_row("dX");
-  vtkSmartPointer<vtkFloatArray> dY = add_table_row("dY");
-  table->SetNumberOfRows(257);
-
-  for (auto i = 0; i <= 256; ++i)
-  {
-    const double x = i * 1. / 256;
-    const double t = knots.back() * x + knots.front() * (1 - x);
-    Geo::Vector<2> pt[2];
-    pt[0] = eval_function(t);
-    ev_nub.eval(t, &pt[1], &pt[1] + 1);
-    auto dist = pt[0] - pt[1];
-    table->SetValue(i, 0, t);
-    table->SetValue(i, 1, dist[0]);
-    table->SetValue(i, 2, dist[1]);
-  }
-  // Set up the view
-  vtkSmartPointer<vtkContextView> view = vtkSmartPointer<vtkContextView>::New();
-  view->GetRenderer()->SetBackground(1.0, 1.0, 1.0);
-
-  // Add multiple line plots, setting the colors etc
-  vtkSmartPointer<vtkChartXY> chart = vtkSmartPointer<vtkChartXY>::New();
-  view->GetScene()->AddItem(chart);
-
-  auto add_line = [&chart, &table](int i)
-  {
-    vtkPlot *line = chart->AddPlot(vtkChart::LINE);
-    line->SetInputData(table, 0, i);
-    line->SetColor(255 * i, 255 * (1 - i), 0, 255);
-    line->SetWidth(1.0);
-  };
-  add_line(0);
-  add_line(1);
-
-  // Start interactor
-  view->GetInteractor()->Initialize();
-  view->GetInteractor()->Start();
-
-#else
   std::vector<vtkPolyData*> poly_dats = { vtkPolyData::New(), vtkPolyData::New() };
 
   vtkPoints* newPoints[2];
@@ -537,5 +484,4 @@ EXAMPLE(7)
   }
   Geo::Vector3 cols[2] = { { 1, 0, 0 },{ 0, 0, 1 } };
   render_actors(poly_dats, cols);
-#endif
 }
