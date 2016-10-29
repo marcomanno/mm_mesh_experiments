@@ -477,73 +477,68 @@ void FaceEdgeMap::split_with_chains()
   {
     for (auto& face_info : map_[i])
     {
-      for (;;) // Until there is something to split.
+      auto& faces = std::get<NewFaces>(face_info.second);
+      auto& edge_vec = std::get<NewEdges>(face_info.second);
+      for (size_t j = 0; j < faces.size() && !edge_vec.empty(); ++j)
       {
-        std::list<Topo::Split<Topo::Type::FACE>> face_splitter_list;
-        auto& faces = std::get<NewFaces>(face_info.second);
-        for (auto& face : faces)
+        auto& face = faces[j];
+        Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(face);
+        for (auto vert_it = fv_it.begin(); vert_it != fv_it.end(); )
         {
-          Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(face);
-          auto& pt_sets = std::get<NewEdges>(face_info.second);
-          for (auto vert_it = fv_it.begin(); vert_it != fv_it.end(); )
+          EdgeChain edge_ch;
+          Topo::Wrap<Topo::Type::VERTEX>* last_vert_it;
+          if (!find_edge_chain(*vert_it, edge_vec, fv_it, edge_ch, last_vert_it))
           {
-            EdgeChain edge_ch;
-            Topo::Wrap<Topo::Type::VERTEX>* last_vert_it;
-            if (!find_edge_chain(*vert_it, pt_sets, fv_it, edge_ch, last_vert_it))
-            {
-              ++vert_it; // Try next vertex.
-              continue;
-            }
-
-            Topo::VertexChains split_chains;
-            split_chains.resize(2);
-            split_chains[0].push_back((*edge_ch[0])[0]);
-            for (auto& edge_it : edge_ch)
-              split_chains[0].push_back((*edge_it)[1]);
-
-            split_chains[1] = split_chains[0];
-
-            Topo::Wrap<Topo::Type::VERTEX>* first_vert_it = vert_it;
-            std::reverse(split_chains[1].begin(), split_chains[1].end());
-            auto complete_chain = [&fv_it](Topo::Wrap<Topo::Type::VERTEX>* _first,
-              Topo::Wrap<Topo::Type::VERTEX>* _last, Topo::VertexChain& _chain)
-            {
-              auto v_it = _first;
-              while (++v_it != _last && v_it != fv_it.end())
-                _chain.push_back(*v_it);
-              if (v_it == _last)
-                return;
-              for (v_it = fv_it.begin(); v_it != _last; ++v_it)
-                _chain.push_back(*v_it);
-            };
-            if (last_vert_it != first_vert_it)
-              complete_chain(first_vert_it, last_vert_it, split_chains[1]);
-            complete_chain(last_vert_it, first_vert_it, split_chains[0]);
-
-            auto norm = std::get<Normal>(face_info.second);
-            resolve_ambiguities(
-              split_chains, (*edge_ch.front())[0], (*edge_ch.back())[1], norm);
-
-            face_splitter_list.emplace_front(face);
-            face_splitter_list.back()(split_chains);
-            std::sort(edge_ch.begin(), edge_ch.end());
-            for (auto it = edge_ch.rbegin(); it != edge_ch.rend(); ++it)
-              pt_sets.erase(*it);
-            if (pt_sets.empty())
-              break;
-          }
-        }
-        if (face_splitter_list.empty())
-          break;
-        auto split_it = face_splitter_list.begin();
-        for (auto j = faces.size(); j-- > 0; )
-        {
-          if (faces[j] != split_it->face())
+            ++vert_it; // Try next vertex.
             continue;
-          auto& new_fa = split_it->new_faces();
-          THROW_IF(new_fa.size() == 0, "Split with 0 faces???");
-          faces[j] = new_fa[0];
-          faces.insert(faces.end(), new_fa.cbegin() + 1, new_fa.cend());
+          }
+
+          Topo::VertexChains split_chains;
+          split_chains.resize(2);
+          split_chains[0].push_back((*edge_ch[0])[0]);
+          for (auto& edge_it : edge_ch)
+            split_chains[0].push_back((*edge_it)[1]);
+
+          split_chains[1] = split_chains[0];
+
+          Topo::Wrap<Topo::Type::VERTEX>* first_vert_it = vert_it;
+          std::reverse(split_chains[1].begin(), split_chains[1].end());
+          auto complete_chain = [&fv_it](Topo::Wrap<Topo::Type::VERTEX>* _first,
+            Topo::Wrap<Topo::Type::VERTEX>* _last, Topo::VertexChain& _chain)
+          {
+            auto v_it = _first;
+            while (++v_it != _last && v_it != fv_it.end())
+              _chain.push_back(*v_it);
+            if (v_it == _last)
+              return;
+            for (v_it = fv_it.begin(); v_it != _last; ++v_it)
+              _chain.push_back(*v_it);
+          };
+          if (last_vert_it != first_vert_it)
+            complete_chain(first_vert_it, last_vert_it, split_chains[1]);
+          complete_chain(last_vert_it, first_vert_it, split_chains[0]);
+
+          auto norm = std::get<Normal>(face_info.second);
+          resolve_ambiguities(
+            split_chains, (*edge_ch.front())[0], (*edge_ch.back())[1], norm);
+
+          Topo::Split<Topo::Type::FACE> face_splitter(face);
+          face_splitter(split_chains);
+          auto& new_fa = face_splitter.new_faces();
+          if (!new_fa.empty())
+          {
+            face = face_splitter.new_faces()[0];
+            faces.insert(faces.end(), new_fa.cbegin() + 1, new_fa.cend());
+          }
+          // Remove the used edges from the set of new edges.
+          for (auto ch : edge_ch) ch->clear();
+          edge_vec.erase(
+            std::remove_if(edge_vec.begin(), edge_vec.end(),
+              [](const CommonVertices& _comm_v) { return _comm_v.empty(); }),
+            edge_vec.end());
+          // We have performed one split. Lets re-process the same face and all the others.
+          --j;
+          break;
         }
       }
     }
