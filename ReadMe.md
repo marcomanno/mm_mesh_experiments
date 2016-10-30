@@ -28,3 +28,9 @@ Examples:
 # Toolkit
 
 The project vtk_cad it a toolkit to visualize bodies based on vtk.
+
+# Dependencies:
+
+- cmake
+- eigen
+- vtk
