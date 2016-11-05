@@ -6,6 +6,12 @@
 #include <Utils/statistics.hh>
 #include "PolygonTriangularization/poly_triang.hh"
 
+#ifdef JACOBI
+#pragma warning( push )
+#pragma warning( disable : 4714 )
+#include <Eigen/Dense>
+#endif
+
 #include <vector>
 
 namespace Geo {
@@ -69,6 +75,24 @@ bool closest_point(const Segment& _seg, const Point& _pt,
 bool closest_point(const Segment& _seg_a, const Segment& _seg_b,
   Point* _clsst_pt, double _t[2], double * _dist_sq)
 {
+  double t[2];
+  static bool jac = false;
+#ifdef JACOBI
+  Vector3 a[2] = { _seg_a[1] - _seg_a[0], _seg_b[0] - _seg_b[1] };
+  Eigen::MatrixXd A(a[0].size(), std::size(a));
+  Eigen::VectorXd B(a[0].size());
+  for (int i = 0; i < a[0].size(); ++i)
+  {
+    B(i) = _seg_b[0][i] - _seg_a[0][i];
+    for (int j = 0; j < std::size(a); ++j)
+      A(i, j) = a[j][i];
+  }
+  const auto& jsvd =
+    A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
+  Eigen::VectorXd res = jsvd.solve(B);
+  t[0] = res(0);
+  t[1] = res(1);
+#else
   auto A = _seg_a[0] - _seg_b[0];
   auto b = _seg_a[1] - _seg_a[0];
   auto c = _seg_b[1] - _seg_b[0];
@@ -79,11 +103,11 @@ bool closest_point(const Segment& _seg_a, const Segment& _seg_b,
   len_stats.add(length_square(_seg_b[0]));
   len_stats.add(length_square(_seg_b[1]));
 
-  if (zero(discr, len_stats.max()))
+  if (zero_sq(discr, len_stats.max()))
     return false;
-  double t[2];
   t[0] = ((A * c) * (b * c) - (A * b) * (c * c)) / discr;
   t[1] = ((A * c) * (b * b) - (A * b) * (b * c)) / discr;
+#endif
   if (!check_par(t[0]) || !check_par(t[1]))
     return false;
   auto pt_a = evaluate(_seg_a, t[0]);

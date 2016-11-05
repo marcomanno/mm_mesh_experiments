@@ -2,6 +2,9 @@
 // This simple example shows how to do basic rendering and pipeline
 // creation using C++.
 //
+
+#include "open_file.hh"
+
 #include "vtkCylinderSource.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkActor.h"
@@ -12,6 +15,7 @@
 #include "vtkCamera.h"
 #include "vtkTextActor.h"
 #include "vtkTextProperty.h"
+#include "vtkVertex.h"
 
 #include <vtkVersion.h>
 #include <vtkSmartPointer.h>
@@ -121,6 +125,7 @@ void render_actors(std::vector<vtkPolyData*>& _ply_dats, Geo::Vector3* _clrs = n
     //actor->RotateY(-45.0);
 
     actor->GetProperty()->SetRepresentationToWireframe();
+    actor->GetProperty()->SetPointSize(5);
 
     // Add the actors to the renderer, set the background and size
     //
@@ -166,7 +171,15 @@ vtkPolyData* make_tessellation(Topo::Wrap<Topo::Type::BODY> _body)
     v->geom(pt);
     newPoints->InsertNextPoint(pt[0], pt[1], pt[2]);
   }
+  vtkSmartPointer<vtkCellArray> vertices = vtkSmartPointer<vtkCellArray>::New();
+  for (int id = 0; id < all_verts.size(); ++id)
+  {
+    vtkVertex* vertex = vtkSmartPointer<vtkVertex>::New();
+    vertex->GetPointIds()->SetId(0, id);
+    vertices->InsertNextCell(vertex);
+  }
   poly_dat->SetPoints(newPoints);
+  poly_dat->SetVerts(vertices);
   newPoints->Delete();
 
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> face_it(_body);
@@ -197,11 +210,16 @@ vtkPolyData* make_tessellation(Topo::Wrap<Topo::Type::BODY> _body)
 
 EXAMPLE(0)
 {
-  auto body0 = Import::load_obj(
-    "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj");
   std::vector<vtkPolyData*> poly_dats;
+  auto body0 = IO::load_obj(open_file().c_str());
+  //  "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj");
   poly_dats.push_back(make_tessellation(body0));
-  render_actors(poly_dats);
+ 
+  auto body1 = IO::load_obj(open_file().c_str());
+  poly_dats.push_back(make_tessellation(body1));
+  Geo::Vector3 cols[2] = { {1, 0, 0}, {0,0,1} };
+
+  render_actors(poly_dats, cols);
 }
 
 EXAMPLE(1)
@@ -261,7 +279,7 @@ EXAMPLE(1)
 
 EXAMPLE(2)
 {
-  auto body = Import::load_obj(
+  auto body = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/pyramid.OBJ");
   vtkPolyData* poly_dat = make_tessellation(body);
   std::vector<vtkPolyData*> poly_dats{ poly_dat };
@@ -270,9 +288,9 @@ EXAMPLE(2)
 
 EXAMPLE(3)
 {
-  auto body0 = Import::load_obj(
+  auto body0 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
-  auto body1 = Import::load_obj(
+  auto body1 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
   const Geo::Vector3 oofs{ .1, .1, .1 };
@@ -291,16 +309,16 @@ EXAMPLE(3)
   auto inters = booler->compute(Boolean::Operation::DIFFERENCE);
   poly_dats.push_back(make_tessellation(inters));
 
-  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", inters);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", inters);
 
   render_actors(poly_dats);
 }
 
 EXAMPLE(4)
 {
-  auto body0 = Import::load_obj(
+  auto body0 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube.obj");
-  auto body1 = Import::load_obj(
+  auto body1 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube.obj");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
   const Geo::Vector3 oofs{ .5, .5, .5 };
@@ -326,9 +344,9 @@ EXAMPLE(4)
 
 EXAMPLE(5)
 {
-  auto body0 = Import::load_obj(
+  auto body0 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube_00.obj");
-  auto body1 = Import::load_obj(
+  auto body1 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube_00.obj");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
   const Geo::Vector3 oofs{ .5, .5, .5 };
@@ -348,16 +366,16 @@ EXAMPLE(5)
   booler->init(body0, body1);
   auto inters = booler->compute(Boolean::Operation::DIFFERENCE);
   poly_dats.push_back(make_tessellation(inters));
-  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube_00_out.obj", inters);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube_00_out.obj", inters);
 #endif
   render_actors(poly_dats);
 }
 
 EXAMPLE(6)
 {
-  auto body0 = Import::load_obj(
+  auto body0 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
-  auto body1 = Import::load_obj(
+  auto body1 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
   const Geo::Vector3 oofs{ 0.01, 0.01, 0.01 };
@@ -377,7 +395,7 @@ EXAMPLE(6)
   booler->init(body0, body1);
   auto result = booler->compute(Boolean::Operation::DIFFERENCE);
   poly_dats.push_back(make_tessellation(result));
-  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
 #endif
   render_actors(poly_dats);
 }

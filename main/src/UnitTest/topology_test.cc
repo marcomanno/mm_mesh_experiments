@@ -72,7 +72,7 @@ TEST_CASE("4 VV intersections", "[Bool]")
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::UNION);
 
-  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
 
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv;
   bv.reset(result);
@@ -102,7 +102,7 @@ TEST_CASE("4 EE intersections", "[Bool]")
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
 
-  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
 
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   REQUIRE(bf_it.size() == 8);
@@ -119,7 +119,7 @@ TEST_CASE("3 FF intersections", "[Bool]")
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
 
-  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
 
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   REQUIRE(bf_it.size() == 9);
@@ -129,8 +129,8 @@ TEST_CASE("3 FF intersections", "[Bool]")
 
 TEST_CASE("pyramid", "[Bool]")
 {
-  auto pyr1 = Import::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/pyramid.obj");
-  auto pyr2 = Import::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/pyramid.obj");
+  auto pyr1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/pyramid.obj");
+  auto pyr2 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/pyramid.obj");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(pyr2);
   for (auto& x : bv_it)
   {
@@ -143,7 +143,7 @@ TEST_CASE("pyramid", "[Bool]")
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
   auto result = bool_solver->compute(Boolean::Operation::INTERSECTION);
-  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   REQUIRE(bf_it.size() == 9);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
@@ -154,8 +154,8 @@ TEST_CASE("pyramid", "[Bool]")
 
 TEST_CASE("2apple", "[Bool]")
 {
-  auto pyr1 = Import::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
-  auto pyr2 = Import::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
+  auto pyr1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
+  auto pyr2 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(pyr2);
   for (auto& x : bv_it)
   {
@@ -164,8 +164,9 @@ TEST_CASE("2apple", "[Bool]")
     pt[2] += 2;
     x->set_geom(pt);
   }
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/apple_moved.obj", pyr2);
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
   auto result = bool_solver->compute(Boolean::Operation::UNION);
-  Import::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
 }

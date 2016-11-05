@@ -8,7 +8,7 @@
 #include <fstream>
 #include <sstream>
 
-namespace Import {
+namespace IO {
 
 Topo::Wrap<Topo::Type::BODY> load_obj(const char* _flnm)
 {

@@ -9,7 +9,7 @@
 #include <fstream>
 #include <sstream>
 
-namespace Import {
+namespace IO {
 
 bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
 {

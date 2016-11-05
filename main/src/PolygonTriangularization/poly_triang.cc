@@ -1,6 +1,7 @@
 #include "poly_triang.hh"
 #include "Geo/area.hh"
 #include "Geo/entity.hh"
+#include "Geo/plane_fitting.hh"
 #include "Geo/linear_system.hh"
 #include "Geo/point_in_polygon.hh"
 #include "Geo/tolerance.hh"
@@ -171,43 +172,48 @@ void PolygonTriangulation::compute()
   sol_.compute(loops_[0], indcs, tol);
 }
 
-namespace {
-//!Find if the triangle is completely insidethe polygon
-bool valid_triangle(const size_t _i,
-  const std::vector<size_t>& _indcs, 
-  const std::vector<Geo::Vector3>&  _pts,
-  const double _tol)
-{
-  auto next = _i;
-  auto prev = Utils::decrease(
-    Utils::decrease(_i, _indcs.size()), _indcs.size());
-  std::vector<Geo::Vector3> tmp_poly;
-  for (const auto& ind : _indcs)
-    tmp_poly.push_back(_pts[ind]);
-  auto pt_in = (tmp_poly[prev] + tmp_poly[next]) * 0.5;
-  auto where = Geo::PointInPolygon::classify(tmp_poly, pt_in, _tol);
-  if (where != Geo::PointInPolygon::Inside)
-    return false;
-  auto j = tmp_poly.size() - 1;
-  Geo::Segment seg = {tmp_poly[prev], tmp_poly[next]};
-  for (size_t i = 0; i < tmp_poly.size(); j = i++)
-  {
-    if (_indcs[i] == _indcs[next] || _indcs[i] == _indcs[prev] ||
-      _indcs[j] == _indcs[next] || _indcs[j] == _indcs[prev])
-      continue;
-    Geo::Segment pol_seg = {tmp_poly[i], tmp_poly[j]};
-    if (Geo::closest_point(seg, pol_seg))
-      return false;
-  }
-  return true;
-}
-};
-
 void PolygonTriangulation::Solution::compute(
   const std::vector<Geo::Vector3>& _pts,
   std::vector<size_t>& _indcs,
   const double _tol)
 {
+  auto pl_fit = Geo::IPlaneFit::make();
+  pl_fit->init(_pts.size());
+  for (const auto pt : _pts)
+    pl_fit->add_point(pt);
+  Geo::Vector<3> centr, norm;
+  pl_fit->compute(centr, norm);
+
+  auto valid_triangle = [&_indcs, &_pts, &_tol, &norm](const size_t _i)
+  {
+    auto next = _i;
+    auto prev = Utils::decrease(
+      Utils::decrease(_i, _indcs.size()), _indcs.size());
+    std::vector<Geo::Vector3> tmp_poly;
+    for (const auto& ind : _indcs)
+      tmp_poly.push_back(_pts[ind]);
+    auto pt_in = (tmp_poly[prev] + tmp_poly[next]) * 0.5;
+    auto where = Geo::PointInPolygon::classify(tmp_poly, pt_in, _tol, &norm);
+    if (where != Geo::PointInPolygon::Inside)
+      return false;
+    auto j = tmp_poly.size() - 1;
+    Geo::Segment seg = { tmp_poly[prev], tmp_poly[next] };
+    for (size_t i = 0; i < tmp_poly.size(); j = i++)
+    {
+      if (_indcs[i] == _indcs[next] || _indcs[i] == _indcs[prev])
+        continue;
+      double dist_sq = 0;
+      if (!Geo::closest_point(seg, tmp_poly[i], nullptr, nullptr, &dist_sq) ||
+        dist_sq <= std::max(Geo::epsilon(seg[0]), Geo::epsilon(seg[1])))
+        return false;
+      if (_indcs[j] == _indcs[next] || _indcs[j] == _indcs[prev])
+        continue;
+      if (Geo::closest_point(seg, Geo::Segment({ tmp_poly[i], tmp_poly[j] })))
+        return false;
+    }
+    return true;
+  };
+
   while (_indcs.size() > 3)
   {
     Geo::Vector3 vects[2];
@@ -218,7 +224,7 @@ void PolygonTriangulation::Solution::compute(
     {
       inds[2] = _indcs[i];
       vects[1] = _pts[inds[2]] - _pts[inds[1]];
-      if (valid_triangle(i, _indcs, _pts, _tol))
+      if (valid_triangle(i))
       {
         auto angl = Geo::angle(vects[0], vects[1]);
         min_ang.add(angl, i);
