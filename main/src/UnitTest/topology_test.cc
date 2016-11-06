@@ -154,19 +154,46 @@ TEST_CASE("pyramid", "[Bool]")
 
 TEST_CASE("2apple", "[Bool]")
 {
-  auto pyr1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
-  auto pyr2 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
+  const char* out_flnm = "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/2apple_";
+  for (auto dz : { 2.5, 2., 1.5, 1. })
+  {
+    auto pyr1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
+    auto pyr2 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
+    Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(pyr2);
+    for (auto& x : bv_it)
+    {
+      Geo::Point pt;
+      x->geom(pt);
+      pt[2] += dz;
+      x->set_geom(pt);
+    }
+    IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/apple_moved.obj", pyr2);
+    auto bool_solver = Boolean::ISolver::make();
+    bool_solver->init(pyr1, pyr2);
+    auto result = bool_solver->compute(Boolean::Operation::UNION);
+    std::string flnm(out_flnm);
+    flnm += std::to_string(dz) + ".obj";
+    IO::save_obj(flnm.c_str(), result);
+  }
+}
+
+#if 0
+TEST_CASE("2tuna", "[Bool]")
+{
+  auto pyr1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.obj");
+  auto pyr2 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.obj");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(pyr2);
   for (auto& x : bv_it)
   {
     Geo::Point pt;
     x->geom(pt);
-    pt[2] += 2;
+    pt[2] += 0.2;
     x->set_geom(pt);
   }
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/apple_moved.obj", pyr2);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA_moved.obj", pyr2);
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
-  auto result = bool_solver->compute(Boolean::Operation::UNION);
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/tua_result.obj", result);
 }
+#endif
