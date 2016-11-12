@@ -379,8 +379,8 @@ point_in_polygon(
 // Given the chains of vertices to be used as new vertices for the split faces,
 // and the vertices _vert_a and _vert_b where the split part split the face, solves
 // ambiguous split where _vert_a and/or _vert_b may appear more than once in some
-// of the new chains of vertices. If this happens this menas that the face has 
-// some interanl loop attached to a bundary. The following algorithm split the
+// of the new chains of vertices. If this happens this means that the face has 
+// some internal loop attached to a bundary. The following algorithm split the
 // loops at these vertices, classifies the loops as internal or external and finally
 // moves all the internal loop in the appropriate external loop.
 void resolve_ambiguities(
@@ -419,12 +419,11 @@ void resolve_ambiguities(
         end != vert_mults[i_vert][i_ch].end(); start = end++)
       {
         Topo::VertexChain curr_chain;
-        curr_chain.push_back(_split_chains[i_ch][*start]);
         for (size_t i = *start; i != *end; )
         {
+          curr_chain.push_back(_split_chains[i_ch][i]);
           if (++i >= _split_chains[i_ch].size())
             i = 0;
-          curr_chain.push_back(_split_chains[i_ch][i]);
         }
         auto norm = make_polygonal_face(curr_chain)->normal();
         if (_expct_norm * norm < 0)
@@ -452,7 +451,7 @@ void resolve_ambiguities(
         {
           if (point_in_polygon(chain_ext, pt, &_expct_norm) == Geo::PointInPolygon::Inside)
           {
-            ch_segs_external[i_ch].emplace_back(std::move(chain_ext));
+            ch_segs_external[i_ch].emplace_back(std::move(chain));
             located = true;
             break;
           }
@@ -516,6 +515,8 @@ void FaceEdgeMap::split_with_chains()
           };
           if (last_vert_it != first_vert_it)
             complete_chain(first_vert_it, last_vert_it, split_chains[1]);
+          else
+            split_chains[1].pop_back(); // Last element is duplicated.
           complete_chain(last_vert_it, first_vert_it, split_chains[0]);
 
           auto norm = std::get<Normal>(face_info.second);

@@ -36,7 +36,8 @@ private:
   {
     void compute(const std::vector<Geo::Vector3>& _pos,
       std::vector<size_t>& _indcs,
-      const double _tols);
+      const double _tols,
+      Geo::Vector<3>& _norm);
     bool concave(size_t _i) const
     {
       return _i < concav_.size() && concav_[_i];
@@ -78,10 +79,21 @@ void PolygonTriangulation::compute()
   if (sol_.area_ > 0 || loops_.empty())
     return; // Triangulation already computed.
 
+  auto pl_fit = Geo::IPlaneFit::make();
+  auto pts_nmbr = loops_[0].size();
+  for (int i = 0; ++i < loops_.size(); )
+    pts_nmbr += loops_[i].size();
+  pl_fit->init(pts_nmbr);
+  for (const auto& loop : loops_)
+    for (const auto& pt : loop)
+      pl_fit->add_point(pt);
+  Geo::Vector<3> centr, norm;
+  pl_fit->compute(centr, norm);
+
   Utils::StatisticsT<double> tol_max;
   for (const auto& loop : loops_)
     for (const auto& pt : loop)
-      tol_max.add(Geo::epsilon(pt));
+      tol_max.add(Geo::epsilon_sq(pt - centr));
   const auto tol = tol_max.max() * 10;
 
   if (loops_.size() > 1)
@@ -93,7 +105,7 @@ void PolygonTriangulation::compute()
       ++loop_it)
     {
       auto where = 
-        Geo::PointInPolygon::classify(*loop_it, pt, tol);
+        Geo::PointInPolygon::classify(*loop_it, pt, tol, &norm);
       if (where == Geo::PointInPolygon::Inside)
       {
         std::swap(loops_.front(), *loop_it);
@@ -152,39 +164,31 @@ void PolygonTriangulation::compute()
       loops_.erase(std::get<1>(best_conn_info));
     }
   }
+  // creates the indexvector removing duplicates.
   std::vector<rsize_t> indcs;
   indcs.reserve(loops_[0].size());
-  auto prev = &loops_[0].back();
-  for (size_t i = 0, j; i < loops_[0].size(); prev = &loops_[0][i++])
+  for (size_t i = 0, j; i < loops_[0].size(); ++i)
   {
     for (j = 0; j < i; ++j)
-    {
       if (loops_[0][i] == loops_[0][j])
       {
-        indcs.push_back(j);
         loops_[0].erase(loops_[0].begin() + (i--));
         break;
       }
-    }
-    if (j == i)
-      indcs.push_back(j);
+    indcs.push_back(j);
   }
-  sol_.compute(loops_[0], indcs, tol);
+  auto tmp_loop = loops_[0];
+  for (auto& pt : tmp_loop) pt -= centr;
+  sol_.compute(tmp_loop, indcs, tol, norm);
 }
 
 void PolygonTriangulation::Solution::compute(
   const std::vector<Geo::Vector3>& _pts,
   std::vector<size_t>& _indcs,
-  const double _tol)
+  const double _tol,
+  Geo::Vector<3>& _norm)
 {
-  auto pl_fit = Geo::IPlaneFit::make();
-  pl_fit->init(_pts.size());
-  for (const auto pt : _pts)
-    pl_fit->add_point(pt);
-  Geo::Vector<3> centr, norm;
-  pl_fit->compute(centr, norm);
-
-  auto valid_triangle = [&_indcs, &_pts, &_tol, &norm](const size_t _i)
+  auto valid_triangle = [&_indcs, &_pts, &_tol, &_norm](const size_t _i)
   {
     auto next = _i;
     auto prev = Utils::decrease(
@@ -193,7 +197,7 @@ void PolygonTriangulation::Solution::compute(
     for (const auto& ind : _indcs)
       tmp_poly.push_back(_pts[ind]);
     auto pt_in = (tmp_poly[prev] + tmp_poly[next]) * 0.5;
-    auto where = Geo::PointInPolygon::classify(tmp_poly, pt_in, _tol, &norm);
+    auto where = Geo::PointInPolygon::classify(tmp_poly, pt_in, _tol, &_norm);
     if (where != Geo::PointInPolygon::Inside)
       return false;
     auto j = tmp_poly.size() - 1;

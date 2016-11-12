@@ -60,7 +60,11 @@ bool PlaneFit::compute(Vector3& _center, Vector3& _normal)
 
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(matr_, Eigen::ComputeThinU);
   auto umatr = svd.matrixU();
-  iterate_forw<3>::eval([&_normal, &umatr](int _i) { _normal[_i] = umatr(_i, 2); });
+  const auto cols = umatr.cols();
+  if (cols == 0)
+    return false;
+  iterate_forw<3>::eval([&_normal, &umatr, cols](int _i) 
+  { _normal[_i] = umatr(_i, cols - 1); });
   return true;
 }
 

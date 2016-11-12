@@ -38,6 +38,8 @@ void merge_intersections(std::vector<EdgeEdgeSplintInfo>& _splt_inf)
   {
     for (size_t j = 0; j < _splt_inf.size(); ++j)
     {
+      if (i == j)
+        continue;
       Utils::FindMax<double> max_tol({ _splt_inf[i].tol_, _splt_inf[j].tol_ });
       if (!Geo::same(_splt_inf[i].pt_, _splt_inf[j].pt_, max_tol()))
         return;

@@ -178,7 +178,7 @@ void Selection::select_faces(
     if (coe_vects[0].size() != 2 || coe_vects[1].size() != 2)
     {
       static std::string err_mess;
-      err_mess ="Not supporing open bodies - common edges must have 2 facesper body.";
+      err_mess ="Not supporing open bodies - common edges must have 2 faces per body.";
       err_mess += std::to_string(coe_vects[0].size()) + " " + 
         std::to_string(coe_vects[1].size());
       THROW(err_mess.c_str());

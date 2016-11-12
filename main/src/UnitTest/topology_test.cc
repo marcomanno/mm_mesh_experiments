@@ -155,7 +155,7 @@ TEST_CASE("pyramid", "[Bool]")
 TEST_CASE("2apple", "[Bool]")
 {
   const char* out_flnm = "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/2apple_";
-  for (auto dz : { 2.5, 2., 1.5, 1. })
+  for (auto dz : { 2.5, 2., 1.5, 1., 0.5 })
   {
     auto pyr1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
     auto pyr2 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
@@ -175,6 +175,19 @@ TEST_CASE("2apple", "[Bool]")
     flnm += std::to_string(dz) + ".obj";
     IO::save_obj(flnm.c_str(), result);
   }
+}
+
+TEST_CASE("FaceSplit", "[Bool]")
+{
+  body_1 = make_cube(cube_04);
+  body_2 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/extr_tri.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(body_1, body_2);
+  auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
+  "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/2apple_";
+
+  std::string flnm("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/FaceSplit.obj");
+  IO::save_obj(flnm.c_str(), result);
 }
 
 #if 0
