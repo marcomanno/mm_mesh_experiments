@@ -22,6 +22,8 @@ bool connect_entities(
     bool advancing = false;
     for (auto it = _using_verts.begin(); it != _using_verts.end(); ++it)
     {
+      if (*it == _conn.back())
+        continue;
       shrd_edges = shared_entities<Type::VERTEX, Type::EDGE>(_conn.back(), *it);
       if (shrd_edges.empty())
         continue;

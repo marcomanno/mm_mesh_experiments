@@ -170,7 +170,7 @@ TEST_CASE("2apple", "[Bool]")
     IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/apple_moved.obj", pyr2);
     auto bool_solver = Boolean::ISolver::make();
     bool_solver->init(pyr1, pyr2);
-    auto result = bool_solver->compute(Boolean::Operation::UNION);
+    auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
     std::string flnm(out_flnm);
     flnm += std::to_string(dz) + ".obj";
     IO::save_obj(flnm.c_str(), result);
@@ -188,6 +188,10 @@ TEST_CASE("FaceSplit", "[Bool]")
 
   std::string flnm("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/FaceSplit.obj");
   IO::save_obj(flnm.c_str(), result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  REQUIRE(bv_it.size() == 14);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 10);
 }
 
 #if 0

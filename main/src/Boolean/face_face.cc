@@ -136,7 +136,6 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
         if (edge_set.size() <= 2)
           continue;
         // We have an overlap (more than 2 vertices in common with another face).
-        std::vector<Topo::Wrap<Topo::Type::FACE>> faces_sharing_vertices;
         auto& faces = std::get<NewFaces>(face_info.second);
         for (auto face_it = faces.begin(); face_it != faces.end(); ++face_it)
         {
@@ -219,14 +218,22 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
             Topo::VertexChains split_chains;
             split_chains.emplace_back();
             Topo::VertexChains connections;
+            auto end_ch_vert = comm_verts.back().back();
             for (auto& chain : comm_verts)
             {
               connections.emplace_back();
-              auto success = Topo::connect_entities(
-                chain.back(), chain.front(), edge_set_copy, connections.back());
-              THROW_IF(!success, "Impossible to split overlapping face");
-              split_chains.back().insert(split_chains.back().end(), 
-                std::next(connections.back().begin()), std::prev(connections.back().end()));
+              auto& curr_conn = connections.back();
+              if (!Topo::connect_entities(
+                end_ch_vert, chain.front(), edge_set_copy, curr_conn))
+              {
+                curr_conn.clear();
+                curr_conn.push_back(end_ch_vert);
+                curr_conn.push_back(chain.front());
+              }
+              end_ch_vert = chain.back();
+              if (curr_conn.size() > 2)
+                split_chains.back().insert(split_chains.back().end(), 
+                  std::next(curr_conn.begin()), std::prev(curr_conn.end()));
               split_chains.back().insert(split_chains.back().end(), chain.begin(), chain.end());
             }
             for (auto& chain : not_comm_verts)
@@ -519,9 +526,9 @@ void FaceEdgeMap::split_with_chains()
             split_chains[1].pop_back(); // Last element is duplicated.
           complete_chain(last_vert_it, first_vert_it, split_chains[0]);
 
-          auto norm = std::get<Normal>(face_info.second);
-          resolve_ambiguities(
-            split_chains, (*edge_ch.front())[0], (*edge_ch.back())[1], norm);
+          //auto norm = std::get<Normal>(face_info.second);
+          //resolve_ambiguities(
+          //  split_chains, (*edge_ch.front())[0], (*edge_ch.back())[1], norm);
 
           Topo::Split<Topo::Type::FACE> face_splitter(face);
           face_splitter(split_chains);
