@@ -194,7 +194,16 @@ TEST_CASE("FaceSplit", "[Bool]")
   REQUIRE(bf_it.size() == 10);
 }
 
-#if 0
+TEST_CASE("FacePartialOverlap", "[Bool]")
+{
+  auto sol0 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/test_overlap_0.obj");
+  auto sol1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/test_overlap_1.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(sol0, sol1);
+  auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/tua_result.obj", result);
+}
+
 TEST_CASE("2tuna", "[Bool]")
 {
   auto pyr1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.obj");
@@ -213,4 +222,3 @@ TEST_CASE("2tuna", "[Bool]")
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
   IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/tua_result.obj", result);
 }
-#endif
