@@ -1,3 +1,4 @@
+#pragma optimize ("", off)
 #include "face_intersections.hh"
 #include "Geo/plane_fitting.hh"
 #include "Geo/vector.hh"
@@ -190,7 +191,6 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
             else
               merge_tail(not_comm_verts);
           }
-
           // We split the face assuming that the overlap is just with one face.
           // It should be true nevertheless it would be better to test for this condition.
           if (not_comm_verts.empty() && edge_set_copy.empty())
@@ -251,12 +251,42 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
                 }
               }
             }
+            if (!edge_set_copy.empty())
+            {
+              Topo::VertexChain::iterator it0, it1;
+              auto j = split_chains.size();
+              while (j > 0)
+              {
+                --j;
+                it0 = std::find(split_chains[j].begin(), split_chains[j].end(),
+                  split_chains[0].back());
+                if (it0 == split_chains[j].end())
+                  continue;
+                it1 = std::find(split_chains[j].begin(), split_chains[j].end(),
+                  split_chains[0].front());
+                if (it1 == split_chains[j].end())
+                  continue;
+                break;
+              }
+              THROW_IF(j == 0, "Insertion point notfound");
+              it1 = std::next(it1);
+              if (it1 == split_chains[j].end())
+                it1 = split_chains[j].begin();
+              THROW_IF(it1 != it0, "Insertion point notfound");
+
+              for (const auto& vert : edge_set_copy)
+              {
+                split_chains[0].push_back(vert);
+                split_chains[j].insert(it1, vert);
+              }
+            }
+
             Topo::Split<Topo::Type::FACE> face_splitter(face);
             face_splitter(split_chains);
             auto& new_faces = face_splitter.new_faces();
             _overlap_faces[i].push_back(new_faces[0]);
             faces.erase(face_it);
-            faces.insert(faces.end(), new_faces.begin(), new_faces.end());
+            faces.insert(faces.end(), std::next(new_faces.begin()), new_faces.end());
           }
           edge_next = edges.erase(edge_it);
           break;

@@ -34,6 +34,8 @@ private:
   struct FaceVertexInfo
   {
     std::shared_ptr<Geo::IPolygonalFace> poly_face_;
+    // Vertices coming from the intersection of the face with
+    // vertices or edges.
     std::vector<Topo::Wrap<Topo::Type::VERTEX>> new_vert_list_;
   };
 

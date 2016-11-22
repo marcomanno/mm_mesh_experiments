@@ -1,4 +1,5 @@
 
+#pragma optimize ("", off)
 #include "priv.hh"
 #include "Geo/vector.hh"
 #include "Topology/geom.hh"
@@ -58,11 +59,32 @@ void Selection::select_overlap_faces(const OverlapFces& _overlap_faces)
   {
     bool processed = false;
     Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it_0(_overlap_faces[0][i]);
+    auto check_null_face = [this](
+      const Topo::Iterator<Topo::Type::FACE,Topo::Type::VERTEX>& _fv_it,
+      const Topo::Wrap<Topo::Type::FACE>& _f)
+    {
+      if (_fv_it.size() != 0)
+        return false;
+      faces_to_remove_.insert(_f);
+      proc_faces_.insert(_f);
+      return true;
+    };
+    if (check_null_face(fv_it_0, _overlap_faces[0][i]))
+    {
+      processed = true;
+      continue;
+    }
+
     for (size_t j = 0; j < _overlap_faces[1].size(); ++j)
     {
       if (used_faces[j])
         continue;
       Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it_1(_overlap_faces[1][j]);
+      if (check_null_face(fv_it_1, _overlap_faces[1][j]))
+      {
+        used_faces[j] = true;;
+        continue;
+      }
       if (fv_it_0.size() != fv_it_1.size())
         continue;
       auto it_0 = fv_it_0.begin();

@@ -201,7 +201,7 @@ TEST_CASE("FacePartialOverlap", "[Bool]")
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(sol0, sol1);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/tua_result.obj", result);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/FacePartialOverlap_result.obj", result);
 }
 
 TEST_CASE("2tuna", "[Bool]")
