@@ -186,7 +186,7 @@ TEST_CASE("FaceSplit", "[Bool]")
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
   "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/2apple_";
 
-  std::string flnm("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/FaceSplit.obj");
+  std::string flnm("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/FaceSplit_result.obj");
   IO::save_obj(flnm.c_str(), result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   REQUIRE(bv_it.size() == 14);
