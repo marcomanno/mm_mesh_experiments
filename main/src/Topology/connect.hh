@@ -7,8 +7,10 @@
 namespace Topo {
 
 bool connect_entities(
-  Wrap<Type::VERTEX> _from, Wrap<Type::VERTEX> _to,
+  const Wrap<Type::VERTEX> _from, const Wrap<Type::VERTEX> _to,
   VertexChain& _using_verts,
-  VertexChain& _conn);
+  VertexChain& _conn,
+  const bool _allow_direct = true
+  );
 
 }//namespace Topo

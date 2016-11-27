@@ -149,5 +149,22 @@ bool decompose(const std::array<ValT, N>& _w,
 
 template <size_t dimT> using Vector = std::array<double, dimT>;
 typedef Vector<3> Vector3;
+typedef Vector<2> Vector2;
+
+inline void normal_plane_default_directions(
+  const Geo::Vector3& _norm,
+  Geo::Vector3& _du, Geo::Vector3& _dv)
+{
+  size_t i_min = 0;
+  for (size_t i = 1; i < _norm.size(); ++i)
+    if (std::fabs(_norm[i]) < std::fabs(_norm[i_min]))
+      i_min = i;
+
+  _du = { 0 };
+  _du[i_min] = 1;
+  _du -= (_du * _norm) * _norm;
+  _dv = _norm % _du;
+}
+
 
 }//namespace Geo

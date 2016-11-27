@@ -16,7 +16,10 @@ struct PlaneFit : public IPlaneFit
 {
   virtual void init(size_t _size) override;
   virtual void add_point(const Vector3& _pt) override;
-  virtual bool compute(Vector3& _center, Vector3& _normal) override;
+  virtual bool compute(
+    Vector3& _center, 
+    Vector3& _normal,
+    const bool _orient = false) override;
 
   Eigen::MatrixXd matr_;
   int ind_ = 0;
@@ -38,7 +41,8 @@ void PlaneFit::add_point(const Vector3& _pt)
 // Find the best plane for n points using the singular value decomposition.
 // This is where I took the idea:
 // http://math.stackexchange.com/questions/99299/best-fitting-plane-given-a-set-of-points?answertab=votes#tab-top
-bool PlaneFit::compute(Vector3& _center, Vector3& _normal)
+bool PlaneFit::compute(
+  Vector3& _center, Vector3& _normal, const bool _orient)
 {
   if (ind_ == 0)
     return false;
@@ -65,6 +69,26 @@ bool PlaneFit::compute(Vector3& _center, Vector3& _normal)
     return false;
   iterate_forw<3>::eval([&_normal, &umatr, cols](int _i) 
   { _normal[_i] = umatr(_i, cols - 1); });
+  if (_orient) // Normal in ccw.
+  {
+    Vector3 du, dv;
+    normal_plane_default_directions(_normal, du, dv);
+    auto proj_to_plane = [this, &du, &dv](size_t i)
+    {
+      Vector3 p = { matr_(0, i), matr_(1, i), matr_(2, i) };
+      return Vector2{p * du, p * dv};
+    };
+    auto pt_ptrv = proj_to_plane(matr_.cols() - 1);
+    double area = 0;
+    for (std::ptrdiff_t i = 0; i < matr_.cols(); ++i)
+    {
+      auto pt = proj_to_plane(i);
+      area += (pt[1] + pt_ptrv[1]) * (pt_ptrv[0] - pt[0]) / 2;
+      pt_ptrv = pt;
+    }
+    if (area < 0)
+      _normal *= -1.;
+  }
   return true;
 }
 

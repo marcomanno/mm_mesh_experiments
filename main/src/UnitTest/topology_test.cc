@@ -167,7 +167,7 @@ TEST_CASE("2apple", "[Bool]")
       pt[2] += dz;
       x->set_geom(pt);
     }
-    IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/apple_moved.obj", pyr2);
+    IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/apple_moved_debug.obj", pyr2);
     auto bool_solver = Boolean::ISolver::make();
     bool_solver->init(pyr1, pyr2);
     auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);

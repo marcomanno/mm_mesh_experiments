@@ -24,7 +24,10 @@ struct IPlaneFit
   /*!Computes the best plane as the plane passing for the _center
   with the given normal. The normal is a unit vector.
   */
-  virtual bool compute(Vector3& _center, Vector3& _normal) = 0;
+  virtual bool compute(
+    Vector3& _center,
+    Vector3& _normal,
+    const bool _orient = false) = 0;
 
   /*! Factory */
   static std::shared_ptr<IPlaneFit> make();
