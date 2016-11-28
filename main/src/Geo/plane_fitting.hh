@@ -33,4 +33,24 @@ struct IPlaneFit
   static std::shared_ptr<IPlaneFit> make();
 };
 
+/*! Retun the normal of the best plane in a set of points.
+    The normal is such that looking at the polygon from the
+    normal direction it runs in counterclockwise direction.
+*/
+template <class VertexIteratorT>
+Geo::Vector3 get_polygon_normal(VertexIteratorT _beg, VertexIteratorT _end)
+{
+  auto pl_fit = Geo::IPlaneFit::make();
+  pl_fit->init(_end - _beg);
+  for (auto vert_it = _beg; vert_it != _end; ++vert_it)
+  {
+    Geo::Vector3 pt;
+    (*vert_it)->geom(pt);
+    pl_fit->add_point(pt);
+  }
+  Geo::Vector3 c, n;
+  pl_fit->compute(c, n, true);
+  return n;
+}
+
 }//namespace Geo

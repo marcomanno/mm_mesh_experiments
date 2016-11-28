@@ -1,3 +1,4 @@
+#pragma optimize ("", off)
 #include "impl.hh"
 #include "split.hh"
 #include "Utils/error_handling.hh"
@@ -55,7 +56,7 @@ bool Split<Type::EDGE>::operator()() const
           face->insert_child(it->vert_.get(), pos);
         continue;
       }
-      THROW("Impossible splt edge");
+      //THROW("Impossible splt edge");
     }
   }
 

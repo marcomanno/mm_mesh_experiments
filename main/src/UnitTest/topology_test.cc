@@ -223,7 +223,7 @@ TEST_CASE("2tuna", "[Bool]")
   {
     Geo::Point pt;
     x->geom(pt);
-    pt[2] += 0.2;
+    pt[2] += 0.4;
     x->set_geom(pt);
   }
   IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA_moved.obj", pyr2);

@@ -1,3 +1,4 @@
+#pragma optimize("", off)
 #include "face_intersections.hh"
 #include "Geo/plane_fitting.hh"
 #include "Geo/vector.hh"
@@ -120,23 +121,6 @@ void FaceEdgeMap::init_map()
   }
 }
 
-template <class VertexIteratorT>
-Geo::Vector3 get_normal(VertexIteratorT _beg, VertexIteratorT _end)
-{
-  auto pl_fit = Geo::IPlaneFit::make();
-  pl_fit->init(_end - _beg);
-  std::vector<Geo::Point> face_pts;
-  for (auto vert_it = _beg; vert_it != _end; ++vert_it)
-  {
-    Geo::Vector3 pt;
-    (*vert_it)->geom(pt);
-    pl_fit->add_point(pt);
-  }
-  Geo::Vector3 c, n;
-  pl_fit->compute(c, n, true);
-  return n;
-}
-
 void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
 {
   // Process overlaps.
@@ -166,7 +150,7 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
           bool prev_is_common = false;
           bool first = true;
           bool first_is_common = false;
-          auto face_normal = get_normal(it_ev.begin(), it_ev.end());
+          Geo::Vector3 face_normal{ 0 };
           for (auto vert : it_ev)
           {
             auto it = std::find(edge_set_copy.begin(), edge_set_copy.end(), vert);
@@ -267,8 +251,12 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
             }
             if (double_connection)
             {
-              auto overlap_normal = 
-                get_normal(split_chains[0].begin(), split_chains[0].end());
+              if (face_normal == Geo::Vector3{0.})
+                face_normal = Geo::get_polygon_normal(
+                  it_ev.begin(), it_ev.end());
+
+              auto overlap_normal = Geo::get_polygon_normal(
+                split_chains[0].begin(), split_chains[0].end());
               if (overlap_normal * face_normal < 0)
               {
                 std::reverse(split_chains[0].begin(), split_chains[0].end());
