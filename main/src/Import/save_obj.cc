@@ -4,6 +4,7 @@
 
 #include <Topology/impl.hh>
 #include <Topology/iterator.hh>
+#include <PolygonTriangularization/poly_triang.hh>
 
 
 #include <fstream>
@@ -33,16 +34,26 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
   for (size_t i = 0; i < face_it.size(); ++i)
   {
     auto f = face_it.get(i);
-    fstr << "f";
     Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> ve_it(f);
-    for (size_t j = 0; j < ve_it.size(); ++j)
+    std::vector<Geo::Vector3> plgn;
+    std::vector<size_t> idxs;
+    for (const auto& v : ve_it)
     {
-      auto v = ve_it.get(j);
-      auto idx = 
-        std::lower_bound(verts.begin(), verts.end(), v) - verts.begin() + 1;
-      fstr << " " << idx;
+      plgn.emplace_back();
+      v->geom(plgn.back());
+      auto idx = std::lower_bound(
+        verts.begin(), verts.end(), v) - verts.begin() + 1;
+      idxs.push_back(idx);
     }
-    fstr << "\n";
+    auto poly_t = IPolygonTriangulation::make();
+    poly_t->add(plgn);
+    for (const auto& tri : poly_t->triangles())
+    {
+      fstr << "f";
+      for (auto idx : tri)
+        fstr << " " << idxs[idx];
+      fstr << "\n";
+    }
   }
   return fstr.good();
 }
