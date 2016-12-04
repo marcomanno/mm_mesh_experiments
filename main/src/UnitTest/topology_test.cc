@@ -127,33 +127,68 @@ TEST_CASE("3 FF intersections", "[Bool]")
   REQUIRE(be_it.size() == 21);
 }
 
-TEST_CASE("BoxRotation", "[Bool]")
+namespace {
+
+Topo::Wrap<Topo::Type::BODY> box_rot_test(
+  std::function<Geo::Point(const Geo::Point&)> _transf)
 {
   body_1 = make_cube(cube_04);
   body_2 = make_cube(cube_04);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(body_2);
-  const double sa = sin(0.1), ca = cos(0.1);
   for (auto& x : bv_it)
   {
     Geo::Point pt;
     x->geom(pt);
-    Geo::Point pt1 = pt;
-    pt1[0] = pt[0] * ca + pt[1] * sa;
-    pt1[1] = -pt[0] * sa + pt[1] * ca;
-
-    //pt[1] = pt1[1] * ca + pt1[2] * sa;
-    //pt[2] = pt1[1] * sa - pt1[2] * ca;
-    x->set_geom(pt1);
+    x->set_geom(_transf(pt));
   }
-
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::UNION);
 
   IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  return result;
+}
 
+}
+
+TEST_CASE("BoxRotation_1", "[Bool]")
+{
+  const double sa = sin(0.1), ca = cos(0.1);
+  auto transf = [&sa, &ca](const Geo::Point& pt)
+  {
+    return Geo::Point{
+      pt[0] * ca + pt[1] * sa,
+      -pt[0] * sa + pt[1] * ca,
+      pt[2] };
+  };
+  auto result = box_rot_test(transf);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  REQUIRE(bf_it.size() == 34);
+  REQUIRE(bv_it.size() == 32);
+}
+
+TEST_CASE("BoxRotation_2", "[Bool]")
+{
+  const double sa = sin(0.01), ca = cos(0.01);
+  auto transf = [&sa, &ca](const Geo::Point& pt)
+  {
+    auto pt1 = Geo::Point{
+      pt[0] * ca + pt[1] * sa,
+      -pt[0] * sa + pt[1] * ca,
+      pt[2] };
+    return Geo::Point{
+      pt1[0],
+      pt[1] * ca + pt[2] * sa,
+      -pt[1] * sa + pt[2] * ca};
+  };
+  auto result = box_rot_test(transf);
+  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  REQUIRE(bf_it.size() == 20);
+  REQUIRE(bv_it.size() == 34);
 }
 
 TEST_CASE("pyramid", "[Bool]")
