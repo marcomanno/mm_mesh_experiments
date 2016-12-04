@@ -37,6 +37,9 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
     Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> ve_it(f);
     std::vector<Geo::Vector3> plgn;
     std::vector<size_t> idxs;
+#ifndef SPLIT
+    fstr << "f";
+#endif
     for (const auto& v : ve_it)
     {
       plgn.emplace_back();
@@ -44,7 +47,13 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
       auto idx = std::lower_bound(
         verts.begin(), verts.end(), v) - verts.begin() + 1;
       idxs.push_back(idx);
+#ifndef SPLIT
+      fstr << " " << idx;
+#endif
     }
+#ifndef SPLIT
+    fstr << "\n";
+#else
     auto poly_t = IPolygonTriangulation::make();
     poly_t->add(plgn);
     for (const auto& tri : poly_t->triangles())
@@ -54,6 +63,7 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
         fstr << " " << idxs[idx];
       fstr << "\n";
     }
+#endif
   }
   return fstr.good();
 }

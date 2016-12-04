@@ -42,7 +42,7 @@ void merge_intersections(std::vector<EdgeEdgeSplintInfo>& _splt_inf)
         continue;
       Utils::FindMax<double> max_tol({ _splt_inf[i].tol_, _splt_inf[j].tol_ });
       if (!Geo::same(_splt_inf[i].pt_, _splt_inf[j].pt_, max_tol()))
-        return;
+        continue;
       THROW_IF(_splt_inf[i].vert_ && _splt_inf[j].vert_,
         "This is not managed. It is necessary to merge 2 existing vertices!");
       EdgeEdgeSplintInfo* eei[2] = { &_splt_inf[i], &_splt_inf[j] };

@@ -155,7 +155,8 @@ bool FaceVersus::edge_intersect(
       double dist_sq, t_seg;
       if (!closest_point(*face_info.poly_face_, seg, &clsst_pt, &t_seg, &dist_sq))
         continue;
-      if (dist_sq > Geo::sq(edge->tolerance()))
+      auto pt_tol = Geo::epsilon(clsst_pt);
+      if (dist_sq > std::max(pt_tol, edge->tolerance()))
         continue;
 
       bool point_on_vertex = false;
@@ -164,7 +165,7 @@ bool FaceVersus::edge_intersect(
       {
         Geo::Point pt;
         vert->geom(pt);
-        if (Geo::same(pt, clsst_pt, vert->tolerance()))
+        if (Geo::same(pt, clsst_pt, std::max(pt_tol, vert->tolerance())))
         {
           point_on_vertex = true;
           // Todo: verify that the vertex is at the edge end.
