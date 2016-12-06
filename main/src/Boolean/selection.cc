@@ -41,13 +41,15 @@ const Choice selection_table[2][Operation::ENUM_SIZE][FaceClassification::ENUM_S
   {// In    Out   Ovrl  AntiOvrlp
     { REMV, KEEP, KEEP, REMV }, // Union
     { KEEP, REMV, KEEP, REMV }, // Intersection
-    { REMV, KEEP, REMV, KEEP }  // Difference
+    { REMV, KEEP, REMV, KEEP }, // Difference
+    { KEEP, KEEP, KEEP, KEEP }  // Split
   },
   // Selection second solid
   {// In    Out   Ovrl  AntiOvrlp
     { REMV, KEEP, REMV, REMV }, // Union
     { KEEP, REMV, REMV, REMV }, // Intersection
-    { INVR, REMV, REMV, REMV }  // Difference
+    { INVR, REMV, REMV, REMV }, // Difference
+    { KEEP, KEEP, REMV, REMV }  // Split
   }
 };
 
@@ -249,6 +251,7 @@ void Selection::propagate(const Choice _choice, Topo::Wrap<Topo::Type::FACE> _fa
 {
   std::list<Topo::Wrap<Topo::Type::FACE>> face_list;
   face_list.push_back(_face);
+  proc_faces_.insert(_face);
   while (!face_list.empty())
   {
     auto face = face_list.front();
@@ -256,7 +259,6 @@ void Selection::propagate(const Choice _choice, Topo::Wrap<Topo::Type::FACE> _fa
       faces_to_invert_.insert(face);
     else if (_choice == REMV)
       faces_to_remove_.insert(face);
-    proc_faces_.insert(face);
     face_list.pop_front();
     Topo::Iterator<Topo::Type::FACE, Topo::Type::EDGE> fe_it(face);
     for (auto edge : fe_it)
@@ -268,6 +270,7 @@ void Selection::propagate(const Choice _choice, Topo::Wrap<Topo::Type::FACE> _fa
       {
         if (proc_faces_.find(face_new) != proc_faces_.end())
           continue;
+        proc_faces_.insert(face_new);
         face_list.push_front(face_new);
       }
     }

@@ -6,6 +6,7 @@
 #include <Utils/statistics.hh>
 #include "PolygonTriangularization/poly_triang.hh"
 
+#define JACOBI
 #ifdef JACOBI
 #pragma warning( push )
 #pragma warning( disable : 4714 )
@@ -32,7 +33,7 @@ Point evaluate(const Segment& _seg, double _t)
 
 Point evaluate(const Triangle& _tri, double _u, double _v)
 {
-  return _u * _tri[0] + _v * _tri[1] + (1 - _u - _v) * _tri[2];
+  return (1 - _u - _v) * _tri[0] +_u * _tri[1] + _v * _tri[2];
 }
 
 bool closest_point(const Segment& _seg, const Point& _pt,
@@ -76,8 +77,7 @@ bool closest_point(const Segment& _seg_a, const Segment& _seg_b,
   Point* _clsst_pt, double _t[2], double * _dist_sq)
 {
   double t[2];
-  static bool jac = false;
-#ifdef JACOBI
+#if 0
   Vector3 a[2] = { _seg_a[1] - _seg_a[0], _seg_b[0] - _seg_b[1] };
   Eigen::MatrixXd A(a[0].size(), std::size(a));
   Eigen::VectorXd B(a[0].size());
@@ -241,11 +241,31 @@ bool closest_point(const IPolygonalFace& _face, const Point& _pt,
 bool closest_point(const Triangle& _tri, const Segment& _seg,
   Point* _clsst_pt, double * _t, double * _dist_sq)
 {
+#if 1
+  const auto a = _seg[0] - _tri[0];
+  const Point coeff[] =
+  { _tri[1] - _tri[0], _tri[2] - _tri[0], _seg[0] - _seg[1] };
+
+  Eigen::MatrixXd A(3, 3);
+  Eigen::VectorXd B(3);
+  for (int i = 0; i < 3; ++i)
+  {
+    for (int j = 0; j < 3; ++j)
+      A(j, i) = coeff[i][j];
+    B(i) = a[i];
+  }
+#if 1
+  Eigen::VectorXd  uvt = (A.transpose() * A).ldlt().solve(A.transpose() * B);
+#else
+  const auto& jsvd =
+    A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
+  Eigen::VectorXd uvt = jsvd.solve(B);
+#endif
+#else
   const auto a = _tri[0] - _seg[0];
   const auto b = _tri[1] - _seg[0];
   const auto c = _tri[2] - _seg[0];
   const auto p = _seg[1] - _seg[0];
-
   // Minimize ||a * u + b * v + c * (1 - u - v) - p * t||^2 in u, v, t
   const auto al = a - c;
   const auto be = b - c;
@@ -264,6 +284,7 @@ bool closest_point(const Triangle& _tri, const Segment& _seg,
   double uvt[3];
   if (!solve_3x3(A, uvt, B))
     return false;
+#endif
   if (!check_par(uvt[0], uvt[1]) || !check_par(uvt[2]))
     return false;
   auto pt_seg = evaluate(_seg, uvt[2]);

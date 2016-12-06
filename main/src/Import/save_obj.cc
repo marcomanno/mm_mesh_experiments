@@ -12,6 +12,7 @@
 
 namespace IO {
 
+//#define SPLIT
 bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
 {
   std::ofstream fstr(_flnm);
