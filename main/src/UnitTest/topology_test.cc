@@ -9,6 +9,8 @@
 
 using namespace UnitTest;
 
+#define MESH_FOLDER "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/"
+
 TEST_CASE("make body", "[Topo]")
 {
   Topo::Wrap<Topo::Type::BODY> body = make_cube(cube_00);
@@ -72,7 +74,7 @@ TEST_CASE("4 VV intersections", "[Bool]")
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::UNION);
 
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj(MESH_FOLDER"result.obj", result);
 
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv;
   bv.reset(result);
@@ -102,7 +104,7 @@ TEST_CASE("4 EE intersections", "[Bool]")
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
 
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj(MESH_FOLDER"result.obj", result);
 
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   REQUIRE(bf_it.size() == 8);
@@ -119,7 +121,7 @@ TEST_CASE("3 FF intersections", "[Bool]")
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
 
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj(MESH_FOLDER"result.obj", result);
 
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   REQUIRE(bf_it.size() == 9);
@@ -145,7 +147,7 @@ Topo::Wrap<Topo::Type::BODY> box_rot_test(
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::UNION);
 
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj(MESH_FOLDER"result.obj", result);
   return result;
 }
 
@@ -162,7 +164,7 @@ TEST_CASE("BoxRotation_1", "[Bool]")
       pt[2] };
   };
   auto result = box_rot_test(transf);
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj(MESH_FOLDER"result.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   REQUIRE(bf_it.size() == 34);
@@ -184,7 +186,7 @@ TEST_CASE("BoxRotation_2", "[Bool]")
       -pt[1] * sa + pt[2] * ca};
   };
   auto result = box_rot_test(transf);
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj(MESH_FOLDER"result.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   REQUIRE(bf_it.size() == 20);
@@ -193,8 +195,8 @@ TEST_CASE("BoxRotation_2", "[Bool]")
 
 TEST_CASE("pyramid", "[Bool]")
 {
-  auto pyr1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/pyramid.obj");
-  auto pyr2 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/pyramid.obj");
+  auto pyr1 = IO::load_obj(MESH_FOLDER"pyramid.obj");
+  auto pyr2 = IO::load_obj(MESH_FOLDER"pyramid.obj");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(pyr2);
   for (auto& x : bv_it)
   {
@@ -207,7 +209,7 @@ TEST_CASE("pyramid", "[Bool]")
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
   auto result = bool_solver->compute(Boolean::Operation::INTERSECTION);
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj", result);
+  IO::save_obj(MESH_FOLDER"result.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   REQUIRE(bf_it.size() == 9);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
@@ -218,11 +220,11 @@ TEST_CASE("pyramid", "[Bool]")
 
 TEST_CASE("2apple", "[Bool]")
 {
-  const char* out_flnm = "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/2apple_";
+  const char* out_flnm = MESH_FOLDER"2apple_";
   for (auto dz : { 2.5, 2., 1.5, 1., 0.5 })
   {
-    auto pyr1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
-    auto pyr2 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/Apple_00.obj");
+    auto pyr1 = IO::load_obj(MESH_FOLDER"Apple_00.obj");
+    auto pyr2 = IO::load_obj(MESH_FOLDER"Apple_00.obj");
     Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(pyr2);
     for (auto& x : bv_it)
     {
@@ -231,7 +233,7 @@ TEST_CASE("2apple", "[Bool]")
       pt[2] += dz;
       x->set_geom(pt);
     }
-    IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/apple_moved_debug.obj", pyr2);
+    IO::save_obj(MESH_FOLDER"apple_moved_debug.obj", pyr2);
     auto bool_solver = Boolean::ISolver::make();
     bool_solver->init(pyr1, pyr2);
     auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
@@ -244,13 +246,12 @@ TEST_CASE("2apple", "[Bool]")
 TEST_CASE("FaceSplit", "[Bool]")
 {
   body_1 = make_cube(cube_04);
-  body_2 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/extr_tri.obj");
+  body_2 = IO::load_obj(MESH_FOLDER"extr_tri.obj");
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
-  "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/2apple_";
 
-  std::string flnm("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/FaceSplit_result.obj");
+  std::string flnm(MESH_FOLDER"FaceSplit_result.obj");
   IO::save_obj(flnm.c_str(), result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   REQUIRE(bv_it.size() == 14);
@@ -260,28 +261,28 @@ TEST_CASE("FaceSplit", "[Bool]")
 
 TEST_CASE("FacePartialOverlap", "[Bool]")
 {
-  auto sol0 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/test_overlap_0.obj");
-  auto sol1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/test_overlap_1.obj");
+  auto sol0 = IO::load_obj(MESH_FOLDER"test_overlap_0.obj");
+  auto sol1 = IO::load_obj(MESH_FOLDER"test_overlap_1.obj");
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(sol0, sol1);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/FacePartialOverlap_result.obj", result);
+  IO::save_obj(MESH_FOLDER"FacePartialOverlap_result.obj", result);
 }
 
 TEST_CASE("FacePartialOverlap2", "[Bool]")
 {
-  auto sol0 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/overlap_1.obj");
-  auto sol1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/overlap_2.obj");
+  auto sol0 = IO::load_obj(MESH_FOLDER"overlap_1.obj");
+  auto sol1 = IO::load_obj(MESH_FOLDER"overlap_2.obj");
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(sol0, sol1);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/FacePartialOverlap_result.obj", result);
+  IO::save_obj(MESH_FOLDER"FacePartialOverlap_result.obj", result);
 }
 
 TEST_CASE("2tuna", "[Bool]")
 {
-  auto pyr1 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.obj");
-  auto pyr2 = IO::load_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.obj");
+  auto pyr1 = IO::load_obj(MESH_FOLDER"TUNA.obj");
+  auto pyr2 = IO::load_obj(MESH_FOLDER"TUNA.obj");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(pyr2);
   for (auto& x : bv_it)
   {
@@ -290,9 +291,23 @@ TEST_CASE("2tuna", "[Bool]")
     pt[2] += 0.4;
     x->set_geom(pt);
   }
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA_moved.obj", pyr2);
+  IO::save_obj(MESH_FOLDER"TUNA_moved.obj", pyr2);
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
-  auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
-  IO::save_obj("C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/tuna_result.obj", result);
+  auto result = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj(MESH_FOLDER"result_tuna.obj", result);
+}
+
+TEST_CASE("2tuna_p0", "[Bool]")
+{
+  auto pyr1 = IO::load_obj(MESH_FOLDER"2tuna_p0a.obj");
+  auto pyr2 = IO::load_obj(MESH_FOLDER"2tuna_p0b.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(pyr1, pyr2);
+  auto result = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj(MESH_FOLDER"result_2tuna_p0.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  REQUIRE(bv_it.size() == 57);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 62);
 }
