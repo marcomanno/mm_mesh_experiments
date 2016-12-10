@@ -6,8 +6,8 @@
 #include <Topology/iterator.hh>
 #include <PolygonTriangularization/poly_triang.hh>
 
-
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 
 namespace IO {
@@ -16,6 +16,7 @@ namespace IO {
 bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
 {
   std::ofstream fstr(_flnm);
+  fstr << std::setprecision(17);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(_body);
   std::vector<Topo::Wrap<Topo::Type::VERTEX>> verts;
   for (size_t i = 0; i < vert_it.size(); ++i)
@@ -66,6 +67,25 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
     }
 #endif
   }
+  return fstr.good();
+}
+
+bool save_face(Topo::E<Topo::Type::FACE>* _ptr, int _num)
+{
+  std::ofstream fstr(std::to_string(_num) + ".obj");
+  fstr << std::setprecision(17);
+  Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> vert_it(_ptr);
+  std::string fv("f");
+  int i = 0;
+  for (const auto& vert : vert_it)
+  {
+    Geo::Point pt;
+    vert->geom(pt);
+    fstr << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+    fv += ' ';
+    fv += std::to_string(++i);
+  }
+  fstr << fv;
   return fstr.good();
 }
 

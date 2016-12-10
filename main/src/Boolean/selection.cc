@@ -3,6 +3,7 @@
 #include "priv.hh"
 #include "Geo/vector.hh"
 #include "Topology/geom.hh"
+#include "Topology/same.hh"
 #include "Utils/error_handling.hh"
 
 #include <set>
@@ -198,6 +199,23 @@ void Selection::select_faces(
       vcts.processed_ = proc_faces_.find(face) != proc_faces_.end();
       vcts.face_inside_dir_ = vcts.face_norm_ % vcts.coe_dir_;
       vcts.face_ = face;
+    }
+	// Removecompletely overlapping faces on the same body.
+    for (auto& coe_infos : coe_vects)
+    {
+      for (size_t i = 0; i < coe_infos.size(); ++i)
+        for (size_t j = i + 1; j < coe_infos.size(); )
+        {
+          bool reversed;
+          if (!Topo::same(coe_infos[i].face_, coe_infos[j].face_, &reversed)
+            || reversed)
+            ++j;
+          else
+          {
+            coe_infos[j].face_->remove();
+            coe_infos.erase(coe_infos.begin() + j);
+          }
+        }
     }
     if (coe_vects[0].size() != 2 || coe_vects[1].size() != 2)
     {
