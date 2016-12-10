@@ -24,4 +24,16 @@ Geo::Point coedge_direction(Topo::Wrap<Topo::Type::COEDGE> _coed)
   return seg[1] - seg[0];
 }
 
+namespace PointInFace {
+Geo::PointInPolygon::Classification classify(
+  Topo::Wrap<Topo::Type::FACE> _face, const Geo::Point& _pt)
+{
+  Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(_face);
+  std::vector<Geo::Point> polygon(fv_it.size());
+  for (int i = 0; i < fv_it.size(); ++i)
+    fv_it.get(i)->geom(polygon[i]);
+  return Geo::PointInPolygon::classify(polygon, _pt);
+}
+
+}//namespace PointInFace
 }//namespace Topo
