@@ -200,6 +200,8 @@ void PolygonTriangulation::Solution::compute(
     auto where = Geo::PointInPolygon::classify(tmp_poly, pt_in, _tol, &_norm);
     if (where != Geo::PointInPolygon::Inside)
       return false;
+    for (auto& pt : tmp_poly)
+      pt -= (pt * _norm) * _norm;
     auto j = tmp_poly.size() - 1;
     Geo::Segment seg = { tmp_poly[prev], tmp_poly[next] };
     for (size_t i = 0; i < tmp_poly.size(); j = i++)
@@ -207,13 +209,20 @@ void PolygonTriangulation::Solution::compute(
       if (_indcs[i] == _indcs[next] || _indcs[i] == _indcs[prev])
         continue;
       double dist_sq = 0;
-      if (!Geo::closest_point(seg, tmp_poly[i], nullptr, nullptr, &dist_sq) ||
-        dist_sq <= std::max(Geo::epsilon_sq(seg[0]), Geo::epsilon_sq(seg[1])))
+      double tol_sq = std::max(Geo::epsilon_sq(seg[0]), Geo::epsilon_sq(seg[1]));
+      if (Geo::closest_point(seg, tmp_poly[i], nullptr, nullptr, &dist_sq) &&
+        dist_sq <= tol_sq)
         return false;
       if (_indcs[j] == _indcs[next] || _indcs[j] == _indcs[prev])
         continue;
-      if (Geo::closest_point(seg, Geo::Segment({ tmp_poly[i], tmp_poly[j] })))
+      Geo::Segment seg1 = { tmp_poly[i], tmp_poly[j] };
+      tol_sq = std::max({ tol_sq,
+        Geo::epsilon_sq(seg1[0]), Geo::epsilon_sq(seg1[1]) });
+      if (Geo::closest_point(seg, seg1,
+        nullptr, nullptr, &dist_sq) && dist_sq <= tol_sq)
+      {
         return false;
+      }
     }
     return true;
   };

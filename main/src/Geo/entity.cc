@@ -77,37 +77,49 @@ bool closest_point(const Segment& _seg_a, const Segment& _seg_b,
   Point* _clsst_pt, double _t[2], double * _dist_sq)
 {
   double t[2];
-#if 0
-  Vector3 a[2] = { _seg_a[1] - _seg_a[0], _seg_b[0] - _seg_b[1] };
-  Eigen::MatrixXd A(a[0].size(), std::size(a));
-  Eigen::VectorXd B(a[0].size());
-  for (int i = 0; i < a[0].size(); ++i)
+  static int eigen = 1;
+  if (eigen)
   {
-    B(i) = _seg_b[0][i] - _seg_a[0][i];
-    for (int j = 0; j < std::size(a); ++j)
-      A(i, j) = a[j][i];
+    Vector3 a[2] = {
+      _seg_a[1] - _seg_a[0],
+      _seg_b[0] - _seg_b[1] };
+    Eigen::MatrixXd A(a[0].size(), std::size(a));
+    Eigen::VectorXd B(a[0].size());
+    for (int i = 0; i < a[0].size(); ++i)
+    {
+      B(i) = _seg_b[0][i] - _seg_a[0][i];
+      for (int j = 0; j < std::size(a); ++j)
+        A(i, j) = a[j][i];
+    }
+    Eigen::VectorXd  res;
+    if (eigen == 1)
+      res = (A.transpose() * A).ldlt().solve(A.transpose() * B);
+    else
+    {
+      const auto& jsvd =
+        A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
+      res = jsvd.solve(B);
+    }
+    t[0] = res(0);
+    t[1] = res(1);
   }
-  const auto& jsvd =
-    A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
-  Eigen::VectorXd res = jsvd.solve(B);
-  t[0] = res(0);
-  t[1] = res(1);
-#else
-  auto A = _seg_a[0] - _seg_b[0];
-  auto b = _seg_a[1] - _seg_a[0];
-  auto c = _seg_b[1] - _seg_b[0];
-  auto discr = (b * b) * (c * c) - sq(b * c);
-  Utils::StatisticsT<double> len_stats;
-  len_stats.add(length_square(_seg_a[1]));
-  len_stats.add(length_square(_seg_a[1]));
-  len_stats.add(length_square(_seg_b[0]));
-  len_stats.add(length_square(_seg_b[1]));
+  else
+  {
+    auto A = _seg_a[0] - _seg_b[0];
+    auto b = _seg_a[1] - _seg_a[0];
+    auto c = _seg_b[1] - _seg_b[0];
+    auto discr = (b * b) * (c * c) - sq(b * c);
+    Utils::StatisticsT<double> len_stats;
+    len_stats.add(length_square(_seg_a[1]));
+    len_stats.add(length_square(_seg_a[1]));
+    len_stats.add(length_square(_seg_b[0]));
+    len_stats.add(length_square(_seg_b[1]));
 
-  if (zero_sq(discr, len_stats.max()))
-    return false;
-  t[0] = ((A * c) * (b * c) - (A * b) * (c * c)) / discr;
-  t[1] = ((A * c) * (b * b) - (A * b) * (b * c)) / discr;
-#endif
+    if (zero_sq(discr, len_stats.max()))
+      return false;
+    t[0] = ((A * c) * (b * c) - (A * b) * (c * c)) / discr;
+    t[1] = ((A * c) * (b * b) - (A * b) * (b * c)) / discr;
+  }
   if (!check_par(t[0]) || !check_par(t[1]))
     return false;
   auto pt_a = evaluate(_seg_a, t[0]);

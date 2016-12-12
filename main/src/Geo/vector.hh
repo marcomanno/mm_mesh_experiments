@@ -87,8 +87,8 @@ ValT operator%(const std::array<ValT, 2>& _a, const std::array<ValT, 2>& _b)
 template<typename ValT, size_t N>
 std::ostream& operator<<(std::ostream& _os, const std::array<ValT, N>& _arr)
 {
-  for (const auto& val : _arr) 
-    _os << Utils::BinData<ValT>(val);
+  for (const auto& val : _arr)
+    _os << ' ' << val; //Utils::BinData<ValT>(val);
   return _os;
 }
 
@@ -96,7 +96,7 @@ template<typename ValT, size_t N>
 std::istream& operator>>(std::istream& _is, std::array<ValT, N>& _arr)
 {
   for (auto& val : _arr)
-    _is >> Utils::BinData<ValT>(val);
+    _is >> val; //Utils::BinData<ValT>(val);
   return _is;
 }
 

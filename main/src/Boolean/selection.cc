@@ -203,20 +203,36 @@ void Selection::select_faces(
 	// Removecompletely overlapping faces on the same body.
     for (auto& coe_infos : coe_vects)
     {
-      for (size_t i = 0; i < coe_infos.size(); ++i)
+      for (size_t i = 0; i < coe_infos.size(); )
+      {
+        bool reversed = false;
         for (size_t j = i + 1; j < coe_infos.size(); )
         {
-          bool reversed;
-          if (!Topo::same(coe_infos[i].face_, coe_infos[j].face_, &reversed)
-            || reversed)
+          if (!Topo::same(coe_infos[i].face_, coe_infos[j].face_, &reversed))
             ++j;
           else
           {
             coe_infos[j].face_->remove();
             coe_infos.erase(coe_infos.begin() + j);
+            if (reversed)
+            {
+              std::cout << "Antioverlap: " << coe_infos[j].face_->id();
+              std::cout << " " << coe_infos[i].face_->id() << "\n";
+              break;
+            }
           }
         }
+        if (!reversed)
+          ++i;
+        else
+        {
+          coe_infos[i].face_->remove();
+          coe_infos.erase(coe_infos.begin() + i);
+        }
+      }
     }
+    if (coe_vects[0].empty() && coe_vects[1].empty())
+      continue;
     if (coe_vects[0].size() != 2 || coe_vects[1].size() != 2)
     {
       static std::string err_mess;
