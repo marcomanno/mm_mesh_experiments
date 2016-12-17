@@ -1,4 +1,3 @@
-#pragma optimize("", off)
 #include "face_intersections.hh"
 #include "Geo/plane_fitting.hh"
 #include "Geo/vector.hh"
@@ -589,6 +588,17 @@ void FaceEdgeMap::split_with_chains()
           split_chains[0].push_back((*edge_ch[0])[0]);
           for (auto& edge_it : edge_ch)
             split_chains[0].push_back((*edge_it)[1]);
+
+          if (*vert_it == *last_vert_it)
+          {
+            // Closed loop inside face starting from one vertex.
+            // The chain sense is ambiguos.
+            auto norm = std::get<Normal>(face_info.second);
+            auto chain_normal = Geo::get_polygon_normal(
+              split_chains[0].begin(), split_chains[0].end());
+            if (norm * chain_normal > 0)
+              std::reverse(split_chains[0].begin(), split_chains[0].end());
+          }
 
           split_chains[1] = split_chains[0];
 
