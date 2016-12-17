@@ -61,6 +61,7 @@ endif()
 # ========================================================================
 
 add_subdirectory (src/App)
+add_subdirectory (src/Base)
 add_subdirectory (src/Boolean)
 add_subdirectory (src/Geo)
 add_subdirectory (src/Import)
@@ -68,4 +69,5 @@ add_subdirectory (src/PolygonTriangularization)
 add_subdirectory (src/Topology)
 add_subdirectory (src/UnitTest)
 add_subdirectory (src/Utils)
+
 # ========================================================================
