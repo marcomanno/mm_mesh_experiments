@@ -32,8 +32,9 @@ class LookupList
     iterator_base& operator--() { pos_ = pos_->links_[0]; return *this; }
   };
 public:
-  typedef typename iterator_base<ObjElement> iterator;
+  typedef typename iterator_base<const ObjElement> iterator;
   typedef typename iterator_base<const ObjElement> const_iterator;
+  ~LookupList() { clear(); }
 
   iterator begin()
   { 
@@ -49,8 +50,12 @@ public:
   size_t size() const { return set_.size(); }
   void clear()
   {
-    for (auto p = &root_; (p = p.linjs[1]) != &root_; )
-      delete p;
+    for (auto p = root_.links_[1]; p != &root_; )
+    {
+      auto q = p;
+      p = p->links_[1];
+      delete q;
+    }
   }
 
   template< class... Args >
@@ -59,9 +64,10 @@ public:
     auto p = std::make_unique<ObjElement>(std::forward<Args>(args)...);
     if (lookup(*p) != end())
       return end(); // object is already present.
-    p->links_[1] = &(*pos);
+    auto obj_ptr = const_cast<ObjElement*>(&(*pos));
+    p->links_[1] = obj_ptr;
     p->links_[0] = pos->links_[0];
-    pos->links_[0] = p.get();
+    obj_ptr->links_[0] = p.get();
     p->links_[0]->links_[1] = p.get();
     set_.insert(*p);
     return p.release();
@@ -95,7 +101,6 @@ public:
   }
 
 private:
-
   boost::intrusive::set<ObjElement, 
     boost::intrusive::constant_time_size<false>> set_;
   ObjElement root_;
