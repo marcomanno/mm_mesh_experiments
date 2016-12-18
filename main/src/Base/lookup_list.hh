@@ -12,6 +12,8 @@ class LookupList
     public boost::intrusive::set_base_hook
     <boost::intrusive::link_mode<boost::intrusive::auto_unlink>>
   {
+    ObjElement() {}
+    ObjElement(const Obj& _obj) : Obj(_obj) {}
     using Obj::Obj;
     ObjElement* links_[2] = {this, this};
   };

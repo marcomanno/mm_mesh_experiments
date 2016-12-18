@@ -3,6 +3,7 @@
 #include "Base/basic_type.hh"
 
 #include <iostream>
+#include <string>
 
 TEST_CASE("LookupList1", "[BASE]")
 {
@@ -25,5 +26,23 @@ TEST_CASE("LookupList1", "[BASE]")
   REQUIRE(*++cit == 3);
   REQUIRE(*++cit == 6);
   REQUIRE(*++cit == 7);
+  REQUIRE(++cit == aa.cend());
+}
+
+TEST_CASE("LookupList2", "[BASE]")
+{
+  Base::LookupList<std::string> aa;
+  aa.emplace_back("22");
+  aa.emplace_back("bbb");
+  aa.emplace_back("aaa");
+  aa.emplace_back("zzz");
+  REQUIRE(aa.size() == 4);
+  auto it = aa.lookup(std::string("22"));
+  aa.erase(it);
+  REQUIRE(aa.size() == 3);
+  auto cit = aa.cbegin();
+  REQUIRE(*cit == "bbb");
+  REQUIRE(*++cit == "aaa");
+  REQUIRE(*++cit == "zzz");
   REQUIRE(++cit == aa.cend());
 }

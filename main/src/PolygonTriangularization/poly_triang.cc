@@ -191,9 +191,27 @@ void PolygonTriangulation::Solution::compute(
   auto valid_triangle = [&_indcs, &_pts, &_tol, &_norm](const size_t _i)
   {
     auto next = _i;
-    auto prev = Utils::decrease(
-      Utils::decrease(_i, _indcs.size()), _indcs.size());
-    std::vector<Geo::Vector3> tmp_poly;
+    auto idx = Utils::decrease(_i, _indcs.size());
+    auto prev = Utils::decrease(idx, _indcs.size());
+    std::vector<Geo::Vector3> tmp_poly(3);
+    tmp_poly[0] = _pts[_indcs[prev]];
+    tmp_poly[1] = _pts[_indcs[idx]];
+    tmp_poly[2] = _pts[_indcs[next]];
+    bool verify = true;
+    for (size_t i = Utils::increase(_i, _indcs.size()); i != prev;
+      i = Utils::increase(i, _indcs.size()))
+    {
+      bool joint_point = _indcs[i] == _indcs[next] || _indcs[i] == _indcs[prev];
+      if (verify)
+      {
+        auto where = Geo::PointInPolygon::classify(
+          tmp_poly, _pts[_indcs[i]], _tol, &_norm);
+        if (where != Geo::PointInPolygon::Outside)
+          return false;
+      }
+      verify = joint_point;
+    }
+    tmp_poly.clear();
     for (const auto& ind : _indcs)
       tmp_poly.push_back(_pts[ind]);
     auto pt_in = (tmp_poly[prev] + tmp_poly[next]) * 0.5;
