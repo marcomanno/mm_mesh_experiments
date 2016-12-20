@@ -275,7 +275,7 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
               std::next(curr_conn.begin()), std::prev(curr_conn.end()));
           split_chains.back().insert(split_chains.back().end(), chain.begin(), chain.end());
         }
-        if (double_connection)
+        if (double_connection && split_chains[0].size() >= 3)
         {
           if (face_normal == Geo::Vector3{0.})
             face_normal = Geo::get_polygon_normal(
