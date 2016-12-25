@@ -115,10 +115,74 @@ namespace {
 void FaceEdgeMap::init_map()
 {
   for (auto& map : map_)
-  {
     for (auto& face_info : map)
       std::get<NewFaces>(face_info.second).push_back(face_info.first);
-  }
+}
+
+static bool insert_remaning_common_vertices(
+  Topo::VertexChain& _verts,
+  Topo::VertexChains& _connections,
+  Topo::VertexChains& _split_chains)
+{
+  bool consumed;
+  do
+  {
+    consumed = false;
+    for (auto i = _verts.size(); i-- > 0;)
+    {
+      std::vector<std::array<size_t, 2>> conn_idxs;
+      for (auto j = _connections.size(); j-- > 0;)
+        for (auto k = _connections[j].size(); k-- > 0;)
+        {
+          auto edges = Topo::shared_entities
+            <Topo::Type::VERTEX, Topo::Type::EDGE>
+            (_verts[i], _connections[j][k]);
+          if (edges.empty())
+            continue;
+          conn_idxs.push_back({ j, k });
+        }
+      if (conn_idxs.empty())
+        continue;
+      if (conn_idxs.size() > 1)
+        continue;
+      auto& chain = _connections[conn_idxs[0][0]];
+      auto ind = conn_idxs[0][1];
+      Topo::Wrap<Topo::Type::VERTEX> v0, v1;
+      auto ind1 = ind;
+      if (ind == 0) ++ind1;
+      else if (ind == chain.size() - 1) --ind1;
+      else
+      {
+        THROW("No good insertion point");
+        continue;
+      }
+      v0 = chain[ind];
+      v1 = chain[ind1];
+      bool used = false;
+      for (auto& split_chain : _split_chains)
+      {
+        auto prev = split_chain.front();
+        for (auto j = split_chain.size(); j-- > 0; prev = split_chain[j])
+        {
+          if (prev == v0 && split_chain[j] == v1) {}
+          else if (prev == v1 && split_chain[j] == v0) {}
+          else
+            continue;
+          used = true;
+          split_chain.insert(split_chain.begin() + j + 1, _verts[i]);
+          break;
+        }
+      }
+      if (used)
+      {
+        chain[ind] = v0;
+        _verts.erase(_verts.begin() + i);
+        consumed = true;
+      }
+    }
+
+  } while (consumed);
+  return _verts.empty();
 }
 
 void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
@@ -305,14 +369,15 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
             }
           }
         }
-        if (!edge_set_copy.empty())
+        if (!insert_remaning_common_vertices(
+          edge_set_copy, connections, split_chains))
         {
           Topo::VertexChain::iterator it0, it1;
           auto j = split_chains.size();
-          do {
-            while (j > 0)
+          do
+          {
+            while (j-- > 0)
             {
-              --j;
               it0 = std::find(split_chains[j].begin(), split_chains[j].end(),
                 split_chains[0].back());
               if (it0 == split_chains[j].end())

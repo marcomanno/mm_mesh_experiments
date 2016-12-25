@@ -4,6 +4,10 @@
 #include <Topology/iterator.hh>
 #include <Topology/impl.hh>
 
+#ifdef DEB_ON
+#include <Import/import.hh>
+#endif
+
 #include <iostream>
 
 namespace Boolean {
@@ -77,6 +81,13 @@ Topo::Wrap<Topo::Type::BODY> Solver::compute(const Operation _op)
       remove_degeneracies(bdy_info.body_);
       bdy_info.clear();
     }
+#ifdef DEB_ON
+    static int n = 0;
+    std::string str = "debug_";
+    str += std::to_string(n++);
+    IO::save_obj((str + "_0.obj").c_str(), bodies_[0].body_);
+    IO::save_obj((str + "_1.obj").c_str(), bodies_[1].body_);
+#endif
   };
 
   vertices_versus_vertices(
@@ -128,8 +139,8 @@ Topo::Wrap<Topo::Type::BODY> Solver::compute(const Operation _op)
   clean_up();
 
   face_all->face_intersect(
-    bodies_[1].iterator<Topo::Type::FACE>(),
-    bodies_[0].iterator<Topo::Type::FACE>());
+    bodies_[0].iterator<Topo::Type::FACE>(),
+    bodies_[1].iterator<Topo::Type::FACE>());
 
   clean_up();
 

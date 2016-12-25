@@ -362,6 +362,19 @@ TEST_CASE("2tuna_p1", "[Bool]")
   REQUIRE(bf_it.size() == 14);
 }
 
+TEST_CASE("2tuna_p1a", "[Bool]")
+{
+  auto pyr1 = IO::load_obj(MESH_FOLDER"TUNA_PIECE3_0_0.obj");
+  auto pyr2 = IO::load_obj(MESH_FOLDER"TUNA_PIECE3_1.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(pyr1, pyr2);
+  auto result = bool_solver->compute(Boolean::Operation::SPLITA);
+  IO::save_obj(MESH_FOLDER"result_2tuna_p1.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  //REQUIRE(bv_it.size() == 15);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  //REQUIRE(bf_it.size() == 14);
+}
 
 TEST_CASE("finatuna", "[Bool]")
 {
@@ -377,3 +390,12 @@ TEST_CASE("finatuna", "[Bool]")
   //REQUIRE(bf_it.size() == 14);
 }
 
+TEST_CASE("2tuna_P4", "[Bool]")
+{
+  auto pyr1 = IO::load_obj(MESH_FOLDER"TUNA_PIECE_4_0.obj");
+  auto pyr2 = IO::load_obj(MESH_FOLDER"TUNA_PIECE_4_1.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(pyr1, pyr2);
+  auto result = bool_solver->compute(Boolean::Operation::SPLITB);
+  IO::save_obj("2tuna_P4.obj", result);
+}

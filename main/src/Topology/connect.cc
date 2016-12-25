@@ -12,6 +12,7 @@ bool connect_entities(
   const bool _allow_direct)
 {
   _conn.push_back(_from);
+  auto using_verts_backup = _using_verts;
   for (;;)
   {
     if (_allow_direct || _conn.size() > 1)
@@ -39,7 +40,10 @@ bool connect_entities(
       break;
     }
     if (!advancing)
+    {
+      _using_verts = using_verts_backup;
       return false;
+    }
   }
 }
 

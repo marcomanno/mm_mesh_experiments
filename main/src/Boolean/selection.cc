@@ -2,6 +2,9 @@
 #pragma optimize ("", off)
 #include "priv.hh"
 #include "Geo/vector.hh"
+#ifdef DEB_ON
+#include "Import/import.hh"
+#endif
 #include "Topology/geom.hh"
 #include "Topology/same.hh"
 #include "Utils/error_handling.hh"
@@ -43,14 +46,18 @@ const Choice selection_table[2][Operation::ENUM_SIZE][FaceClassification::ENUM_S
     { REMV, KEEP, KEEP, REMV }, // Union
     { KEEP, REMV, KEEP, REMV }, // Intersection
     { REMV, KEEP, REMV, KEEP }, // Difference
-    { KEEP, KEEP, KEEP, KEEP }  // Split
+    { KEEP, KEEP, KEEP, KEEP }, // Split
+    { KEEP, KEEP, KEEP, KEEP }, // SplitA
+    { REMV, REMV, REMV, REMV }  // SplitB
   },
   // Selection second solid
   {// In    Out   Ovrl  AntiOvrlp
     { REMV, KEEP, REMV, REMV }, // Union
     { KEEP, REMV, REMV, REMV }, // Intersection
     { INVR, REMV, REMV, REMV }, // Difference
-    { KEEP, KEEP, REMV, REMV }  // Split
+    { KEEP, KEEP, REMV, REMV }, // Split
+    { REMV, REMV, REMV, REMV }, // SplitA
+    { KEEP, KEEP, KEEP, KEEP }  // SplitB
   }
 };
 
@@ -58,6 +65,18 @@ void Selection::select_overlap_faces(const OverlapFces& _overlap_faces)
 {
   THROW_IF(_overlap_faces[0].size() != _overlap_faces[1].size(), "Overlap faces not coupled");
   std::vector<bool> used_faces(_overlap_faces[1].size(), false);
+#ifdef DEB_ON
+  for (auto& f : _overlap_faces[0])
+  {
+    static int f_ind = 1000;
+    IO::save_face(f.get(), f_ind++);
+  }
+  for (auto& f : _overlap_faces[1])
+  {
+    static int f_ind = 2000;
+    IO::save_face(f.get(), f_ind++);
+  }
+#endif
   for (size_t i = 0; i < _overlap_faces[0].size(); ++i)
   {
     bool processed = false;
@@ -200,7 +219,19 @@ void Selection::select_faces(
       vcts.face_inside_dir_ = vcts.face_norm_ % vcts.coe_dir_;
       vcts.face_ = face;
     }
-	// Removecompletely overlapping faces on the same body.
+    if (coe_vects[0].size() != 2 || coe_vects[1].size() != 2)
+      std::cout << "Strange split/n";
+    if (bool_op_ == Operation::SPLITA || bool_op_ == Operation::SPLITB)
+    {
+      for (int i = 0; i < 2; ++i)
+        for (int j = 0; j < coe_vects[i].size(); ++j)
+        {
+          auto choice = selection_table[i][size_t(bool_op_)][0];
+          propagate(choice, coe_vects[i][j].face_);
+        }
+      continue;
+    }
+    // Removecompletely overlapping faces on the same body.
     for (auto& coe_infos : coe_vects)
     {
       for (size_t i = 0; i < coe_infos.size(); )
