@@ -1,6 +1,8 @@
 
 #include "vector.hh"
 #include "linear_system.hh"
+#include <Eigen/Dense>
+
 
 namespace Geo {
 
@@ -11,17 +13,17 @@ bool decompose(const std::array<ValT, N>& _w,
   const std::array<ValT, N>& _a, const std::array<ValT, N>& _b,
   ValT& _u, ValT& _v)
 {
-  ValT A[2][2], B[2], X[2];
-  A[0][0] = _a * _a;
-  A[1][0] = A[0][1] = _a * _b;
-  A[1][1] = _b * _b;
-  B[0] = _w * _a;
-  B[1] = _w * _b;
-
-  if (!solve_2x2(A, X, B))
-    return false;
-  _u = X[0];
-  _v = X[1];
+  Eigen::MatrixXd A(N, 2);
+  Eigen::VectorXd B(N);
+  for (auto i = 0; i < N; ++i)
+  {
+    A(i, 0) = _a[i];
+    A(i, 1) = _b[i];
+    B[i] = _w[i];
+  }
+  Eigen::VectorXd res = A.colPivHouseholderQr().solve(B);
+  _u = res[0];
+  _v = res[1];
   return true;
 }
 
