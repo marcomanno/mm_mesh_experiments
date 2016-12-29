@@ -28,7 +28,7 @@ void print_box(const Geo::Range<3>& _box)
 
 TEST_CASE("Kd-Tree1", "[KDTREE]")
 {
-  std::vector<KdTreeElement> kk(1000);
+  std::vector<KdTreeElement> kk(123);
   Geo::KdTree<KdTreeElement> dd;
   dd.insert(kk.begin(), kk.end());
   dd.compute();
@@ -38,11 +38,14 @@ TEST_CASE("Kd-Tree1", "[KDTREE]")
     if (_i >= dd.depth())
     {
       size_t st, en;
-      dd.leaf_range(_i, st, en);
+      if (!dd.leaf_range(_i, st, en))
+        return;
+      std::cout << st << " " << en << "\n";
+      /*
       for (auto i = st; i != en; ++i)
       {
         std::cout << dd[i].box().extr_[0] << "--" << dd[i].box().extr_[1] << "\n";
-      }
+      }*/
     }
     else
     {

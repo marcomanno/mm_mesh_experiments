@@ -112,13 +112,14 @@ class KdTree : public KdTreeBase
   // Given an index i, find 
   std::vector<Split> splits_;
   Range<DIM> box_;
+  size_t leaf_start_ = 0;
 
   Range<3> split(size_t _st, size_t _en, size_t _i)
   {
     auto en = _en;
     if (en > space_elements_.size())
       en = space_elements_.size();
-    if (en - _st <= LEAF_GROUP_SIZE)
+    if (_en - _st <= LEAF_GROUP_SIZE || _st >= space_elements_.size())
     {
       Range<3> box;
       for (size_t i = _st; i < en; ++i) 
@@ -169,8 +170,9 @@ public:
     size_t space_groups_nmbr =
       (space_elements_.size() + LEAF_GROUP_SIZE - 1) / LEAF_GROUP_SIZE;
     size_t leaf_lev = static_cast<size_t>(std::ceil(log2(space_groups_nmbr)));
-    size_t split_nmbr = static_cast<size_t>(std::exp2(leaf_lev + 1));
-    splits_.resize(split_nmbr * 2);
+    size_t split_nmbr = static_cast<size_t>(std::exp2(leaf_lev));
+    leaf_start_ = split_nmbr - 1;
+    splits_.resize(split_nmbr);
     box_ = split(0, split_nmbr * LEAF_GROUP_SIZE, 0);
     auto nsplit = splits_.size();
     while (nsplit-- > 0)
@@ -194,17 +196,17 @@ public:
 
   size_t depth() const { return splits_.size(); }
 
-  void leaf_range(const size_t _i, size_t& _start, size_t& _end)
+  bool leaf_range(const size_t _i, size_t& _start, size_t& _end) const
   {
-    auto leaf_start = static_cast<size_t>(
-      std::exp2(
-        std::floor(
-          std::log2(_i + 1))) - 1);
-    _start = (_i - leaf_start) * LEAF_GROUP_SIZE;
-    assert(_start < space_elements_.size());
+    if (_i < leaf_start_)
+      return false;
+    _start = (_i - leaf_start_) * LEAF_GROUP_SIZE;
+    if (_start >= space_elements_.size())
+      return false;
     _end = _start + LEAF_GROUP_SIZE;
     if (_end > space_elements_.size())
       _end = space_elements_.size();
+    return true;
   }
 
   const KdTreeElementT& operator[](size_t _i) const
