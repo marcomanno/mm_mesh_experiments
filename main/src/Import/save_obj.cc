@@ -2,9 +2,10 @@
 
 #include <Geo/vector.hh>
 
+#include <PolygonTriangularization/poly_triang.hh>
 #include <Topology/impl.hh>
 #include <Topology/iterator.hh>
-#include <PolygonTriangularization/poly_triang.hh>
+#include <Utils/error_handling.hh>
 
 #include <fstream>
 #include <iomanip>
@@ -16,6 +17,7 @@ namespace IO {
 bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
 {
   std::ofstream fstr(_flnm);
+  THROW_IF(!fstr, "IO save error");
   fstr << std::setprecision(17);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(_body);
   std::vector<Topo::Wrap<Topo::Type::VERTEX>> verts;

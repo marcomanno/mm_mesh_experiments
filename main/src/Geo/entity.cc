@@ -253,7 +253,6 @@ bool closest_point(const IPolygonalFace& _face, const Point& _pt,
 bool closest_point(const Triangle& _tri, const Segment& _seg,
   Point* _clsst_pt, double * _t, double * _dist_sq)
 {
-#if 1
   const auto a = _seg[0] - _tri[0];
   const Point coeff[] =
   { _tri[1] - _tri[0], _tri[2] - _tri[0], _seg[0] - _seg[1] };
@@ -273,30 +272,7 @@ bool closest_point(const Triangle& _tri, const Segment& _seg,
     A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
   Eigen::VectorXd uvt = jsvd.solve(B);
 #endif
-#else
-  const auto a = _tri[0] - _seg[0];
-  const auto b = _tri[1] - _seg[0];
-  const auto c = _tri[2] - _seg[0];
-  const auto p = _seg[1] - _seg[0];
-  // Minimize ||a * u + b * v + c * (1 - u - v) - p * t||^2 in u, v, t
-  const auto al = a - c;
-  const auto be = b - c;
-  // A[0] = d/du = 0, A[1] = d/dv= 0, A[2] = d/dt = 0
-  double A[3][3];
-  A[0][0] = al * al;
-  A[0][1] = A[1][0] = al * be;
-  A[0][2] = -al *p;
-  A[1][1] = be * be;
-  A[1][2] = -be * p;
-  A[2][0] = al * p;
-  A[2][1] = be * p;
-  A[2][2] = -p * p;
-  double B[3] = { -al * c, -be * c, -p * c };
 
-  double uvt[3];
-  if (!solve_3x3(A, uvt, B))
-    return false;
-#endif
   if (!check_par(uvt[0], uvt[1]) || !check_par(uvt[2]))
     return false;
   auto pt_seg = evaluate(_seg, uvt[2]);

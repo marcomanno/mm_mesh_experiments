@@ -3,7 +3,7 @@
 #include <Geo/vector.hh>
 
 #include <Topology/impl.hh>
-
+#include <Utils/error_handling.hh>
 
 #include <fstream>
 #include <sstream>
@@ -14,6 +14,8 @@ Topo::Wrap<Topo::Type::BODY> load_obj(const char* _flnm)
 {
   Topo::Wrap<Topo::Type::BODY> new_body;
   std::ifstream fstr(_flnm);
+  THROW_IF(!fstr.good(), "IO load error");
+
   std::string line;
   std::vector<Topo::Wrap<Topo::Type::VERTEX>> verts;
 
