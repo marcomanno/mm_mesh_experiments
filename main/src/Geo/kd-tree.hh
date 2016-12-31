@@ -43,24 +43,24 @@ class KdTree : public KdTreeBase
   size_t leaf_start_ = 0;
   size_t leaf_lev_ = 0;
 
-  Range<3> split(size_t _st, size_t _en, size_t _i)
+  Range<DIM> split(size_t _st, size_t _en, size_t _i)
   {
     auto en = _en;
     if (en > space_elements_.size())
       en = space_elements_.size();
     if (_en - _st <= LEAF_GROUP_SIZE || _st >= space_elements_.size())
     {
-      Range<3> box;
+      Range<DIM> box;
       for (size_t i = _st; i < en; ++i) 
         box += space_elements_[i].box();
       return box;
     }
-    Vector3 ave = { 0 };
+    VectorD<DIM> ave = { 0 };
     for (auto i = _st; i < en; ++i)
       ave += space_elements_[i].point();
     ave /= double(en - _st);
 
-    Vector3 sigma = { 0 };
+    VectorD<DIM> sigma = { 0 };
     for (auto i = _st; i < en; ++i)
     {
       auto diff = space_elements_[i].point() - ave;
@@ -114,9 +114,9 @@ public:
     }
   }
 
-  const Range<3>& box() const { return box_; }
+  const Range<DIM>& box() const { return box_; }
 
-  const Range<3>& box(const std::array<size_t, 2>& _it) const
+  const Range<DIM>& box(const std::array<size_t, 2>& _it) const
   {
     return splits_[_it[0]].box_[_it[1]];
   }
