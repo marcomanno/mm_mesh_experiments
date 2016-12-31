@@ -1,3 +1,4 @@
+#pragma optimize ("", off)
 #include "face_intersections.hh"
 #include "Geo/vector.hh"
 #include "Geo/MinSphere.hh"

@@ -39,8 +39,8 @@ struct BsplineFitting : public IBsplineFitting<dimT>
   }
 
   void compute();
-  const std::vector<Vector<dimT>>& X() const { return X_; }
-  Vector<dimT> eval(const double _t);
+  const std::vector<VectorD<dimT>>& X() const { return X_; }
+  VectorD<dimT> eval(const double _t);
 private:
   void find_equations();
   double N(size_t _i, const size_t _k, const double _t);
@@ -48,8 +48,8 @@ private:
 
   std::vector<std::vector<double>> A_;
   std::vector<double> knots_;
-  std::vector<Vector<dimT>> B_;
-  std::vector<Vector<dimT>> X_;
+  std::vector<VectorD<dimT>> B_;
+  std::vector<VectorD<dimT>> X_;
   size_t deg_ = 0;
   const IFunction* f_ = nullptr;
   size_t itr_nmbr_ = 0;
@@ -89,7 +89,7 @@ void BsplineFitting<dimT>::add_equation(const double _t, const double _wi)
   for (int j = 0; j < knots_.size() - deg_ - 1; ++j)
     A_.back().push_back(N(j, deg_, _t) * wi_sqr);
 
-  Vector<dimT> pt_crv;
+  VectorD<dimT> pt_crv;
   if (X_.empty() || (_t == knots_[1]) || (_t == knots_[knots_.size() - 2]))
     pt_crv = f_->evaluate(_t);
   else
@@ -170,9 +170,9 @@ void BsplineFitting<dimT>::compute()
 }
 
 template<size_t dimT>
-Vector<dimT> BsplineFitting<dimT>::eval(const double _t)
+VectorD<dimT> BsplineFitting<dimT>::eval(const double _t)
 {
-  Vector<dimT> res = { 0 };
+  VectorD<dimT> res = { 0 };
   for (int i = 0; i < X_.size(); ++i)
     res += N(i, deg_, _t) * X_[i];
   return res;

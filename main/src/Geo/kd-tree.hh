@@ -1,6 +1,7 @@
 #pragma once
 
 #include "iterate.hh"
+#include "range.hh"
 #include "vector.hh"
 
 #include <assert.h>
@@ -8,79 +9,6 @@
 #include <vector>
 
 namespace Geo {
-
-template <size_t DimT>
-struct Range
-{
-  static Vector<DimT> point(double _v)
-  {
-    Vector<DimT> pt;
-    for (auto& c : pt) c = _v;
-    return pt;
-  }
-  // Empty range by default
-  Vector<DimT> extr_[2] = {
-    point(std::numeric_limits<double>::max()),
-    point(std::numeric_limits<double>::lowest()) };
-
-  template <typename CompareT>
-  Range<DimT>& merge(const Range<DimT>& _oth)
-  {
-    iterate_forw<DimT>::eval([this, &_oth](const int _i)
-    {
-      if (CompareT()(extr_[0][_i], _oth.extr_[0][_i]))
-        extr_[0][_i] = _oth.extr_[0][_i];
-      if (CompareT()(_oth.extr_[1][_i], extr_[1][_i]))
-        extr_[1][_i] = _oth.extr_[1][_i];
-    });
-    return *this;
-  }
-public:
-
-  // Union
-  Range<DimT>& operator+=(const Range<DimT>& _oth)
-  {
-    return merge<std::greater<double>>(_oth);
-  }
-  const Range<DimT>& operator+(const Range<DimT>& _oth) const
-  {
-    return (Range<DimT>(*this) += _oth);
-  }
-
-  // Intersection
-  Range<DimT>& operator*=(const Range<DimT>& _oth)
-  {
-    return merge<std::less<double>>(_oth);
-  }
-  const Range<DimT>& operator*(const Range<DimT>& _oth) const
-  {
-    return (Range<DimT>(*this) *= _oth);
-  }
-
-  void fatten(const double _tol)
-  {
-    iterate_forw<DimT>::eval([this, _tol](const size_t _i)
-    {
-      extr_[0][_i] -= _tol;
-      extr_[1][_i] += _tol;
-    });
-  }
-
-  bool empty() const
-  {
-    for (auto i = 0; i < DimT; ++i)
-      if (extr_[0][_i] > extr_[1][_i])
-        return true;
-    return false;
-  }
-
-  double diag_sq() const { return (extr_[0] - extr_[1]).len_sq(); }
-  double diag() const { return std::sqrt(diag_sq()); }
-};
-
-// KdTreeElementT must have methods:
-// const Vector3& point()
-// const Range<3>& box()
 
 struct KdTreeBase
 {
@@ -113,6 +41,7 @@ class KdTree : public KdTreeBase
   std::vector<Split> splits_;
   Range<DIM> box_;
   size_t leaf_start_ = 0;
+  size_t leaf_lev_ = 0;
 
   Range<3> split(size_t _st, size_t _en, size_t _i)
   {
@@ -169,8 +98,8 @@ public:
   {
     size_t space_groups_nmbr =
       (space_elements_.size() + LEAF_GROUP_SIZE - 1) / LEAF_GROUP_SIZE;
-    size_t leaf_lev = static_cast<size_t>(std::ceil(log2(space_groups_nmbr)));
-    size_t split_nmbr = static_cast<size_t>(std::exp2(leaf_lev));
+    leaf_lev_ = static_cast<size_t>(std::ceil(log2(space_groups_nmbr)));
+    size_t split_nmbr = static_cast<size_t>(std::exp2(leaf_lev_));
     leaf_start_ = split_nmbr - 1;
     splits_.resize(split_nmbr);
     box_ = split(0, split_nmbr * LEAF_GROUP_SIZE, 0);
@@ -184,28 +113,69 @@ public:
       }
     }
   }
-  Range<3> box(size_t _i, size_t _j)
+
+  const Range<3>& box() const { return box_; }
+
+  const Range<3>& box(const std::array<size_t, 2>& _it) const
   {
-    return splits_[_i].box_[_j];
+    return splits_[_it[0]].box_[_it[1]];
   }
-  size_t child(size_t _i, size_t _j)
+
+  size_t child_index(const std::array<size_t, 2>& _it) const
+  {
+    return _it[0] * GROUP_SIZE + _it[1] + 1;
+  }
+
+  bool child(std::array<size_t, 2>& _it) const
+  {
+    assert(_it[1] < GROUP_SIZE);
+    auto child_ind = child_index(_it);
+    if (child_ind >= splits_.size())
+      return false;
+    _it = std::array<size_t, 2>{child_ind, 0};
+    return true;
+  }
+
+  bool next(std::array<size_t, 2>& _it) const
+  {
+    for (;;)
+    {
+      if (_it[1] == 0)
+      {
+        ++_it[1];
+        return true;
+      }
+      if (_it[0] == 0)
+        return false;
+      _it[1] = (_it[0] & 1) ? 0 : 1;
+      _it[0] = (_it[0] - 1) / 2;
+    }
+  }
+
+  std::array<size_t, 2> next(
+    std::array<size_t, 2> _it, bool& _leaf)
   {
     assert(_j < GROUP_SIZE);
-    return _i * GROUP_SIZE + 1 + _j;
+    auto child_ind = child_index(_it);
+    _leaf = child_ind >= splits_.size();
+    return std::array<size_t, 2>{child_ind, 0};
   }
+
+  size_t level_number() const { return leaf_lev_; }
 
   size_t depth() const { return splits_.size(); }
 
-  bool leaf_range(const size_t _i, size_t& _start, size_t& _end) const
+  bool leaf_range(const std::array<size_t, 2>& _it, std::array<size_t, 2>& _intrv) const
   {
-    if (_i < leaf_start_)
+    auto child_ind = child_index(_it);
+    if (child_ind < leaf_start_)
       return false;
-    _start = (_i - leaf_start_) * LEAF_GROUP_SIZE;
-    if (_start >= space_elements_.size())
+    _intrv[0] = (child_ind - leaf_start_) * LEAF_GROUP_SIZE;
+    if (_intrv[0] >= space_elements_.size())
       return false;
-    _end = _start + LEAF_GROUP_SIZE;
-    if (_end > space_elements_.size())
-      _end = space_elements_.size();
+    _intrv[1] = _intrv[0] + LEAF_GROUP_SIZE;
+    if (_intrv[1] > space_elements_.size())
+      _intrv[1] = space_elements_.size();
     return true;
   }
 

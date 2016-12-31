@@ -10,9 +10,9 @@ struct IBsplineFitting
 {
   struct IFunction
   {
-    virtual Geo::Vector<dimT> evaluate(const double _t) const = 0;
-    virtual Geo::Vector<dimT> closest_point(
-      const Geo::Vector<dimT>& _pt, const double _par) const = 0;
+    virtual Geo::VectorD<dimT> evaluate(const double _t) const = 0;
+    virtual Geo::VectorD<dimT> closest_point(
+      const Geo::VectorD<dimT>& _pt, const double _par) const = 0;
   };
 
   // Setup
@@ -26,7 +26,7 @@ struct IBsplineFitting
   virtual void compute() = 0;
 
   // Get results
-  virtual const std::vector<Vector<dimT>>& X() const = 0;
+  virtual const std::vector<VectorD<dimT>>& X() const = 0;
   //virtual Vector<dimT> eval(const double _t) const = 0;
 
   /*! Factory */

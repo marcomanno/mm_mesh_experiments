@@ -147,9 +147,9 @@ bool decompose(const std::array<ValT, N>& _w,
   const std::array<ValT, N>& _a, const std::array<ValT, N>& _b,
   ValT& _u, ValT& _v);
 
-template <size_t dimT> using Vector = std::array<double, dimT>;
-typedef Vector<3> Vector3;
-typedef Vector<2> Vector2;
+template <size_t dimT> using VectorD = std::array<double, dimT>;
+typedef VectorD<3> Vector3;
+typedef VectorD<2> Vector2;
 
 inline void normal_plane_default_directions(
   const Geo::Vector3& _norm,
@@ -164,6 +164,14 @@ inline void normal_plane_default_directions(
   _du[i_min] = 1;
   _du -= (_du * _norm) * _norm;
   _dv = _norm % _du;
+}
+
+template<size_t DimT>
+inline VectorD<DimT> uniform_vector(const double& _v)
+{
+  VectorD<DimT> vec;
+  for (auto& c : vec) c = _v;
+  return vec;
 }
 
 

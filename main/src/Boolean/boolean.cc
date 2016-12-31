@@ -4,6 +4,7 @@
 #include <Topology/iterator.hh>
 #include <Topology/impl.hh>
 
+#define DEB_ON
 #ifdef DEB_ON
 #include <Import/import.hh>
 #endif

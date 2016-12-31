@@ -37,7 +37,7 @@ private:
     void compute(const std::vector<Geo::Vector3>& _pos,
       std::vector<size_t>& _indcs,
       const double _tols,
-      Geo::Vector<3>& _norm);
+      Geo::VectorD<3>& _norm);
     bool concave(size_t _i) const
     {
       return _i < concav_.size() && concav_[_i];
@@ -87,7 +87,7 @@ void PolygonTriangulation::compute()
   for (const auto& loop : loops_)
     for (const auto& pt : loop)
       pl_fit->add_point(pt);
-  Geo::Vector<3> centr, norm;
+  Geo::VectorD<3> centr, norm;
   pl_fit->compute(centr, norm);
 
   Utils::StatisticsT<double> tol_max;
@@ -186,7 +186,7 @@ void PolygonTriangulation::Solution::compute(
   const std::vector<Geo::Vector3>& _pts,
   std::vector<size_t>& _indcs,
   const double _tol,
-  Geo::Vector<3>& _norm)
+  Geo::VectorD<3>& _norm)
 {
   auto valid_triangle = [&_indcs, &_pts, &_tol, &_norm](const size_t _i)
   {
