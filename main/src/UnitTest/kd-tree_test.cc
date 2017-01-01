@@ -3,6 +3,8 @@
 
 #include <list>
 
+namespace {
+
 struct KdTreeElement
 {
   static const size_t DIM = 3;
@@ -13,7 +15,8 @@ struct KdTreeElement
     double(std::rand()) / RAND_MAX
   };
   Geo::Range<3> box_;
-  const Geo::Vector3& point() const { return pt_; }
+  const Geo::Vector3& internal_point() const { return pt_; }
+  const KdTreeElement* operator->() const { return this; }
   const Geo::Range<3> box() const
   {
     Geo::Range<3> box;
@@ -22,11 +25,7 @@ struct KdTreeElement
     return box;
   }
 };
-
-void print_box(const Geo::Range<3>& _box)
-{
-  std::cout << _box.extr_[0] << "--" << _box.extr_[1] << "\n";
-}
+}//namespace
 
 TEST_CASE("Kd-Tree1", "[KDTREE]")
 {

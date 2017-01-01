@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <functional>
+#include <list>
 #include <vector>
 
 namespace Geo {
@@ -22,7 +23,7 @@ struct KdTreeBase
 template <class KdTreeElementT>
 class KdTree : public KdTreeBase
 {
-  static const size_t DIM = KdTreeElementT::DIM;
+  static const size_t DIM = 3;
 
   std::vector<KdTreeElementT> space_elements_;
   struct Split
@@ -52,18 +53,18 @@ class KdTree : public KdTreeBase
     {
       Range<DIM> box;
       for (size_t i = _st; i < en; ++i) 
-        box += space_elements_[i].box();
+        box += space_elements_[i]->box();
       return box;
     }
     VectorD<DIM> ave = { 0 };
     for (auto i = _st; i < en; ++i)
-      ave += space_elements_[i].point();
+      ave += space_elements_[i]->internal_point();
     ave /= double(en - _st);
 
     VectorD<DIM> sigma = { 0 };
     for (auto i = _st; i < en; ++i)
     {
-      auto diff = space_elements_[i].point() - ave;
+      auto diff = space_elements_[i]->internal_point() - ave;
       iterate_forw<diff.size()>::eval([&sigma, &diff](size_t _j)
       { sigma[_j] += std::pow(diff[_j], 2); });
     }
@@ -77,10 +78,10 @@ class KdTree : public KdTreeBase
     }
     std::nth_element(dat + _st, dat + mid_el, dat + en,
       [ind](const KdTreeElementT& _a, const KdTreeElementT& _b)
-    { return _a.point()[ind] < _b.point()[ind]; });
+    { return _a->internal_point()[ind] < _b->internal_point()[ind]; });
     splits_[_i].split_val_ =
-      ( space_elements_[mid_el].point()[ind] +
-        space_elements_[mid_el - 1].point()[ind]) / 2;
+      ( space_elements_[mid_el]->internal_point()[ind] +
+        space_elements_[mid_el - 1]->internal_point()[ind]) / 2;
     splits_[_i].box_[0] = split(_st, mid_el, 2 * _i + 1);
     splits_[_i].box_[1] = split(mid_el, _en, 2 * _i + 2);
     return splits_[_i].box_[0] + splits_[_i].box_[1];
@@ -211,7 +212,7 @@ std::vector<std::array<size_t, 2>> find_kdtree_couples(
       _kdt1.leaf_range(pair[1], intrv[1]);
       for (auto i = intrv[0][0]; i < intrv[0][1]; ++i)
         for (auto j = intrv[1][0]; j < intrv[1][1]; ++j)
-          if (!(_kdt0[i].box() * _kdt1[j].box()).empty())
+          if (!(_kdt0[i]->box() * _kdt1[j]->box()).empty())
             coll_pairs.emplace_back(std::array<size_t, 2>{ i, j });
     }
     else

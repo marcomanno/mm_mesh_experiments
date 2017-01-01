@@ -4,6 +4,7 @@
 #include <Utils/error_handling.hh>
 #include <Utils/statistics.hh>
 #include <Geo/vector.hh>
+#include <Geo/iterate.hh>
 
 namespace Topo {
 
@@ -26,6 +27,24 @@ double EdgeRef::tolerance() const
 {
   return std::max(verts_[0]->tolerance(), verts_[1]->tolerance());
 }
+
+Geo::Point EdgeRef::internal_point() const
+{
+  Geo::Segment seg;
+  geom(seg);
+  return (seg[0] + seg[1]) * 0.5;
+}
+
+Geo::Range<3> EdgeRef::box() const
+{
+  Geo::Range<3> b;
+  Geo::Segment seg;
+  geom(seg);
+  for (const auto& pt : seg)
+    b += pt;
+  return b;
+}
+
 
 bool EdgeRef::operator<(const Object& _oth) const
 {

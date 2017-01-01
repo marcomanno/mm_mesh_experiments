@@ -344,7 +344,7 @@ TEST_CASE("2tuna_p0", "[Bool]")
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   REQUIRE(bv_it.size() == 57);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 62);
+  REQUIRE(bf_it.size() == 60);
 }
 
 

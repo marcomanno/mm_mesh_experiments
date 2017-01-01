@@ -26,6 +26,23 @@ struct Range
   }
 public:
 
+  // Add point
+  Range<DimT>& operator+=(const VectorD<DimT>& _pt)
+  {
+    iterate_forw<DimT>::eval([this, &_pt](const int _i)
+    {
+      if (extr_[0][_i] > _pt[_i])
+        extr_[0][_i] = _pt[_i];
+      if (extr_[1][_i] < _pt[_i])
+        extr_[1][_i] = _pt[_i];
+    });
+    return *this;
+  }
+  Range<DimT> operator+(const VectorD<DimT>& _pt) const
+  {
+    return (Range<DimT>(*this) += _pt);
+  }
+
   // Union
   Range<DimT>& operator+=(const Range<DimT>& _oth)
   {

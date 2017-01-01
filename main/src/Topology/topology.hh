@@ -2,6 +2,8 @@
 
 #include "subtype.hh"
 #include "Geo/entity.hh"
+#include "Geo/range.hh"
+
 
 #include <array>
 #include <vector>
@@ -129,6 +131,9 @@ struct IBase : public Object
   virtual bool remove_child(size_t) { return false; }
   virtual bool remove_child(IBase*) { return false; }
   virtual bool replace_child(IBase* /*_elem*/, IBase* /*_new_elem*/) { return false; }
+  virtual Geo::Point internal_point() const
+  { return Geo::uniform_vector<3>(std::numeric_limits<double>::max()); }
+  virtual Geo::Range<3> box() const { return Geo::Range<3>(); }
 protected:
   virtual bool remove_parent(IBase* /*_prnt*/) { return false; }
   virtual bool add_parent(IBase* /*_prnt*/) { return false; }

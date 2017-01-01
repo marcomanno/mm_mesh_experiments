@@ -212,6 +212,8 @@ struct EdgeRef : public E<Type::EDGE>
   virtual bool set_geom(const Geo::Segment&) { return false; }
   virtual double tolerance() const;
   virtual bool set_tolerance(const double) { return false; }
+  virtual Geo::Point internal_point() const;
+  virtual Geo::Range<3> box() const;
 
   virtual bool operator<(const Object& _oth) const;
   virtual bool operator==(const Object& _oth) const;

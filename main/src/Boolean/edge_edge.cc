@@ -5,8 +5,9 @@
 #include "Topology/impl.hh"
 #include "Topology/split.hh"
 #include "Geo/entity.hh"
-#include "Geo/vector.hh"
+#include "Geo/kd-tree.hh"
 #include "Geo/minsphere.hh"
+#include "Geo/vector.hh"
 #include "Utils/index.hh"
 #include "Utils/merger.hh"
 
@@ -148,68 +149,72 @@ bool EdgeVersusEdges::intersect(
       }
       return false;
     }
-
   } intrs_dat[2];
 
-  for (size_t i = 0; i < _ed_it_a.size(); ++i)
+  Geo::KdTree<Topo::Wrap<Topo::Type::EDGE>> kdtree0, kdtree1;
+  kdtree0.insert(_ed_it_a.begin(), _ed_it_a.end());
+  kdtree1.insert(_ed_it_b.begin(), _ed_it_b.end());
+  kdtree0.compute();
+  kdtree1.compute();
+
+  std::vector<std::array<size_t, 2>> edge_couples =
+    Geo::find_kdtree_couples<Topo::Wrap<Topo::Type::EDGE>>(kdtree0, kdtree1);
+
+  for (const auto& couple : edge_couples)
   {
-    intrs_dat[0].set_edge(_ed_it_a.get(i));
-    for (size_t j = 0; j < _ed_it_b.size(); ++j)
+    intrs_dat[0].set_edge(kdtree0[couple[0]]);
+    intrs_dat[1].set_edge(kdtree1[couple[1]]);
+    std::vector<std::array<size_t, 2>> matches;
+    for (size_t k = 0; k < intrs_dat[0].ev_it_.size(); ++k)
     {
-      intrs_dat[1].set_edge(_ed_it_b.get(j));
-
-      std::vector<std::array<size_t, 2>> matches;
-      for (size_t k = 0; k < intrs_dat[0].ev_it_.size(); ++k)
+      for (size_t l = 0; l < intrs_dat[1].ev_it_.size(); ++l)
       {
-        for (size_t l = 0; l < intrs_dat[1].ev_it_.size(); ++l)
+        if (intrs_dat[0].ev_it_.get(k) == intrs_dat[1].ev_it_.get(l))
         {
-          if (intrs_dat[0].ev_it_.get(k) == intrs_dat[1].ev_it_.get(l))
-          {
-            matches.push_back({ k, l });
-            break;
-          }
+          matches.push_back({ k, l });
+          break;
         }
       }
-      if (matches.size() == 2)
-        continue;
-      Geo::Point clsst_pt;
-      double pars[2], dist;
-      if (!Geo::closest_point(
-        intrs_dat[0].seg_, intrs_dat[1].seg_,
-        &clsst_pt, pars, &dist))
-      {
-        continue;
-      }
-      Utils::FindMax<double> max_tol(intrs_dat[0].tol_);
-      max_tol.add(intrs_dat[1].tol_);
-      if (dist > max_tol())
-        continue;
-
-      EdgeEdgeSplintInfo ed_ed_splt_inf;
-      size_t on_end_nmbr = 0;
-      ed_ed_splt_inf.pt_ = clsst_pt;
-      for (size_t k = 0; k < 2; ++k)
-      {
-        bool on_end = intrs_dat[k].inersection_on_end(
-          clsst_pt, max_tol(), 
-          ed_ed_splt_inf.ed_split_info_[k], ed_ed_splt_inf.vert_);
-        if (on_end)
-        {
-          (*ed_ed_splt_inf.vert_)->geom(ed_ed_splt_inf.pt_);
-          ++on_end_nmbr;
-        }
-      }
-      if (on_end_nmbr == 2)
-        continue; // Nothing to split, intersection is on end of both edges.
-
-      for (size_t k = 0; k < 2; ++k)
-      {
-        ed_ed_splt_inf.ed_split_info_[k].edge_ = intrs_dat[k].edge_;
-        ed_ed_splt_inf.ed_split_info_[k].par = pars[k];
-      }
-      ed_ed_splt_inf.tol_ = max_tol();
-      splt_infos_.push_back(ed_ed_splt_inf);
     }
+    if (matches.size() == 2)
+      continue;
+    Geo::Point clsst_pt;
+    double pars[2], dist;
+    if (!Geo::closest_point(
+      intrs_dat[0].seg_, intrs_dat[1].seg_,
+      &clsst_pt, pars, &dist))
+    {
+      continue;
+    }
+    Utils::FindMax<double> max_tol(intrs_dat[0].tol_);
+    max_tol.add(intrs_dat[1].tol_);
+    if (dist > max_tol())
+      continue;
+
+    EdgeEdgeSplintInfo ed_ed_splt_inf;
+    size_t on_end_nmbr = 0;
+    ed_ed_splt_inf.pt_ = clsst_pt;
+    for (size_t k = 0; k < 2; ++k)
+    {
+      bool on_end = intrs_dat[k].inersection_on_end(
+        clsst_pt, max_tol(), 
+        ed_ed_splt_inf.ed_split_info_[k], ed_ed_splt_inf.vert_);
+      if (on_end)
+      {
+        (*ed_ed_splt_inf.vert_)->geom(ed_ed_splt_inf.pt_);
+        ++on_end_nmbr;
+      }
+    }
+    if (on_end_nmbr == 2)
+      continue; // Nothing to split, intersection is on end of both edges.
+
+    for (size_t k = 0; k < 2; ++k)
+    {
+      ed_ed_splt_inf.ed_split_info_[k].edge_ = intrs_dat[k].edge_;
+      ed_ed_splt_inf.ed_split_info_[k].par = pars[k];
+    }
+    ed_ed_splt_inf.tol_ = max_tol();
+    splt_infos_.push_back(ed_ed_splt_inf);
   }
   return true;
 }
