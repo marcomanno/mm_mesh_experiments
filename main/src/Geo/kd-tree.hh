@@ -185,4 +185,44 @@ public:
   }
 };
 
+template <class KdTreeElementT> 
+std::vector<std::array<size_t, 2>> find_kdtree_couples(
+  KdTree<KdTreeElementT>& _kdt0,
+  KdTree<KdTreeElementT>& _kdt1)
+{
+  std::vector<std::array<size_t, 2>> coll_pairs;
+  std::list<std::array<std::array<size_t, 2>, 2>> pairs;
+  for (size_t j1 = 0; j1 < 2; ++j1)
+    for (size_t j2 = 0; j2 < 2; ++j2)
+    {
+      std::array<std::array<size_t, 2>, 2> pair = { { { 0, j1 },{ 0, j2 } } };
+      if (!(_kdt0.box(pair[0]) * _kdt0.box(pair[1])).empty())
+        pairs.emplace_back(pair);
+    }
+  for (; !pairs.empty(); pairs.pop_front())
+  {
+    auto pair = pairs.front();
+    auto has_child0 = _kdt0.child(pair[0]);
+    auto has_child1 = _kdt1.child(pair[1]);
+    if (!has_child0 && !has_child1)
+    {
+      std::array<std::array<size_t, 2>, 2> intrv;
+      _kdt0.leaf_range(pair[0], intrv[0]);
+      _kdt1.leaf_range(pair[1], intrv[1]);
+      for (auto i = intrv[0][0]; i < intrv[0][1]; ++i)
+        for (auto j = intrv[1][0]; j < intrv[1][1]; ++j)
+          if (!(_kdt0[i].box() * _kdt1[j].box()).empty())
+            coll_pairs.emplace_back(std::array<size_t, 2>{ i, j });
+    }
+    else
+    {
+      for (int i0 = has_child0; i0-- >= 0; pair[0][1] = 1 - pair[0][1])
+        for (int i1 = has_child1; i1-- >= 0; pair[1][1] = 1 - pair[1][1])
+          if (!(_kdt0.box(pair[0]) * _kdt1.box(pair[1])).empty())
+            pairs.emplace_back(pair);
+    }
+  }
+  return coll_pairs;
+}
+
 }//namespace Geo
