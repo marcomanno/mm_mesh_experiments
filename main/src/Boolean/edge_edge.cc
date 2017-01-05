@@ -5,7 +5,7 @@
 #include "Topology/impl.hh"
 #include "Topology/split.hh"
 #include "Geo/entity.hh"
-#include "Geo/kd-tree.hh"
+#include "Geo/kdtree.hh"
 #include "Geo/minsphere.hh"
 #include "Geo/vector.hh"
 #include "Utils/index.hh"

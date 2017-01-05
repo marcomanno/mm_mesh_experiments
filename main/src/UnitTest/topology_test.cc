@@ -294,6 +294,10 @@ TEST_CASE("2tuna0.1", "[Bool]")
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it1(result);
+  REQUIRE(bv_it1.size() == 2444);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 3830);
   IO::save_obj("result_tuna_0.1.obj", result);
 }
 
@@ -312,6 +316,10 @@ TEST_CASE("2tuna0.2", "[Bool]")
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it1(result);
+  REQUIRE(bv_it1.size() == 2597);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 4150);
   IO::save_obj("result_tuna_0.2.obj", result);
 }
 
@@ -330,6 +338,10 @@ TEST_CASE("2tuna0.4", "[Bool]")
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it1(result);
+  REQUIRE(bv_it1.size() == 2292);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 3953);
   IO::save_obj("result_tuna_0.4.obj", result);
 }
 
@@ -344,7 +356,7 @@ TEST_CASE("2tuna_p0", "[Bool]")
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   REQUIRE(bv_it.size() == 57);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 60);
+  REQUIRE(bf_it.size() == 62);
 }
 
 
@@ -354,12 +366,12 @@ TEST_CASE("2tuna_p1", "[Bool]")
   auto pyr2 = IO::load_obj(MESH_FOLDER"aaaa1.obj");
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
-  auto result = bool_solver->compute(Boolean::Operation::INTERSECTION);
+  auto result = bool_solver->compute(Boolean::Operation::SPLIT);
   IO::save_obj("result_2tuna_p1.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
-  REQUIRE(bv_it.size() == 15);
+  REQUIRE(bv_it.size() == 75);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 14);
+  REQUIRE(bf_it.size() == 114);
 }
 
 TEST_CASE("2tuna_p1a", "[Bool]")

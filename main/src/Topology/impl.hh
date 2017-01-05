@@ -174,11 +174,9 @@ template <> struct EE<Type::BODY> : public UpEntity<Type::BODY>
 template <> struct EE<Type::FACE> : public UpEntity<Type::FACE>
 {
   virtual SubType sub_type() const { return SubType::FACE; }
-  virtual bool reverse()
-  { 
-    std::reverse(low_elems_.begin(), low_elems_.end());
-    return true; 
-  }
+  virtual bool reverse();
+  virtual Geo::Point internal_point() const;
+  virtual Geo::Range<3> box() const;
 };
 
 template <> struct EE<Type::EDGE> : public UpEntity<Type::EDGE>
@@ -198,6 +196,7 @@ template <> struct EE<Type::VERTEX> : public Base<Type::VERTEX>
   virtual double tolerance() const { return tol_; }
   virtual bool set_tolerance(const double _tol) { tol_ = _tol; return true;  }
   virtual SubType sub_type() const { return SubType::VERTEX; }
+  virtual Geo::Point internal_point() const { return pt_; }
 private:
   Geo::Point pt_;
   double tol_ = 0;

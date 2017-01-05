@@ -8,6 +8,40 @@
 
 namespace Topo {
 
+bool EE<Type::FACE>::reverse()
+{
+  std::reverse(low_elems_.begin(), low_elems_.end());
+  return true;
+}
+
+Geo::Point EE<Type::FACE>::internal_point() const
+{
+  Geo::Point pt = {};
+  if (!low_elems_.empty())
+  {
+    for (const auto el : low_elems_)
+      pt += el->internal_point();
+    pt /= double(low_elems_.size());
+  }
+  return pt;
+}
+
+Geo::Range<3> EE<Type::FACE>::box() const
+{
+  Utils::FindMax<double> max_tol;
+  Geo::Range<3> b;
+  for (const auto el : low_elems_)
+  {
+    max_tol.add(el->tolerance());
+    auto pt = el->internal_point();
+    max_tol.add(Geo::epsilon(pt));
+    b += el->internal_point();
+  }
+  b.fatten(max_tol());
+  return b;
+}
+
+
 bool EE<Type::EDGE>::geom(Geo::Segment& /*_seg*/) const
 {
   return false;
@@ -40,8 +74,14 @@ Geo::Range<3> EdgeRef::box() const
   Geo::Range<3> b;
   Geo::Segment seg;
   geom(seg);
+  Utils::FindMax<double> max_tol;
   for (const auto& pt : seg)
+  {
     b += pt;
+    max_tol.add(Geo::epsilon(pt));
+  }
+  max_tol.add(tolerance());
+  b.fatten(max_tol());
   return b;
 }
 

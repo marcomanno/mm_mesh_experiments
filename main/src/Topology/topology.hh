@@ -134,6 +134,7 @@ struct IBase : public Object
   virtual Geo::Point internal_point() const
   { return Geo::uniform_vector<3>(std::numeric_limits<double>::max()); }
   virtual Geo::Range<3> box() const { return Geo::Range<3>(); }
+  virtual double tolerance() const { return 0; }
 protected:
   virtual bool remove_parent(IBase* /*_prnt*/) { return false; }
   virtual bool add_parent(IBase* /*_prnt*/) { return false; }

@@ -1,5 +1,5 @@
 #include "Catch/catch.hpp"
-#include "Geo/kd-tree.hh"
+#include "Geo/kdtree.hh"
 
 #include <list>
 

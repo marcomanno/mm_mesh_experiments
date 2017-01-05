@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vector.hh"
+#include "iterate.hh"
 
 namespace Geo {
 

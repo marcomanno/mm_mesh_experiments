@@ -1,7 +1,8 @@
 #pragma optimize ("", off)
 #include "face_intersections.hh"
-#include "Geo/vector.hh"
 #include "Geo/MinSphere.hh"
+#include "Geo/kdtree.hh"
+#include "Geo/vector.hh"
 #include "Topology/split.hh"
 #include "Topology/impl.hh"
 #include "Utils/index.hh"
@@ -144,40 +145,64 @@ bool FaceVersus::edge_intersect(
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE>& _face_it,
   Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE>& _edge_it)
 {
+  Geo::KdTree<Topo::Wrap<Topo::Type::FACE>> kdfaces;
+  kdfaces.insert(_face_it.begin(), _face_it.end());
+  kdfaces.compute();
+  Geo::KdTree<Topo::Wrap<Topo::Type::EDGE>> kdedges;
+  kdedges.insert(_edge_it.begin(), _edge_it.end());
+  kdedges.compute();
+  auto pairs = Geo::find_kdtree_couples<
+    Topo::Wrap<Topo::Type::FACE>,
+    Topo::Wrap<Topo::Type::EDGE>>(kdfaces, kdedges);
+
+#ifdef DEBUG_KDTREE
+  auto old_pairs(std::move(pairs));
+  for (size_t i = 0; i < _face_it.size(); ++i)
+    for (size_t j = 0; j < _edge_it.size(); ++j)
+      pairs.emplace_back(std::array<size_t, 2>{ i, j });
+#endif
+
   FaceEdgeInfo f_eds_info;
-  for (auto& face : _face_it)
+  for (const auto& pair : pairs)
   {
-    auto& face_info = face_geom(face);
-    for (auto& edge : _edge_it)
+    auto face = kdfaces[pair[0]];
+    auto& face_info = face_geom(kdfaces[pair[0]]);
+    auto edge = kdedges[pair[1]];
+    Geo::Segment seg;
+    edge->geom(seg);
+    Geo::Point clsst_pt;
+    double dist_sq, t_seg;
+    if (!closest_point(*face_info.poly_face_, seg, &clsst_pt, &t_seg, &dist_sq))
+      continue;
+    auto pt_tol = Geo::epsilon(clsst_pt);
+    if (dist_sq > std::max(pt_tol, edge->tolerance()))
+      continue;
+
+#ifdef DEBUG_KDTREE
+    if (std::find(old_pairs.begin(), old_pairs.end(), pair) == old_pairs.end())
     {
-      Geo::Segment seg;
-      edge->geom(seg);
-      Geo::Point clsst_pt;
-      double dist_sq, t_seg;
-      if (!closest_point(*face_info.poly_face_, seg, &clsst_pt, &t_seg, &dist_sq))
-        continue;
-      auto pt_tol = Geo::epsilon(clsst_pt);
-      if (dist_sq > std::max(pt_tol, edge->tolerance()))
-        continue;
-
-      bool point_on_vertex = false;
-      Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ev_it(edge);
-      for (auto vert : ev_it)
-      {
-        Geo::Point pt;
-        vert->geom(pt);
-        if (Geo::same(pt, clsst_pt, std::max(pt_tol, vert->tolerance())))
-        {
-          point_on_vertex = true;
-          // Todo: verify that the vertex is at the edge end.
-          break;
-        }
-      }
-      if (point_on_vertex) // Intersection is at edge end.
-        continue;
-
-      f_eds_info.add(clsst_pt, t_seg, edge, face);
+      bool box_inters = (kdfaces[pair[0]]->box() * kdedges[pair[1]]->box()).empty();
+      std::cout << "Error " << pair[0] << " " << pair[1] << " Box inters " << box_inters << std::endl;
     }
+#endif
+
+    bool point_on_vertex = false;
+    Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ev_it(edge);
+    for (auto vert : ev_it)
+    {
+      Geo::Point pt;
+      vert->geom(pt);
+      if (Geo::same(pt, clsst_pt, std::max(pt_tol, vert->tolerance())))
+      {
+        point_on_vertex = true;
+        // Todo: verify that the vertex is at the edge end.
+        break;
+      }
+    }
+    if (point_on_vertex) // Intersection is at edge end.
+      continue;
+
+    f_eds_info.add(clsst_pt, t_seg, edge, face);
   }
   f_eds_info.merge(); // Merge the intersection points.
   f_eds_info.split_edges(); // Splits the edges.
