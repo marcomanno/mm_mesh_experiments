@@ -1,4 +1,5 @@
 #include "face_intersections.hh"
+#include "Geo/kdtree.hh"
 #include "Geo/plane_fitting.hh"
 #include "Geo/vector.hh"
 #include <Geo/point_in_polygon.hh>
@@ -86,24 +87,32 @@ bool FaceVersus::face_intersect(
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE>& _face_it_b)
 {
   FaceEdgeMap face_new_edge_map;
-  for (auto face_a : _face_it_a)
+  Geo::KdTree<Topo::Wrap<Topo::Type::FACE>> kdfaces_a;
+  kdfaces_a.insert(_face_it_a.begin(), _face_it_a.end());
+  kdfaces_a.compute();
+  Geo::KdTree<Topo::Wrap<Topo::Type::FACE>> kdfaces_b;
+  kdfaces_b.insert(_face_it_b.begin(), _face_it_b.end());
+  kdfaces_b.compute();
+  auto pairs = Geo::find_kdtree_couples<Topo::Wrap<Topo::Type::FACE>,
+    Topo::Wrap<Topo::Type::FACE>>(kdfaces_a, kdfaces_b);
+  for (const auto& pair : pairs)
   {
-    auto vert_set_a = face_vertices(f_vert_info_[face_a].new_vert_list_, face_a);
-    for (auto face_b : _face_it_b)
-    {
-      const auto& vert_set_b = 
-        face_vertices(f_vert_info_[face_b].new_vert_list_, face_b);
-      std::vector<Topo::Wrap<Topo::Type::VERTEX>> v_inters;
-      std::set_intersection(
-        vert_set_a.begin(), vert_set_a.end(),
-        vert_set_b.begin(), vert_set_b.end(),
-        std::back_inserter(v_inters));
-      if (v_inters.size() < 2)
-        continue;
+    const auto& face_a = kdfaces_a[pair[0]];
+    const auto& face_b = kdfaces_b[pair[1]];
+    const auto& vert_set_a = 
+      face_vertices(f_vert_info_[face_a].new_vert_list_, face_a);
+    const auto& vert_set_b =
+      face_vertices(f_vert_info_[face_b].new_vert_list_, face_b);
+    std::vector<Topo::Wrap<Topo::Type::VERTEX>> v_inters;
+    std::set_intersection(
+      vert_set_a.cbegin(), vert_set_a.cend(),
+      vert_set_b.cbegin(), vert_set_b.cend(),
+      std::back_inserter(v_inters));
+    if (v_inters.size() < 2)
+      continue;
 
-      face_new_edge_map.add_face_edge(face_a, v_inters, false);
-      face_new_edge_map.add_face_edge(face_b, v_inters, true);
-    }
+    face_new_edge_map.add_face_edge(face_a, v_inters, false);
+    face_new_edge_map.add_face_edge(face_b, v_inters, true);
   }
   face_new_edge_map.init_map();
   face_new_edge_map.split(overlap_faces_);
@@ -144,7 +153,29 @@ static bool insert_remaning_common_vertices(
       if (conn_idxs.empty())
         continue;
       if (conn_idxs.size() > 1)
-        continue;
+      {
+        // Select the best chain to use for connection as the 
+        // nearest to the overlap vertex to insert.
+        Geo::Point ptv;
+        _verts[i]->geom(ptv);
+        double dist_sq_min = std::numeric_limits<double>::max();
+        for (const auto& conn_idx : conn_idxs)
+        {
+          auto& chain = _connections[conn_idx[0]];
+          Geo::Segment seg;
+          chain.front()->geom(seg[0]);
+          chain.back()->geom(seg[1]);
+          double dist_sq;
+          Geo::closest_point(seg, ptv, nullptr, nullptr, &dist_sq);
+          if (dist_sq < dist_sq_min)
+          {
+            dist_sq_min = dist_sq;
+            conn_idxs[0] = conn_idx;
+          }
+        }
+        if (dist_sq_min == std::numeric_limits<double>::max())
+          continue;
+      }
       auto& chain = _connections[conn_idxs[0][0]];
       auto ind = conn_idxs[0][1];
       Topo::Wrap<Topo::Type::VERTEX> v0, v1;
