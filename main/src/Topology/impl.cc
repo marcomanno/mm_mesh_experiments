@@ -52,6 +52,15 @@ bool EE<Type::EDGE>::set_geom(const Geo::Segment&)
   return false;
 }
 
+Geo::Range<3> EE<Type::VERTEX>::box() const
+{
+  Geo::Range<3> b;
+  b += pt_;
+  b.fatten(std::max(tol_, Geo::epsilon(pt_)));
+  return b;
+}
+
+
 bool EdgeRef::geom(Geo::Segment& _seg) const
 {
   return verts_[0]->geom(_seg[0]) && verts_[1]->geom(_seg[1]);

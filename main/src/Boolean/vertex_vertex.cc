@@ -1,8 +1,9 @@
 
 #include "priv.hh"
 
-#include "Geo/vector.hh"
+#include "Geo/kdtree.hh"
 #include "Geo/minsphere.hh"
+#include "Geo/vector.hh"
 #include "Utils/statistics.hh"
 
 #include <set>
@@ -39,54 +40,60 @@ bool vertices_versus_vertices(
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX>& _vert_it_a,
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX>& _vert_it_b)
 {
-  MergeSets mrg_sets;
-  for (size_t i = 0; i < _vert_it_a.size(); ++i)
-  {
-    for (size_t j = 0; j < _vert_it_b.size(); ++j)
-    {
-      Topo::Wrap<Topo::Type::VERTEX> va = _vert_it_a.get(i);
-      Topo::Wrap<Topo::Type::VERTEX> vb = _vert_it_b.get(j);
-      Geo::Point pt_a, pt_b;
-      va->geom(pt_a);
-      vb->geom(pt_b);
-      auto tol = std::max(va->tolerance(), vb->tolerance());
-      if (!Geo::same(pt_a, pt_b, tol))
-        continue;
+  Geo::KdTree<Topo::Wrap<Topo::Type::VERTEX>> kdtree[2];
+  kdtree[0].insert(_vert_it_a.begin(), _vert_it_a.end());
+  kdtree[1].insert(_vert_it_b.begin(), _vert_it_b.end());
+  kdtree[0].compute();
+  kdtree[1].compute();
 
-      auto it_a = find(mrg_sets, va);
-      auto it_b = find(mrg_sets, vb);
-      bool found_a = it_a != mrg_sets.end();
-      bool found_b = it_b != mrg_sets.end();
-      if (found_a != found_b)
+  std::vector<std::array<size_t, 2>> vert_couples =
+    Geo::find_kdtree_couples<Topo::Wrap<Topo::Type::VERTEX>>(kdtree[0], kdtree[1]);
+
+  MergeSets mrg_sets;
+  for (const auto& couple : vert_couples)
+  {
+    Topo::Wrap<Topo::Type::VERTEX> va = kdtree[0][couple[0]];
+    Topo::Wrap<Topo::Type::VERTEX> vb = kdtree[1][couple[1]];
+    Geo::Point pt_a, pt_b;
+    va->geom(pt_a);
+    vb->geom(pt_b);
+    auto tol = std::max(va->tolerance(), vb->tolerance());
+    if (!Geo::same(pt_a, pt_b, tol))
+      continue;
+
+    auto it_a = find(mrg_sets, va);
+    auto it_b = find(mrg_sets, vb);
+    bool found_a = it_a != mrg_sets.end();
+    bool found_b = it_b != mrg_sets.end();
+    if (found_a != found_b)
+    {
+      if (found_b)
       {
-        if (found_b)
-        {
-          it_a = it_b;
-          vb = va;
-        }
-        MergeSet tmp(*it_a);
-        tmp.insert(vb);
+        it_a = it_b;
+        vb = va;
+      }
+      MergeSet tmp(*it_a);
+      tmp.insert(vb);
+      mrg_sets.erase(it_a);
+      mrg_sets.insert(tmp);
+    }
+    else if (found_a)
+    {
+      if (it_a != it_b)
+      {
+        MergeSet mrg_set(*it_a);
+        mrg_set.insert(it_b->begin(), it_b->end());
+        mrg_sets.erase(it_b);
         mrg_sets.erase(it_a);
-        mrg_sets.insert(tmp);
-      }
-      else if (found_a)
-      {
-        if (it_a != it_b)
-        {
-          MergeSet mrg_set(*it_a);
-          mrg_set.insert(it_b->begin(), it_b->end());
-          mrg_sets.erase(it_b);
-          mrg_sets.erase(it_a);
-          mrg_sets.insert(mrg_set);
-        }
-      }
-      else
-      {
-        MergeSet mrg_set;
-        mrg_set.insert(va);
-        mrg_set.insert(vb);
         mrg_sets.insert(mrg_set);
       }
+    }
+    else
+    {
+      MergeSet mrg_set;
+      mrg_set.insert(va);
+      mrg_set.insert(vb);
+      mrg_sets.insert(mrg_set);
     }
   }
   if (mrg_sets.empty())

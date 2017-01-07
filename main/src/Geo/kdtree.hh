@@ -202,7 +202,7 @@ std::vector<std::array<size_t, 2>> find_kdtree_couples(
     for (size_t j2 = 0; j2 < 2; ++j2)
     {
       std::array<std::array<size_t, 2>, 2> pair = { { { 0, j1 },{ 0, j2 } } };
-      if (!(_kdt0.box(pair[0]) * _kdt0.box(pair[1])).empty())
+      if (!(_kdt0.box(pair[0]) * _kdt1.box(pair[1])).empty())
         pairs.emplace_back(pair);
     }
   for (; !pairs.empty(); pairs.pop_front())
