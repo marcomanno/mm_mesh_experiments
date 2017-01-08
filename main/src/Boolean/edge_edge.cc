@@ -1,4 +1,5 @@
 
+#pragma optimize ("", off)
 #include "priv.hh"
 #include "Utils/statistics.hh"
 #include "Topology/iterator.hh"
@@ -37,10 +38,8 @@ void merge_intersections(std::vector<EdgeEdgeSplintInfo>& _splt_inf)
 {
   for (size_t i = 0; i < _splt_inf.size(); ++i)
   {
-    for (size_t j = 0; j < _splt_inf.size(); ++j)
+    for (size_t j = i + 1; j < _splt_inf.size(); ++j)
     {
-      if (i == j)
-        continue;
       Utils::FindMax<double> max_tol({ _splt_inf[i].tol_, _splt_inf[j].tol_ });
       if (!Geo::same(_splt_inf[i].pt_, _splt_inf[j].pt_, max_tol()))
         continue;
@@ -64,11 +63,12 @@ void merge_intersections(std::vector<EdgeEdgeSplintInfo>& _splt_inf)
       }
       else
       {
-        if (!_splt_inf[i].vert_)
-          std::swap(i, j);
-        _splt_inf[j].vert_ = _splt_inf[i].vert_;
-        _splt_inf[j].tol_ = _splt_inf[i].tol_ = max_tol();
-        _splt_inf[j].pt_ = _splt_inf[i].pt_;
+        auto i1 = i, j1 = j;
+        if (!_splt_inf[i1].vert_)
+          std::swap(i1, j1);
+        _splt_inf[j1].vert_ = _splt_inf[i1].vert_;
+        _splt_inf[j1].tol_ = _splt_inf[i1].tol_ = max_tol();
+        _splt_inf[j1].pt_ = _splt_inf[i1].pt_;
       }
     }
   }
@@ -78,7 +78,8 @@ void merge_intersections(std::vector<EdgeEdgeSplintInfo>& _splt_inf)
     if (_splt_inf[i].equiv_idx_ == Utils::INVALID_INDEX)
       continue;
     size_t k = i;
-    for (; _splt_inf[k].equiv_idx_ != Utils::INVALID_INDEX; k = _splt_inf[k].equiv_idx_);
+    for (; _splt_inf[k].equiv_idx_ != Utils::INVALID_INDEX; )
+      k = _splt_inf[k].equiv_idx_;
     _splt_inf[i].equiv_idx_ = k;
     if (!_splt_inf[k].vert_)
     {
