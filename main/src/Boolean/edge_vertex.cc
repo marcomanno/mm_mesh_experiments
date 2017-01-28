@@ -63,10 +63,10 @@ bool EdgesVersusVertices::intersect(
     spli.vert_->geom(pt);
     Geo::Segment seg;
     edge->geom(seg);
-    Geo::closest_point(seg, pt, &spli.clsst_pt_, &spli.t_, &spli.dist_);
-    Utils::FindMax<double> max_tol(spli.vert_->tolerance());
-    max_tol.add(edge->tolerance());
-    if (spli.dist_ > max_tol())
+    Geo::closest_point(seg, pt, &spli.clsst_pt_, &spli.t_, &spli.dist_sq_);
+    Utils::FindMax<double> max_tol(
+    { spli.vert_->tolerance(), Geo::epsilon(pt), edge->tolerance() });
+    if (spli.dist_sq_ > Geo::sq(max_tol()))
       continue; // Vertex is too far.
 
     auto it = ed_splt_set_.lower_bound(edge);

@@ -52,7 +52,7 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
     for (const auto& v : ve_it)
     {
 #ifndef SPLIT
-      Geom::Point pt;
+      Geo::Point pt;
       v->geom(pt);
       auto idx = std::lower_bound(all_pts.begin(),
         all_pts.end(), pt) - all_pts.begin() + 1;

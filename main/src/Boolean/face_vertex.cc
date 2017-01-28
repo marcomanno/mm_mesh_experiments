@@ -37,7 +37,7 @@ bool FaceVersus::vertex_intersect(
     vert->geom(pt);
     if (!closest_point(*face_info.poly_face_, pt, &clsst_pt, &dist_sq))
       continue;
-    if (dist_sq > Geo::sq(vert->tolerance()))
+    if (dist_sq > std::max(Geo::epsilon_sq(pt), Geo::sq(vert->tolerance())))
       continue;
     face_info.new_vert_list_.push_back(vert);
   }

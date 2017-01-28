@@ -12,6 +12,15 @@ void Split<Type::EDGE>::add_point(const Info& inf_) const
   split_pts_.push_back(inf_);
 }
 
+void Split<Type::EDGE>::remove_duplicates()
+{
+  auto new_end = std::unique(split_pts_.begin(), split_pts_.end(), 
+    [](const Info& _a, const Info& _b) { return _a.vert_ == _b.vert_; });
+  split_pts_.erase(new_end, split_pts_.end());
+  if (split_pts_.size() > 1 && split_pts_.front().vert_ == split_pts_.back().vert_)
+    split_pts_.pop_back();
+}
+
 bool Split<Type::EDGE>::operator()() const
 {
   std::sort(split_pts_.begin(), split_pts_.end(), 

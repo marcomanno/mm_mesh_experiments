@@ -381,6 +381,30 @@ struct Iterator<Type::COEDGE, Type::FACE>::Impl : public BodyIteratorBase<Type::
 };
 
 template <>
+struct Iterator<Type::COEDGE, Type::EDGE>::Impl : public BodyIteratorBase<Type::EDGE>
+{
+  void reset(const Wrap<Type::COEDGE>& _from)
+  {
+    clear();
+    THROW_IF(_from->sub_type() != SubType::COEDGE_REF, "Not expected coedge type");
+    auto coedge_ref = static_cast<const Topo::CoEdgeRef*>(_from.get());
+    auto second = coedge_ref->ind_ + 1;
+    if (second > coedge_ref->face_->size(Direction::Down))
+      second = 0;
+
+    Wrap<Type::EDGE> edge;
+    auto edref = edge.make<EdgeRef>();
+    auto v0 = static_cast<E<Type::VERTEX>*>(
+      coedge_ref->face_->get(Direction::Down, coedge_ref->ind_));
+    edref->verts_[0].reset(v0);
+    auto v1 = static_cast<E<Type::VERTEX>*>(coedge_ref->face_->get(Direction::Down, second));
+    edref->verts_[1].reset(v1);
+    edref->finalise();
+    elems_.emplace_back(edge);
+  }
+};
+
+template <>
 struct Iterator<Type::FACE, Type::EDGE>::Impl : public BodyIteratorBase<Type::EDGE>
 {
   void reset(const Wrap<Type::FACE>& _from)
@@ -403,6 +427,42 @@ struct Iterator<Type::FACE, Type::EDGE>::Impl : public BodyIteratorBase<Type::ED
   }
 };
 
+template <>
+struct Iterator<Type::FACE, Type::COEDGE>::Impl : public BodyIteratorBase<Type::COEDGE>
+{
+  void reset(const Wrap<Type::FACE>& _from)
+  {
+    clear();
+    auto nverts = _from->size(Direction::Down);
+    if (nverts < 2)
+      return;
+    for (auto i = 0; i < nverts; ++i)
+    {
+      Wrap<Type::COEDGE> co_edge;
+      auto co_edref = co_edge.make<CoEdgeRef>();
+      co_edref->face_ = _from;
+      co_edref->ind_ = i;
+      elems_.emplace_back(co_edref);
+    }
+  }
+};
+
+template <>
+struct Iterator<Type::COEDGE, Type::VERTEX>::Impl : public BodyIteratorBase<Type::VERTEX>
+{
+  void reset(const Wrap<Type::COEDGE>& _from)
+  {
+    clear();
+    THROW_IF(_from->sub_type() != SubType::COEDGE_REF, "Not expected coedge type");
+    auto coedge_ref = static_cast<const Topo::CoEdgeRef*>(_from.get());
+    for (int i = 0; i < 2; ++i)
+    {
+      auto v = static_cast<E<Type::VERTEX>*>(
+        coedge_ref->face_->get(Direction::Down, coedge_ref->ind_ + i));
+      elems_.emplace_back(v);
+    }
+  }
+};
 
 template Iterator<Type::BODY, Type::FACE>;
 template Iterator<Type::BODY, Type::EDGE>;
@@ -412,8 +472,12 @@ template Iterator<Type::FACE, Type::EDGE>;
 template Iterator<Type::EDGE, Type::VERTEX>;
 template Iterator<Type::VERTEX, Type::EDGE>;
 template Iterator<Type::EDGE, Type::COEDGE>;
+template Iterator<Type::COEDGE, Type::EDGE>;
 template Iterator<Type::EDGE, Type::FACE>;
 template Iterator<Type::COEDGE, Type::FACE>;
+template Iterator<Type::FACE, Type::COEDGE>;
+template Iterator<Type::FACE, Type::COEDGE>;
+template Iterator<Type::COEDGE, Type::VERTEX>;
 
 }//namespace Topo
 

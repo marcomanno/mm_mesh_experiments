@@ -137,6 +137,8 @@ Topo::Wrap<Topo::Type::BODY> Solver::compute(const Operation _op)
     bodies_[1].iterator<Topo::Type::FACE>(),
     bodies_[0].iterator<Topo::Type::EDGE>());
 
+  face_all->process_edge_intersections();
+
   clean_up();
 
   face_all->face_intersect(

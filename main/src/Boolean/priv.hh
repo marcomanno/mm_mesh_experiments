@@ -49,6 +49,8 @@ struct IFaceVersus
     Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE>& _face_it_a,
     Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE>& _face_it_b) = 0;
 
+  virtual bool process_edge_intersections() = 0;
+
   virtual const OverlapFces& overlap_faces() const = 0;
 
   static std::shared_ptr<IFaceVersus> make();

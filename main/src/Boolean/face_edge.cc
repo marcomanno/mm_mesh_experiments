@@ -5,48 +5,13 @@
 #include "Geo/vector.hh"
 #include "Topology/split.hh"
 #include "Topology/impl.hh"
-#include "Utils/index.hh"
-#include "Utils/merger.hh"
+#include "Utils/statistics.hh"
 
 #include <set>
 
 namespace Boolean {
 
-namespace {
-
-struct FaceEdgeInfo
-{
-  std::map<Topo::Wrap<Topo::Type::FACE>, std::vector<Utils::Index>> f_v_refs_;
-
-  typedef double Parameter;
-  typedef std::tuple<Utils::Index, Parameter> EdgeVertexReference;
-  std::map<Topo::Wrap<Topo::Type::EDGE>, std::vector<EdgeVertexReference>> e_v_refs_;
-
-  struct VertexReferences : public Utils::Mergiable
-  {
-    Utils::Index this_idx_;
-    Geo::Point pt_;
-    double tol_;
-    Topo::Wrap<Topo::Type::VERTEX> vert_;
-    std::vector<Geo::Point> mrg_list_;
-    std::set<Topo::Wrap<Topo::Type::EDGE>> edge_refs_;
-    std::set<Topo::Wrap<Topo::Type::FACE>> face_refs_;
-    FaceEdgeInfo* owner_;
-
-    bool equivalent(const VertexReferences& _oth) const;
-    void merge(const VertexReferences& _oth);
-  };
-  std::vector<VertexReferences> vertices_refs_;
-
-  void add(const Geo::Point& _pt, const double _t,
-    const Topo::Wrap<Topo::Type::EDGE>& _edge,
-    const Topo::Wrap<Topo::Type::FACE>& _face);
-
-  void merge();
-
-  void split_edges();
-};
-
+// struct FaceEdgeInfo
 bool FaceEdgeInfo::VertexReferences::equivalent(const VertexReferences& _oth) const
 {
   return Geo::same(pt_, _oth.pt_, std::max(tol_, _oth.tol_));
@@ -120,27 +85,33 @@ void FaceEdgeInfo::split_edges()
     Topo::Split<Topo::Type::EDGE> splitter(edge);
     for (auto split_idx : edge_info.second)
     {
-      auto& split_vert = this->vertices_refs_[std::get<Utils::Index>(split_idx)];
+      auto& split_vert = vertices_refs_[std::get<Utils::Index>(split_idx)];
       if (!split_vert.vert_)
       {
-        split_vert.vert_.make<Topo::EE<Topo::Type::VERTEX>>();
-        split_vert.vert_->set_geom(split_vert.pt_);
-        split_vert.vert_->set_tolerance(split_vert.tol_);
+        if (split_vert.equiv_idx_ == Utils::INVALID_INDEX)
+        {
+          split_vert.vert_.make<Topo::EE<Topo::Type::VERTEX>>();
+          split_vert.vert_->set_geom(split_vert.pt_);
+          split_vert.vert_->set_tolerance(split_vert.tol_);
+        }
+        else
+        {
+          split_vert.vert_ = vertices_refs_[split_vert.equiv_idx_].vert_;
+        }
       }
       Topo::Split<Topo::Type::EDGE>::Info splt_pt_info;
       splt_pt_info.vert_ = split_vert.vert_;
       splt_pt_info.t_ = std::get<Parameter>(split_idx);
       splt_pt_info.clsst_pt_ = split_vert.pt_;
-      splt_pt_info.dist_ = split_vert.tol_;
+      splt_pt_info.dist_sq_ = Geo::sq(split_vert.tol_);
       splitter.add_point(splt_pt_info);
     }
+    splitter.remove_duplicates();
     splitter();
   }
 }
 
-}//namespace
-
-
+// struct FaceVersus
 bool FaceVersus::edge_intersect(
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE>& _face_it,
   Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE>& _edge_it)
@@ -162,7 +133,6 @@ bool FaceVersus::edge_intersect(
       pairs.emplace_back(std::array<size_t, 2>{ i, j });
 #endif
 
-  FaceEdgeInfo f_eds_info;
   for (const auto& pair : pairs)
   {
     auto face = kdfaces[pair[0]];
@@ -175,7 +145,10 @@ bool FaceVersus::edge_intersect(
     if (!closest_point(*face_info.poly_face_, seg, &clsst_pt, &t_seg, &dist_sq))
       continue;
     auto pt_tol = Geo::epsilon(clsst_pt);
-    if (dist_sq > std::max(pt_tol, edge->tolerance()))
+    Utils::FindMax<double> max_tol(edge->tolerance());
+    max_tol.add(pt_tol);
+
+    if (dist_sq > Geo::sq(max_tol()))
       continue;
 
 #ifdef DEBUG_KDTREE
@@ -192,7 +165,7 @@ bool FaceVersus::edge_intersect(
     {
       Geo::Point pt;
       vert->geom(pt);
-      if (Geo::same(pt, clsst_pt, std::max(pt_tol, vert->tolerance())))
+      if (Geo::same(pt, clsst_pt, vert->tolerance()))
       {
         point_on_vertex = true;
         // Todo: verify that the vertex is at the edge end.
@@ -202,20 +175,28 @@ bool FaceVersus::edge_intersect(
     if (point_on_vertex) // Intersection is at edge end.
       continue;
 
-    f_eds_info.add(clsst_pt, t_seg, edge, face);
+    f_eds_info_.add(clsst_pt, t_seg, edge, face);
   }
-  f_eds_info.merge(); // Merge the intersection points.
-  f_eds_info.split_edges(); // Splits the edges.
-  for (auto fv : f_eds_info.f_v_refs_) // Adds the vertices in the face vertex list.
+  return true;
+}
+
+// struct FaceVersus
+bool FaceVersus::process_edge_intersections()
+{
+  f_eds_info_.merge(); // Merge the intersection points.
+  f_eds_info_.split_edges(); // Splits the edges.
+  for (auto fv : f_eds_info_.f_v_refs_) // Adds the vertices in the face vertex list.
   {
     const auto& face = fv.first;
     auto& face_vert_list = f_vert_info_[face];
     for (const auto& vert_info : fv.second)
     {
-      face_vert_list.new_vert_list_.push_back(f_eds_info.vertices_refs_[vert_info].vert_);
+      face_vert_list.new_vert_list_.push_back(
+        f_eds_info_.vertices_refs_[vert_info].vert_);
     }
   }
   return true;
 }
+
 
 }//namespace Boolean

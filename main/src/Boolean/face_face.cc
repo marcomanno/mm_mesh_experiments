@@ -523,12 +523,8 @@ bool find_edge_chain(
       if (iter != pt_it->begin())
         std::swap((*pt_it)[1], (*pt_it)[0]);
 
-      EdgeChain edge_ch;
-      if (follow_chain(edge_itr, edge_ch))
-      {
-        _edge_ch = std::move(edge_ch);
+      if (follow_chain(edge_itr, _edge_ch))
         return true;
-      }
     }
   }
   return false;
@@ -657,6 +653,41 @@ void resolve_ambiguities(
   }
 }
 
+namespace {
+void add_open_chain(
+  const Topo::Wrap<Topo::Type::VERTEX>& _vert, 
+  EdgeChain & edge_ch,
+  Topo::Wrap<Topo::Type::FACE> _face, 
+  FaceEdgeMap::NewVerts& _edge_vec)
+{
+  if (edge_ch.empty())
+    return;
+  auto pos = _face->find_child(_vert.get());
+  if (pos == SIZE_MAX)
+    return;
+  auto vch_it = edge_ch.end();
+  --vch_it;
+  _face->insert_child((*(*vch_it))[1].get(), ++pos);
+  (*vch_it)->clear();
+  int delta = 2;
+  while (vch_it != edge_ch.begin())
+  {
+    --vch_it;
+    auto& vch = (*vch_it);
+    _face->insert_child((*vch)[1].get(), pos);
+    _face->insert_child((*vch)[1].get(), pos + delta);
+    delta += 2;
+    (*vch).clear();
+  }
+
+  _edge_vec.erase(
+    std::remove_if(_edge_vec.begin(), _edge_vec.end(),
+      [](const FaceEdgeMap::CommonVertices& _comm_v) { return _comm_v.empty(); }),
+    _edge_vec.end());
+}
+
+}
+
 void FaceEdgeMap::split_with_chains()
 {
   for (size_t i = 0; i < std::size(map_); ++i)
@@ -665,6 +696,7 @@ void FaceEdgeMap::split_with_chains()
     {
       auto& faces = std::get<NewFaces>(face_info.second);
       auto& edge_vec = std::get<NewVerts>(face_info.second);
+      // Try face split.
       for (size_t j = 0; j < faces.size() && !edge_vec.empty(); ++j)
       {
         auto& face = faces[j];
@@ -675,6 +707,7 @@ void FaceEdgeMap::split_with_chains()
           Topo::Wrap<Topo::Type::VERTEX>* last_vert_it;
           if (!find_edge_chain(*vert_it, edge_vec, fv_it, edge_ch, last_vert_it))
           {
+            add_open_chain(*vert_it, edge_ch, face, edge_vec);
             ++vert_it; // Try next vertex.
             continue;
           }
@@ -740,6 +773,15 @@ void FaceEdgeMap::split_with_chains()
           break;
         }
       }
+      /*
+      if (!edge_vec.empty())
+      {
+        for (size_t j = 0; j < faces.size() && !edge_vec.empty(); ++j)
+        {
+          auto& face = faces[j];
+          Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(face);
+        }
+      }*/
     }
   }
 }

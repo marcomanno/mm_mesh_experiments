@@ -16,11 +16,12 @@ template <> struct Split<Type::EDGE>
     Wrap<Type::VERTEX> vert_;
     Geo::Point clsst_pt_;
     double t_;
-    double dist_;
+    double dist_sq_ = 0;
   };
 
   Split(Wrap<Type::EDGE>& _edge) : edge_(_edge) {}
   void add_point(const Info& inf_) const;
+  void remove_duplicates();
 
   bool operator < (const Split<Type::EDGE>& _oth) const { return edge_ < _oth.edge_; }
   bool operator == (const Split<Type::EDGE>& _oth) const { return edge_ == _oth.edge_; }

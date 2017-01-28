@@ -43,8 +43,12 @@ void merge_intersections(std::vector<EdgeEdgeSplintInfo>& _splt_inf)
       Utils::FindMax<double> max_tol({ _splt_inf[i].tol_, _splt_inf[j].tol_ });
       if (!Geo::same(_splt_inf[i].pt_, _splt_inf[j].pt_, max_tol()))
         continue;
-      THROW_IF(_splt_inf[i].vert_ && _splt_inf[j].vert_,
-        "This is not managed. It is necessary to merge 2 existing vertices!");
+      //if (_splt_inf[i].vert_ != _splt_inf[j].vert_)
+      {
+        THROW_IF(_splt_inf[i].vert_ && _splt_inf[j].vert_ &&
+          *_splt_inf[i].vert_ != *_splt_inf[j].vert_,
+          "This is not managed. It is necessary to merge 2 existing vertices!");
+      }
       EdgeEdgeSplintInfo* eei[2] = { &_splt_inf[i], &_splt_inf[j] };
       if (!_splt_inf[i].vert_ && !_splt_inf[j].vert_)
       {
@@ -131,7 +135,7 @@ bool EdgeVersusEdges::intersect(
       edge_ = _edge;
       edge_->geom(seg_);
       ev_it_.reset(edge_);
-      tol_ = edge_->tolerance();
+      tol_ = std::max({ edge_->tolerance(), Geo::epsilon(seg_[0]), Geo::epsilon(seg_[1]) });
     }
 
     bool inersection_on_end(const Geo::Point& _clsst_pt, const double _tol,
@@ -180,16 +184,15 @@ bool EdgeVersusEdges::intersect(
     if (matches.size() == 2)
       continue;
     Geo::Point clsst_pt;
-    double pars[2], dist;
+    double pars[2], dist_sq;
     if (!Geo::closest_point(
       intrs_dat[0].seg_, intrs_dat[1].seg_,
-      &clsst_pt, pars, &dist))
+      &clsst_pt, pars, &dist_sq))
     {
       continue;
     }
-    Utils::FindMax<double> max_tol(intrs_dat[0].tol_);
-    max_tol.add(intrs_dat[1].tol_);
-    if (dist > max_tol())
+    Utils::FindMax<double> max_tol({ intrs_dat[0].tol_, intrs_dat[1].tol_ });
+    if (dist_sq > Geo::sq(max_tol()))
       continue;
 
     EdgeEdgeSplintInfo ed_ed_splt_inf;
@@ -198,7 +201,7 @@ bool EdgeVersusEdges::intersect(
     for (size_t k = 0; k < 2; ++k)
     {
       bool on_end = intrs_dat[k].inersection_on_end(
-        clsst_pt, max_tol(), 
+        clsst_pt, max_tol(),
         ed_ed_splt_inf.ed_split_info_[k], ed_ed_splt_inf.vert_);
       if (on_end)
       {
@@ -258,7 +261,7 @@ bool EdgeVersusEdges::split()
       Topo::Split<Topo::Type::EDGE>::Info ed_split_info;
       ed_split_info.vert_ = *splt_info.vert_;
       ed_split_info.t_ = ed_split.par;
-      ed_split_info.dist_ = splt_info.tol_;
+      ed_split_info.dist_sq_ = Geo::sq(splt_info.tol_);
       it->add_point(ed_split_info);
     }
   }
