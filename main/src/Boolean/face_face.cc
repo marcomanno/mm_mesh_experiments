@@ -39,6 +39,23 @@ struct FaceEdgeMap
     const std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _v_inters,
     bool _is_face_b)
   {
+    if (_v_inters.size() == 2)
+    {
+      auto edges = 
+        Topo::shared_entities<Topo::Type::VERTEX, Topo::Type::EDGE>(
+          _v_inters[0], _v_inters[1]);
+      for (const auto& ed : edges)
+      {
+        Topo::Iterator<Topo::Type::EDGE, Topo::Type::FACE> ef_it(ed);
+        for (const auto& f : ef_it)
+        {
+          // We have already an edge.
+          if (f == _face)
+            return false;
+        }
+
+      }
+    }
     auto& map = map_[_is_face_b];
     auto elem = map.emplace(_face, FaceData());
 
@@ -507,8 +524,8 @@ bool find_edge_chain(
     }
     if (Geo::PointInPolygon::classify(polygon, pt) == Geo::PointInPolygon::Inside)
       return true;
-    else
-      return false;
+    _edge_ch.clear();
+    return false;
   };
 
   auto edge_itr = _ed_sets.end();
@@ -665,19 +682,13 @@ void add_open_chain(
   auto pos = _face->find_child(_vert.get());
   if (pos == SIZE_MAX)
     return;
-  auto vch_it = edge_ch.end();
-  --vch_it;
-  _face->insert_child((*(*vch_it))[1].get(), ++pos);
-  (*vch_it)->clear();
-  int delta = 2;
-  while (vch_it != edge_ch.begin())
+  for (auto v_ch : edge_ch)
+    _face->insert_child((*v_ch)[1].get(), ++pos);
+  ++pos;
+  for (auto v_ch : edge_ch)
   {
-    --vch_it;
-    auto& vch = (*vch_it);
-    _face->insert_child((*vch)[1].get(), pos);
-    _face->insert_child((*vch)[1].get(), pos + delta);
-    delta += 2;
-    (*vch).clear();
+    _face->insert_child((*v_ch)[0].get(), pos);
+    v_ch->clear();
   }
 
   _edge_vec.erase(

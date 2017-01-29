@@ -282,6 +282,7 @@ struct Iterator<Type::EDGE, Type::COEDGE>::Impl : public BodyIteratorBase<Type::
         faces[i].emplace_back(static_cast<E<Type::FACE>*>(ptr_face));
       }
       std::sort(faces[i].begin(), faces[i].end());
+      faces[i].erase(std::unique(faces[i].begin(), faces[i].end()), faces[i].end());
     }
     std::set_intersection(
       faces[0].begin(), faces[0].end(),
