@@ -18,7 +18,7 @@ Classification classify(
   Utils::StatisticsT<double> tol_max;
   for (const auto& pt : _poly)
     tol_max.add(Geo::epsilon(pt));
-  return classify(_poly, _pt, tol_max.max() * 10, _norm);
+  return classify(_poly, _pt, tol_max.max() * 2, _norm);
 }
 
 Classification classify(

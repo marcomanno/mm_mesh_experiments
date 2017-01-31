@@ -215,8 +215,8 @@ EXAMPLE(0)
   //  "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj");
   poly_dats.push_back(make_tessellation(body0));
  
-  //auto body1 = IO::load_obj(open_file().c_str());
-  //poly_dats.push_back(make_tessellation(body1));
+  auto body1 = IO::load_obj(open_file().c_str());
+  poly_dats.push_back(make_tessellation(body1));
   Geo::Vector3 cols[2] = { {1, 0, 0}, {0,0,1} };
 
   render_actors(poly_dats, cols);

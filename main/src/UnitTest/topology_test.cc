@@ -219,7 +219,8 @@ TEST_CASE("pyramid", "[Bool]")
 
 TEST_CASE("2apple", "[Bool]")
 {
-  for (auto dz : { 2.5, 2., 1.5, 1., 0.5 })
+  std::vector<size_t> top_elem_nmbr;
+  for (auto dz : { 2.5 , 2., 1.5, 1., 0.5 })
   {
     auto pyr1 = IO::load_obj(MESH_FOLDER"Apple_00.obj");
     auto pyr2 = IO::load_obj(MESH_FOLDER"Apple_00.obj");
@@ -237,7 +238,13 @@ TEST_CASE("2apple", "[Bool]")
     std::string flm("result_2apple_");
     flm += std::to_string(dz) + ".obj";
     IO::save_obj(flm.c_str(), result);
+    Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
+    Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+    top_elem_nmbr.push_back(bv1_it.size());
+    top_elem_nmbr.push_back(bf_it.size());
   }
+  REQUIRE(top_elem_nmbr ==
+    std::vector<size_t>({ 412, 396, 425, 395, 470, 415, 523, 449, 539, 460 }));
 }
 
 TEST_CASE("FaceSplit", "[Bool]")
@@ -292,9 +299,9 @@ TEST_CASE("2tuna0.1", "[Bool]")
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
   IO::save_obj("result_tuna_0.1.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it1(result);
-  REQUIRE(bv_it1.size() == 2540);
+  REQUIRE(bv_it1.size() == 2507);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 3922);
+  REQUIRE(bf_it.size() == 3844);
 }
 
 TEST_CASE("2tuna0.2", "[Bool]")
@@ -393,6 +400,10 @@ TEST_CASE("2tuna_P4", "[Bool]")
   bool_solver->init(pyr1, pyr2);
   auto result = bool_solver->compute(Boolean::Operation::SPLITB);
   IO::save_obj("2tuna_P4.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  REQUIRE(bv_it.size() == 31);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 20);
 }
 
 TEST_CASE("tuna_left", "[Bool]")
@@ -403,6 +414,10 @@ TEST_CASE("tuna_left", "[Bool]")
   bool_solver->init(pyr1, pyr2);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
   IO::save_obj("result_tuna_left.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  REQUIRE(bv_it.size() == 17);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 14);
 }
 
 TEST_CASE("2tuna_p2", "[Bool]")
@@ -413,6 +428,38 @@ TEST_CASE("2tuna_p2", "[Bool]")
   bool_solver->init(pyr1, pyr2);
   auto result = bool_solver->compute(Boolean::Operation::SPLIT);
   IO::save_obj("result_2tuna_p2.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  REQUIRE(bv_it.size() == 52);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 67);
+}
+
+TEST_CASE("apple_piece0", "[Bool]")
+{
+  auto pyr1 = IO::load_obj(MESH_FOLDER"Apple_piece_0a.obj");
+  auto pyr2 = IO::load_obj(MESH_FOLDER"Apple_piece_0b.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(pyr1, pyr2);
+  auto result = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj("result_apple_piece0.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  REQUIRE(bv_it.size() == 20);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 14);
+}
+
+TEST_CASE("apple_piece1", "[Bool]")
+{
+  auto pyr1 = IO::load_obj(MESH_FOLDER"Apple_piece_1a.obj");
+  auto pyr2 = IO::load_obj(MESH_FOLDER"Apple_piece_1b.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(pyr1, pyr2);
+  auto result = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj("result_apple_piece1.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  REQUIRE(bv_it.size() == 12);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 6);
 }
 
 TEST_CASE("Biplane", "[Bool]")
@@ -431,6 +478,11 @@ TEST_CASE("Biplane", "[Bool]")
   bool_solver->init(a, b);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
   IO::save_obj("result_Biplane.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
+  REQUIRE(bv1_it.size() == 14);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 10);
+
 }
 
 TEST_CASE("Biplane_00", "[Bool]")
@@ -449,6 +501,11 @@ TEST_CASE("Biplane_00", "[Bool]")
   bool_solver->init(a, b);
   auto result = bool_solver->compute(Boolean::Operation::SPLIT);
   IO::save_obj("result_Biplane_00.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
+  REQUIRE(bv1_it.size() == 40);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 28);
+
 }
 
 #if 0

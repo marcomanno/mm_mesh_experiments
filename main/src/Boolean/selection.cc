@@ -5,6 +5,8 @@
 #endif
 #include "Topology/geom.hh"
 #include "Topology/same.hh"
+#include "Topology/shared.hh"
+
 #include "Utils/error_handling.hh"
 
 #include <set>
@@ -178,6 +180,49 @@ void Selection::select_faces(
     edge_sets[0].begin(), edge_sets[0].end(),
     edge_sets[1].begin(), edge_sets[1].end(),
     std::inserter(common_edges_, common_edges_.end()));
+
+#ifdef DEB_ON
+  // finds a gap in the edges between two bodies. A gap may cause an
+  // error and it is a bug with closed bodies.
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>> verts;
+  for (auto& edge : common_edges_)
+  {
+    Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ev_it(edge);
+    verts.emplace_back(ev_it.get(0));
+    verts.emplace_back(ev_it.get(1));
+  }
+  Topo::Wrap<Topo::Type::VERTEX> sten[2];
+  while (!verts.empty())
+  {
+    sten[0] = verts.back(); verts.pop_back();
+    sten[1] = verts.back(); verts.pop_back();
+    for (int i = 0; i < 2; ++i)
+    {
+      for (;;)
+      {
+        auto pos = std::find(verts.begin(), verts.end(), sten[i]);
+        if (pos == verts.end())
+          break;
+        auto n = pos - verts.begin();
+        n ^= 1;
+        sten[i] = verts[n];
+        n &= ~1;
+        verts.erase(verts.cbegin() + n, verts.cbegin() + n + 2);
+      }
+    }
+    if (sten[0] != sten[1])
+    {
+      std::cout << "Open chain " << sten[0]->id() <<
+        " " << sten[1]->id() << std::endl;
+      auto bad_faces =
+        Topo::shared_entities<Topo::Type::VERTEX, Topo::Type::FACE>(sten[0], sten[1]);
+      for (auto f : bad_faces)
+        std::cout << f->id() << " ";
+      std::cout << "\n";
+    }
+  }
+#endif
+
   for (auto& edge : common_edges_)
   {
     struct CoedgeVectors

@@ -522,8 +522,13 @@ bool find_edge_chain(
       (*_edge_ch[0])[0]->geom(pt0);
       pt = (pt + pt0) * 0.5;
     }
-    if (Geo::PointInPolygon::classify(polygon, pt) == Geo::PointInPolygon::Inside)
+    auto pt_class = Geo::PointInPolygon::classify(polygon, pt);
+    if (pt_class == Geo::PointInPolygon::Inside)
       return true;
+    if (pt_class == Geo::PointInPolygon::On)
+    {
+      THROW("Point not expected on boundary");
+    }
     _edge_ch.clear();
     return false;
   };
@@ -707,6 +712,29 @@ void FaceEdgeMap::split_with_chains()
     {
       auto& faces = std::get<NewFaces>(face_info.second);
       auto& edge_vec = std::get<NewVerts>(face_info.second);
+      for (const auto f : faces)
+      {
+        if (edge_vec.empty())
+          break;
+        Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(f);
+        auto prev = *fv_it.begin();
+        for (auto f_it = fv_it.end(); --f_it != fv_it.begin(); prev = *f_it)
+        {
+          for (auto ed_it = edge_vec.begin(); ed_it != edge_vec.end(); )
+          {
+            if (ed_it->size() == 2 &&
+              (prev == (*ed_it)[0] && *f_it == (*ed_it)[1]) ||
+              (prev == (*ed_it)[1] && *f_it == (*ed_it)[0]))
+            {
+              ed_it = edge_vec.erase(ed_it);
+            }
+            else
+              ++ed_it;
+          }
+        }
+      }
+      if (edge_vec.empty())
+        continue;
       // Try face split.
       for (size_t j = 0; j < faces.size() && !edge_vec.empty(); ++j)
       {

@@ -263,6 +263,22 @@ struct Iterator<Type::VERTEX, Type::EDGE>::Impl : public BodyIteratorBase<Type::
 };
 
 template <>
+struct Iterator<Type::VERTEX, Type::FACE>::Impl : public BodyIteratorBase<Type::FACE>
+{
+  void reset(const Wrap<Type::VERTEX>& _from)
+  {
+    clear();
+
+    for (size_t i = 0; i < _from->size(Direction::Up); ++i)
+    {
+      auto face = _from->get(Direction::Up, i);
+      if (face->type() == Type::FACE)
+        elems_.emplace_back(static_cast<E<Type::FACE>*>(face));
+    }
+  }
+};
+
+template <>
 struct Iterator<Type::EDGE, Type::COEDGE>::Impl : public BodyIteratorBase<Type::COEDGE>
 {
   void reset(const Wrap<Type::EDGE>& _from)
@@ -472,6 +488,7 @@ template Iterator<Type::FACE, Type::VERTEX>;
 template Iterator<Type::FACE, Type::EDGE>;
 template Iterator<Type::EDGE, Type::VERTEX>;
 template Iterator<Type::VERTEX, Type::EDGE>;
+template Iterator<Type::VERTEX, Type::FACE>;
 template Iterator<Type::EDGE, Type::COEDGE>;
 template Iterator<Type::COEDGE, Type::EDGE>;
 template Iterator<Type::EDGE, Type::FACE>;
