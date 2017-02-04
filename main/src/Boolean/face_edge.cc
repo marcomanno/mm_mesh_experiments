@@ -53,7 +53,7 @@ void FaceEdgeInfo::add(
   vertices_refs_.emplace_back();
   auto& new_el = vertices_refs_.back();
   new_el.pt_ = _pt;
-  new_el.tol_ = _edge->tolerance();
+  new_el.tol_ = std::max(_edge->tolerance(), 2 * Geo::epsilon(_pt));
   new_el.edge_refs_.emplace(_edge);
   new_el.face_refs_.emplace(_face);
   new_el.owner_ = this;

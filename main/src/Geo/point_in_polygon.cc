@@ -15,10 +15,7 @@ Classification classify(
   const Geo::Vector3& _pt,
   const Geo::Vector3* _norm)
 {
-  Utils::StatisticsT<double> tol_max;
-  for (const auto& pt : _poly)
-    tol_max.add(Geo::epsilon(pt));
-  return classify(_poly, _pt, tol_max.max() * 2, _norm);
+  return classify(_poly, _pt, Geo::epsilon(_pt) * 0.5, _norm);
 }
 
 Classification classify(
