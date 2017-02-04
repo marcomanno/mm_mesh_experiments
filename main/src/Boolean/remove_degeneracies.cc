@@ -52,8 +52,17 @@ bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body)
           auto ed = *ed_it.begin();
           if (ed == prev_ed)
           {
-            Topo::Iterator<Topo::Type::EDGE, Topo::Type::FACE> ef_it(ed);
-            if (ef_it.size() == 1)
+            auto same_body_faces = [](Topo::Wrap<Topo::Type::EDGE> _ed)
+            {
+              Topo::Iterator<Topo::Type::EDGE, Topo::Type::FACE> ef_it(_ed);
+              auto it = ef_it.begin();
+              auto b = (*it)->get(Topo::Direction::Up, 0);
+              while (++it != ef_it.end())
+                if (b != (*it)->get(Topo::Direction::Up, 0))
+                  return false;
+              return true;
+            };
+            if (same_body_faces(ed))
             {
               Topo::Iterator<Topo::Type::COEDGE, Topo::Type::VERTEX> cv_it(ced);
               rem_verts.push_back(cv_it.get(0));
