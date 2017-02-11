@@ -135,8 +135,8 @@ bool FaceVersus::edge_intersect(
 
   for (const auto& pair : pairs)
   {
-    auto face = kdfaces[pair[0]];
-    auto& face_info = face_geom(kdfaces[pair[0]]);
+    const auto& face = kdfaces[pair[0]];
+    auto& face_info = face_geom(face);
     auto edge = kdedges[pair[1]];
     Geo::Segment seg;
     edge->geom(seg);
@@ -161,12 +161,19 @@ bool FaceVersus::edge_intersect(
 
     bool point_on_vertex = false;
     Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ev_it(edge);
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(face);
     for (auto vert : ev_it)
     {
       Geo::Point pt;
       vert->geom(pt);
-      if (Geo::same(pt, clsst_pt, vert->tolerance()))
+      if (Geo::same(pt, clsst_pt, std::max(vert->tolerance(), Geo::epsilon_sq(pt))))
       {
+        if (std::find(fv_it.begin(), fv_it.end(), vert) == fv_it.end())
+        {
+          const auto face_verts = face_geom(face).new_vert_list_;
+          if (std::find(face_verts.cbegin(), face_verts.cend(), vert) == face_verts.cend())
+            continue;
+        }
         point_on_vertex = true;
         // Todo: verify that the vertex is at the edge end.
         break;
