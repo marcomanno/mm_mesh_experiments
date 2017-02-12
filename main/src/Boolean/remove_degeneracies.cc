@@ -3,7 +3,9 @@
 #include "priv.hh"
 
 #include "Topology/impl.hh"
+#include "Topology/merge.hh"
 #include "Topology/shared.hh"
+
 
 
 namespace Boolean {
@@ -12,12 +14,25 @@ namespace Boolean {
 // Removes faces with less than 3 vertices.
 bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body)
 {
-  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> it;
-  it.reset(_body);
-  bool achange = false;
-  for (size_t i = 0; i < it.size(); ++i)
+  for (bool achange = true; achange; )
   {
-    auto face = it.get(i);
+    achange = false;
+    Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> it_ed(_body);
+    for (auto edge : it_ed)
+    {
+      Geo::Segment seg;
+      edge->geom(seg);
+      auto tol = edge->tolerance();
+      if (Geo::length_square(seg[1] - seg[0]) > 3 * Geo::sq(tol))
+        continue;
+      Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> it_ve(edge);
+      achange |= Topo::merge(it_ve.get(0), it_ve.get(1));
+    }
+  }
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> it_fa(_body);
+  bool achange = false;
+  for (auto face : it_fa)
+  {
     if (!face.get())
       continue;
     bool loc_change;

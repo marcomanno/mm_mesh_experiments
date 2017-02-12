@@ -581,7 +581,7 @@ TEST_CASE("buddha_03", "[Bool]")
   auto result = bool_solver->compute(Boolean::Operation::SPLIT);
   IO::save_obj("result_buddha_03.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
-  REQUIRE(bv1_it.size() == 735);
+  REQUIRE(bv1_it.size() == 734);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 1265);
+  REQUIRE(bf_it.size() == 1264);
 }
