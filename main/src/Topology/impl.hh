@@ -193,7 +193,7 @@ template <> struct EE<Type::VERTEX> : public Base<Type::VERTEX>
 {
   virtual bool geom(Geo::Point& _pt) const { _pt = pt_; return true; }
   virtual bool set_geom(const Geo::Point& _pt) { pt_ = _pt; return true; }
-  virtual double tolerance() const { return tol_;}
+  virtual double tolerance() const;
   virtual bool set_tolerance(const double _tol) { tol_ = _tol; return true;  }
   virtual SubType sub_type() const { return SubType::VERTEX; }
   virtual Geo::Point internal_point() const { return pt_; }

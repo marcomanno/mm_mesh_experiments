@@ -52,6 +52,11 @@ bool EE<Type::EDGE>::set_geom(const Geo::Segment&)
   return false;
 }
 
+double EE<Type::VERTEX>::tolerance() const
+{
+  return std::max(tol_, Geo::epsilon(pt_));
+}
+
 Geo::Range<3> EE<Type::VERTEX>::box() const
 {
   Geo::Range<3> b;
@@ -83,14 +88,9 @@ Geo::Range<3> EdgeRef::box() const
   Geo::Range<3> b;
   Geo::Segment seg;
   geom(seg);
-  Utils::FindMax<double> max_tol;
   for (const auto& pt : seg)
-  {
     b += pt;
-    max_tol.add(Geo::epsilon(pt));
-  }
-  max_tol.add(tolerance());
-  b.fatten(max_tol());
+  b.fatten(tolerance());
   return b;
 }
 

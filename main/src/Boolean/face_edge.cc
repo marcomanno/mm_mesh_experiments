@@ -144,11 +144,8 @@ bool FaceVersus::edge_intersect(
     double dist_sq, t_seg;
     if (!closest_point(*face_info.poly_face_, seg, &clsst_pt, &t_seg, &dist_sq))
       continue;
-    auto pt_tol = Geo::epsilon(clsst_pt);
-    Utils::FindMax<double> max_tol(edge->tolerance());
-    max_tol.add(pt_tol);
-
-    if (dist_sq > Geo::sq(max_tol()))
+    auto max_tol = std::max(edge->tolerance(), Geo::epsilon(clsst_pt));
+    if (dist_sq > Geo::sq(max_tol))
       continue;
 
 #ifdef DEBUG_KDTREE
@@ -166,7 +163,7 @@ bool FaceVersus::edge_intersect(
     {
       Geo::Point pt;
       vert->geom(pt);
-      if (Geo::same(pt, clsst_pt, std::max(vert->tolerance(), Geo::epsilon_sq(pt))))
+      if (Geo::same(pt, clsst_pt, vert->tolerance()))
       {
         if (std::find(fv_it.begin(), fv_it.end(), vert) == fv_it.end())
         {

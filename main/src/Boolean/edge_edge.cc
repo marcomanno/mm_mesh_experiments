@@ -135,7 +135,7 @@ bool EdgeVersusEdges::intersect(
       edge_ = _edge;
       edge_->geom(seg_);
       ev_it_.reset(edge_);
-      tol_ = std::max({ edge_->tolerance(), Geo::epsilon(seg_[0]), Geo::epsilon(seg_[1]) });
+      tol_ = edge_->tolerance();
     }
 
     bool inersection_on_end(const Geo::Point& _clsst_pt, const double _tol,
