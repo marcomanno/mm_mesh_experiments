@@ -135,10 +135,14 @@ template <Type typeT> struct UpEntity : public Base<typeT>
 
   bool replace_child(IBase* _el, IBase* _new_el)
   {
-    auto pos = find_child(_el);
-    if (pos == SIZE_MAX)
-      return false;
-    return replace_child(pos, _new_el);
+    size_t pos = SIZE_MAX;
+    for (bool replaced = false;;)
+    {
+      pos = find_child(_el, pos);
+      if (pos == SIZE_MAX)
+        return replaced;
+      replaced |= replace_child(pos, _new_el);
+    }
   }
 
   // search for an element in the range [0, _end[ in reverse order.

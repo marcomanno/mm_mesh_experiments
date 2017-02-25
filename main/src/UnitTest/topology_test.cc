@@ -338,7 +338,6 @@ TEST_CASE("2tuna0.4", "[Bool]")
     pt[2] += 0.4;
     x->set_geom(pt);
   }
-  IO::save_obj("tuna_0.4.obj", pyr2);
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
@@ -347,6 +346,20 @@ TEST_CASE("2tuna0.4", "[Bool]")
   REQUIRE(bv_it1.size() == 2328);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   REQUIRE(bf_it.size() == 3942);
+}
+
+TEST_CASE("tuna_inv_sel", "[Bool]")
+{
+  auto sol_a = IO::load_obj(MESH_FOLDER"tuna inv_sela.obj");
+  auto sol_b = IO::load_obj(MESH_FOLDER"tuna inv_selb.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(sol_a, sol_b);
+  auto result = bool_solver->compute(Boolean::Operation::SPLITA);
+  IO::save_obj("result_tuna_inv_sel.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it1(result);
+  //REQUIRE(bv_it1.size() == 2328);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  //REQUIRE(bf_it.size() == 3942);
 }
 
 TEST_CASE("2tuna_p0", "[Bool]")
@@ -484,24 +497,6 @@ TEST_CASE("Biplane_00", "[Bool]")
   REQUIRE(bf_it.size() == 28);
 }
 
-TEST_CASE("buddha", "[Bool]")
-{
-  auto a = IO::load_obj(MESH_FOLDER"buddha.obj");
-  auto b = IO::load_obj(MESH_FOLDER"buddha.obj");
-  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(b);
-  for (auto& x : bv_it)
-  {
-    Geo::Point pt;
-    x->geom(pt);
-    pt[2] += 0.04;
-    x->set_geom(pt);
-  }
-  auto bool_solver = Boolean::ISolver::make();
-  bool_solver->init(a, b);
-  auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
-  IO::save_obj("result_buddha.obj", result);
-}
-
 #if 0
 
 TEST_CASE("Biplane", "[Bool]")
@@ -536,9 +531,9 @@ TEST_CASE("buddha_00", "[Bool]")
   auto result = bool_solver->compute(Boolean::Operation::SPLIT);
   IO::save_obj("result_buddha_00.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
-  REQUIRE(bv1_it.size() == 1009);
+  REQUIRE(bv1_it.size() == 1010);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 1737);
+  REQUIRE(bf_it.size() == 1740);
 }
 
 
@@ -551,9 +546,9 @@ TEST_CASE("buddha_01", "[Bool]")
   auto result = bool_solver->compute(Boolean::Operation::SPLIT);
   IO::save_obj("result_buddha_01.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
-  REQUIRE(bv1_it.size() == 110);
+  REQUIRE(bv1_it.size() == 111);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 136);
+  REQUIRE(bf_it.size() == 135);
 }
 
 TEST_CASE("buddha_02", "[Bool]")
@@ -565,9 +560,9 @@ TEST_CASE("buddha_02", "[Bool]")
   auto result = bool_solver->compute(Boolean::Operation::SPLIT);
   IO::save_obj("result_buddha_02.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
-  REQUIRE(bv1_it.size() == 23);
+  REQUIRE(bv1_it.size() == 25);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 23);
+  REQUIRE(bf_it.size() == 25);
 }
 
 TEST_CASE("buddha_03", "[Bool]")
@@ -579,9 +574,9 @@ TEST_CASE("buddha_03", "[Bool]")
   auto result = bool_solver->compute(Boolean::Operation::SPLIT);
   IO::save_obj("result_buddha_03.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
-  REQUIRE(bv1_it.size() == 734);
+  REQUIRE(bv1_it.size() == 738);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 1264);
+  REQUIRE(bf_it.size() == 1272);
 }
 
 TEST_CASE("buddha_04", "[Bool]")
@@ -593,7 +588,26 @@ TEST_CASE("buddha_04", "[Bool]")
   auto result = bool_solver->compute(Boolean::Operation::SPLIT);
   IO::save_obj("result_buddha_04.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
-  REQUIRE(bv1_it.size() == 734);
+  REQUIRE(bv1_it.size() == 57);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 1264);
+  REQUIRE(bf_it.size() == 78);
 }
+#if 0
+TEST_CASE("buddha", "[Bool]")
+{
+  auto a = IO::load_obj(MESH_FOLDER"buddha.obj");
+  auto b = IO::load_obj(MESH_FOLDER"buddha.obj");
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(b);
+  for (auto& x : bv_it)
+  {
+    Geo::Point pt;
+    x->geom(pt);
+    pt[2] += 0.04;
+    x->set_geom(pt);
+  }
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(a, b);
+  auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
+  IO::save_obj("result_buddha.obj", result);
+}
+#endif

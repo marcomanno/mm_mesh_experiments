@@ -13,11 +13,12 @@ template<> bool merge<Type::VERTEX>(
   Geo::Point pt[2];
   _a->geom(pt[0]);
   _b->geom(pt[1]);
-  auto faces = shared_entities<Type::VERTEX, Type::FACE>(_a, _b);
-  for (auto f : faces)
-    f->replace_child(_b.get(), _a.get());
-  _a->set_geom((pt[0] + pt[1]) / 2.);
-  _a->set_tolerance(std::max(_a->tolerance(), _b->tolerance()));
+  Topo::Iterator<Topo::Type::VERTEX, Topo::Type::FACE> it_fa(_a);
+  for (auto f : it_fa)
+    f->replace_child(_a.get(), _b.get());
+  _b->set_geom((pt[0] + pt[1]) / 2.);
+  _b->set_tolerance(
+    std::max({ Geo::length(pt[0] - pt[1]),_a->tolerance(), _b->tolerance() }));
   return true;
 }
 
