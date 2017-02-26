@@ -85,7 +85,6 @@ TEST_CASE("8VEintersections", "[Bool]")
 {
   body_1 = make_cube(cube_00);
   body_2 = make_cube(cube_02);
-
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(body_1, body_2);
   auto result = bool_solver->compute(Boolean::Operation::UNION);
@@ -590,9 +589,24 @@ TEST_CASE("buddha_04", "[Bool]")
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
   REQUIRE(bv1_it.size() == 57);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 81);
+}
+
+TEST_CASE("buddha_05", "[Bool]")
+{
+  auto a = IO::load_obj(MESH_FOLDER"buddha_05a.obj");
+  auto b = IO::load_obj(MESH_FOLDER"buddha_05b.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(a, b);
+  auto result = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj("result_buddha_05.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
+  REQUIRE(bv1_it.size() == 57);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   REQUIRE(bf_it.size() == 78);
 }
-#if 0
+
+#if 1
 TEST_CASE("buddha", "[Bool]")
 {
   auto a = IO::load_obj(MESH_FOLDER"buddha.obj");

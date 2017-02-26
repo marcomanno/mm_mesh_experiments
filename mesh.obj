@@ -1,5 +1,5 @@
 # 11 vertices, 14 faces
-mtllib buddha_04b.mtl
+mtllib mesh.mtl
 v -0.0145091 0.102575 0.0079775
 vn -0.166489 -0.106622 -0.980262
 v -0.0143935 0.102075 0.0080174

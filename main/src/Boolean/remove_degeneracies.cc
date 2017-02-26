@@ -20,6 +20,7 @@ bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body)
     Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> it_ed(_body);
     for (auto edge : it_ed)
     {
+      // Removes out degenerate edges.
       Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> vv(edge);
       if (vv.get(0) == vv.get(1))
         continue;
