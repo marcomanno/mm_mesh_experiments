@@ -63,24 +63,34 @@ const Choice selection_table[2][Operation::ENUM_SIZE][FaceClassification::ENUM_S
 
 void Selection::select_overlap_faces(const OverlapFces& _overlap_faces)
 {
-  THROW_IF(_overlap_faces[0].size() != _overlap_faces[1].size(), "Overlap faces not coupled");
-  std::vector<bool> used_faces(_overlap_faces[1].size(), false);
+  auto overlap_faces = _overlap_faces;
+  for (auto& ovr_fa : overlap_faces)
+  {
+    for (auto ff_it = ovr_fa.end(); ff_it != ovr_fa.begin(); )
+    {
+      if ((*--ff_it)->size(Topo::Direction::Up) == 0)
+        ff_it = ovr_fa.erase(ff_it);
+    }
+  }
+  THROW_IF(overlap_faces[0].size() != overlap_faces[1].size(),
+    "Overlap faces not coupled");
+  std::vector<bool> used_faces(overlap_faces[1].size(), false);
 #ifdef DEB_ON
-  for (auto& f : _overlap_faces[0])
+  for (auto& f : overlap_faces[0])
   {
     static int f_ind = 1000;
     IO::save_face(f.get(), f_ind++);
   }
-  for (auto& f : _overlap_faces[1])
+  for (auto& f : overlap_faces[1])
   {
     static int f_ind = 2000;
     IO::save_face(f.get(), f_ind++);
   }
 #endif
-  for (size_t i = 0; i < _overlap_faces[0].size(); ++i)
+  for (size_t i = 0; i < overlap_faces[0].size(); ++i)
   {
     bool processed = false;
-    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it_0(_overlap_faces[0][i]);
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it_0(overlap_faces[0][i]);
     auto check_null_face = [this](
       const Topo::Iterator<Topo::Type::FACE,Topo::Type::VERTEX>& _fv_it,
       const Topo::Wrap<Topo::Type::FACE>& _f)
@@ -91,18 +101,18 @@ void Selection::select_overlap_faces(const OverlapFces& _overlap_faces)
       proc_faces_.insert(_f);
       return true;
     };
-    if (check_null_face(fv_it_0, _overlap_faces[0][i]))
+    if (check_null_face(fv_it_0, overlap_faces[0][i]))
     {
       processed = true;
       continue;
     }
 
-    for (size_t j = 0; j < _overlap_faces[1].size(); ++j)
+    for (size_t j = 0; j < overlap_faces[1].size(); ++j)
     {
       if (used_faces[j])
         continue;
-      Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it_1(_overlap_faces[1][j]);
-      if (check_null_face(fv_it_1, _overlap_faces[1][j]))
+      Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it_1(overlap_faces[1][j]);
+      if (check_null_face(fv_it_1, overlap_faces[1][j]))
       {
         used_faces[j] = true;;
         continue;
@@ -147,7 +157,7 @@ void Selection::select_overlap_faces(const OverlapFces& _overlap_faces)
         continue;
       for (size_t k = 0; k < 2; ++k)
       {
-        auto& curr_face = _overlap_faces[k][k == 0 ? i : j];
+        auto& curr_face = overlap_faces[k][k == 0 ? i : j];
         auto choice = selection_table[k][size_t(bool_op_)][size_t(fc)];
         if (choice == REMV)
           faces_to_remove_.insert(curr_face);

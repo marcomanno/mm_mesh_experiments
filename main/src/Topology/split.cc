@@ -1,6 +1,8 @@
 #pragma optimize ("", off)
 #include "impl.hh"
+#include "shared.hh"
 #include "split.hh"
+#include "Utils/circular.hh"
 #include "Utils/error_handling.hh"
 
 #include <algorithm>
@@ -92,6 +94,28 @@ bool Split<Type::FACE>::operator()(VertexChains& _chains)
     new_faces_.emplace_back(new_face);
   }
   face_->remove();
+  return true;
+}
+
+bool split(const Wrap<Type::VERTEX>& _ed_start,
+  const Wrap<Type::VERTEX>& _ed_end, Wrap<Type::VERTEX>& _ins_vert)
+{
+  auto faces = shared_entities<Type::VERTEX, Type::FACE>(_ed_start, _ed_end);
+  for (auto& f : faces)
+  {
+    for (auto pos = SIZE_MAX;;)
+    {
+      pos = f->find_child(_ed_start.get(), pos);
+      if (pos == SIZE_MAX)
+        break;
+      auto oth = Utils::increase(pos, f->size(Direction::Down));
+      if (f->get(Direction::Down, oth) == _ed_end.get())
+        f->insert_child(_ins_vert.get(), pos + 1);
+      oth = Utils::decrease(pos, f->size(Direction::Down));
+      if (f->get(Direction::Down, oth) == _ed_end.get())
+        f->insert_child(_ins_vert.get(), pos);
+    }
+  }
   return true;
 }
 

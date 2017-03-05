@@ -2,17 +2,23 @@
 #pragma optimize ("", off)
 #include "priv.hh"
 
+#include "Geo/pow.hh"
+
 #include "Topology/impl.hh"
 #include "Topology/merge.hh"
 #include "Topology/shared.hh"
+#include "Topology/split.hh"
+#include "Utils/enum.hh"
 
 
 
 namespace Boolean {
 
-// Removes coincident consecutive vertices in face loops.
-// Removes faces with less than 3 vertices.
-bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body)
+namespace {
+
+const int SAFE_TOL_MULTIPLE_SQ = 3;
+
+void remove_degenerate_edges(Topo::Wrap<Topo::Type::BODY>& _body)
 {
   for (bool achange = true; achange; )
   {
@@ -27,13 +33,89 @@ bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body)
       Geo::Segment seg;
       edge->geom(seg);
       auto tol = edge->tolerance();
-      if (Geo::length_square(seg[1] - seg[0]) > 3 * Geo::sq(tol))
+      if (Geo::length_square(seg[1] - seg[0]) >
+        SAFE_TOL_MULTIPLE_SQ * Geo::sq(tol))
         continue;
       Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> it_ve(edge);
       achange |= Topo::merge(it_ve.get(0), it_ve.get(1));
     }
   }
+}
+
+MAKE_ENUM(DegType, NONE, SPLITA, MERGE, SPLITB);
+
+DegType degenerate_triangle(
+  const Topo::Wrap<Topo::Type::VERTEX> _verts[3])
+{
+  if (_verts[0] == _verts[2] || _verts[0] == _verts[1] || 
+    _verts[1] == _verts[2])
+    return DegType::NONE;
+  Geo::Point pt[3];
+  double tol = 0;
+  for (auto i : { 0, 1, 2 })
+  {
+    _verts[i]->geom(pt[i]);
+    tol = std::max(tol, _verts[i]->tolerance());
+  }
+  auto vec0 = pt[0] - pt[1];
+  auto vec1 = pt[2] - pt[1];
+  if (vec0 * vec1 < 0)
+    return DegType::NONE;
+  auto len0_sq = Geo::length_square(vec0);
+  auto len1_sq = Geo::length_square(vec1);
+  auto h_sq = 
+    Geo::length_square(vec0 % vec1) / std::max(len0_sq, len1_sq);
+  if (h_sq > SAFE_TOL_MULTIPLE_SQ * Geo::sq(tol))
+    return DegType::NONE;
+  if (fabs(sqrt(len0_sq) - sqrt(len1_sq)) < sqrt(SAFE_TOL_MULTIPLE_SQ) * tol)
+    return DegType::MERGE;
+  return len0_sq > len1_sq ? DegType::SPLITA : DegType::SPLITB;
+}
+
+void remove_degenerate_triangles(
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE>& it_fa)
+{
+  bool achange = false;
+  for (auto face : it_fa)
+  {
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::COEDGE> fc_it(face);
+    if (fc_it.size() < 3)
+      continue;
+    auto& last_coed = *std::prev(fc_it.end());
+    Topo::Iterator<Topo::Type::COEDGE, Topo::Type::VERTEX> cv_it(last_coed);
+    Topo::Wrap<Topo::Type::VERTEX> verts[3];
+    verts[0] = *(cv_it.begin());
+    verts[1] = *(std::next(cv_it.begin()));
+    for (auto coed : fc_it)
+    {
+      cv_it.reset(coed);
+      verts[2] = *(std::next(cv_it.begin()));
+      switch (degenerate_triangle(verts))
+      {
+      case DegType::MERGE:
+        achange |= Topo::merge(verts[0], verts[2]);
+        break;
+      case DegType::SPLITA:
+        achange |= Topo::split(verts[0], verts[1], verts[2]);
+        break;
+      case DegType::SPLITB:
+        achange |= Topo::split(verts[1], verts[2], verts[0]);
+        break;
+      }
+      std::copy(verts + 1, verts + 3, verts);
+    }
+  }
+}
+
+}//namespace
+
+// Removes coincident consecutive vertices in face loops.
+// Removes faces with less than 3 vertices.
+bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body)
+{
+  remove_degenerate_edges(_body);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> it_fa(_body);
+  remove_degenerate_triangles(it_fa);
   bool achange = false;
   for (auto face : it_fa)
   {
@@ -58,14 +140,14 @@ bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body)
             prev_vert_ptr = curr_vert_ptr;
         }
       }
-      Topo::Iterator<Topo::Type::FACE, Topo::Type::COEDGE> fe_it(face);
-      if (fe_it.size() >= 4)
+      Topo::Iterator<Topo::Type::FACE, Topo::Type::COEDGE> fc_it(face);
+      if (fc_it.size() >= 4)
       {
         Topo::Iterator<Topo::Type::COEDGE, Topo::Type::EDGE> 
-          prev_ed_it(*std::prev(fe_it.end()));
+          prev_ed_it(*std::prev(fc_it.end()));
         auto prev_ed = *prev_ed_it.begin();
         std::vector<Topo::Wrap<Topo::Type::VERTEX>> rem_verts;
-        for (auto ced : fe_it)
+        for (auto ced : fc_it)
         {
           Topo::Iterator<Topo::Type::COEDGE, Topo::Type::EDGE> ed_it(ced);
           auto ed = *ed_it.begin();

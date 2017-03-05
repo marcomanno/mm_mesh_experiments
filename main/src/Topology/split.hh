@@ -50,4 +50,7 @@ private:
   std::vector<Wrap<Type::FACE>> new_faces_;
 };
 
+bool split(const Wrap<Type::VERTEX>& _ed_start,
+  const Wrap<Type::VERTEX>& _ed_end, Wrap<Type::VERTEX>& _ins_vert);
+
 }//namespace Topology

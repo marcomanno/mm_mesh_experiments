@@ -5,7 +5,7 @@
 namespace Topo {
 
 template<> bool merge<Type::VERTEX>(
-  Wrap<Type::VERTEX> _a, Wrap<Type::VERTEX> _b)
+  Wrap<Type::VERTEX> _a, Wrap<Type::VERTEX> _b, double _vert_coeff)
 {
   if (_a == _b)
     return false;
@@ -16,7 +16,7 @@ template<> bool merge<Type::VERTEX>(
   Topo::Iterator<Topo::Type::VERTEX, Topo::Type::FACE> it_fa(_a);
   for (auto f : it_fa)
     f->replace_child(_a.get(), _b.get());
-  _b->set_geom((pt[0] + pt[1]) / 2.);
+  _b->set_geom((1 - _vert_coeff) * pt[0] + _vert_coeff * pt[1]);
   _b->set_tolerance(
     std::max({ Geo::length(pt[0] - pt[1]),_a->tolerance(), _b->tolerance() }));
   return true;
