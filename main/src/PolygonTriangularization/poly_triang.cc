@@ -227,7 +227,8 @@ void PolygonTriangulation::Solution::compute(
       if (_indcs[i] == _indcs[next] || _indcs[i] == _indcs[prev])
         continue;
       double dist_sq = 0;
-      double tol_sq = std::max(Geo::epsilon_sq(seg[0]), Geo::epsilon_sq(seg[1]));
+      double tol_sq = Geo::sq(std::numeric_limits<double>::epsilon() * 10) *
+        std::max(Geo::length_square(seg[0]), Geo::length_square(seg[1]));
       if (Geo::closest_point(seg, tmp_poly[i], nullptr, nullptr, &dist_sq) &&
         dist_sq <= tol_sq)
         return false;

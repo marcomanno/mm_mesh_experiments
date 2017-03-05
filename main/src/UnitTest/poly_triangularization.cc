@@ -327,3 +327,23 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   REQUIRE(ptg->area() > 0.001364);
   REQUIRE(ptg->area() < 0.001365);
 }
+
+#undef TEST_NAME
+#define TEST_NAME "poly_13"
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
+  auto ptg = IPolygonTriangulation::make();
+  std::vector<Geo::Vector3> plgn =
+  {
+    {-0.015398045507488713,0.13453929220918848,0.010226638621282969 },
+    {-0.015397853867103028,0.13453474101739316,0.010227500420000001 },
+    {-0.015397852522544213,0.13453471505698025,0.010227505640857022 },
+    {-0.01539350022,0.1344538481535526,0.01024396764032208 }
+  };
+  ptg->add(plgn);
+
+  auto& tris = ptg->triangles();
+  write_obj(TEST_NAME, ptg->polygon(), tris);
+  REQUIRE(tris.size() == 2);
+  REQUIRE(ptg->area() == Approx(0.001364).epsilon(0.01));
+}
