@@ -18,7 +18,7 @@ template<> bool merge<Type::VERTEX>(
     f->replace_child(_a.get(), _b.get());
   _b->set_geom((1 - _vert_coeff) * pt[0] + _vert_coeff * pt[1]);
   _b->set_tolerance(
-    std::max({ Geo::length(pt[0] - pt[1]),_a->tolerance(), _b->tolerance() }));
+    std::max({ _a->tolerance(), _b->tolerance() }));
   return true;
 }
 

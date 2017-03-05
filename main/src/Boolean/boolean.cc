@@ -79,7 +79,7 @@ Topo::Wrap<Topo::Type::BODY> Solver::compute(const Operation _op)
   {
     for (auto& bdy_info : bodies_)
     {
-      remove_degeneracies(bdy_info.body_);
+      while (remove_degeneracies(bdy_info.body_));
       bdy_info.clear();
     }
 #ifdef DEB_ON
