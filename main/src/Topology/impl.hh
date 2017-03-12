@@ -176,6 +176,8 @@ template <> struct EE<Type::BODY> : public UpEntity<Type::BODY>
   virtual size_t find_child(const IBase* _el, size_t _end = SIZE_MAX) const;
   virtual void optimize();
   virtual bool remove();
+  virtual bool EE<Type::BODY>::remove_children(
+    std::vector<IBase*>& _faces_to_remove);
 
   bool ordered_children_ = true;
 };

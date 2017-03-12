@@ -170,6 +170,11 @@ template <> struct E<Type::BODY> : public IBase
 {
   virtual Type type() const { return Type::BODY; }
   virtual void optimize() {}
+  virtual bool remove_children(
+    std::vector<IBase*>&)
+  {
+    return false;
+  }
 };
 
 template <> struct E<Type::COEDGE> : public IBase

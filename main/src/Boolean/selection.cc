@@ -365,8 +365,12 @@ void Selection::select_faces(
       }
     }
   }
-  _body_a->optimize();
-  _body_b->optimize();
+  std::vector<Topo::IBase*> tmp_face_to_remove;
+  for (auto f : faces_to_remove_)
+    tmp_face_to_remove.push_back(f.get());
+
+  _body_a->remove_children(tmp_face_to_remove);
+  _body_b->remove_children(tmp_face_to_remove);
   apply_selection();
 }
 

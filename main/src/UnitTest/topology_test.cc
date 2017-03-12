@@ -636,7 +636,7 @@ Topo::Wrap<Topo::Type::BODY> budda_bools(const char* str_off)
   }
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(a, b);
-  auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
+  auto result = bool_solver->compute(Boolean::Operation::UNION);
   auto out_name = std::string("result_buddha_") + str_off + ".obj";
   IO::save_obj(out_name.c_str(), result);
   return result;

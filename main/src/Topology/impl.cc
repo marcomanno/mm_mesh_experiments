@@ -55,6 +55,21 @@ bool EE<Type::BODY>::remove()
   return res;
 }
 
+// Bodies have an optimized functions to remove childrens.
+bool EE<Type::BODY>::remove_children(
+  std::vector<IBase*>& _faces_to_remove)
+{
+  optimize();
+  std::vector<IBase*> low_elems;
+
+  std::set_difference(
+    low_elems_.cbegin(), low_elems_.cend(), 
+    _faces_to_remove.cbegin(), _faces_to_remove.cend(),
+    std::back_inserter(low_elems), compare_i_base);
+  low_elems_ = std::move(low_elems);
+  return true;
+}
+
 bool EE<Type::FACE>::reverse()
 {
   std::reverse(low_elems_.begin(), low_elems_.end());
