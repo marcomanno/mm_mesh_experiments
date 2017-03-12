@@ -2,6 +2,7 @@
 #pragma optimize ("", off)
 #include "priv.hh"
 
+#include <Geo/point_in_polygon.hh>
 #include "Geo/pow.hh"
 
 #include "Topology/impl.hh"
@@ -107,6 +108,55 @@ void remove_degenerate_triangles(
   }
 }
 
+bool external_spike(const Topo::Wrap<Topo::Type::FACE>& _face,
+  const Topo::Wrap<Topo::Type::EDGE>& _ed)
+{
+  Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ev_it(_ed);
+  Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(_face);
+  int dupl[2] = { 0, 0 };
+  size_t ins = SIZE_MAX;
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>> other_vertices;
+  for (auto v : fv_it)
+  {
+    int i = 0;
+    for (; i < 2 && v != ev_it.get(i); ++i);
+    if (i >= 2)
+      other_vertices.push_back(v);
+    else
+    {
+      ++dupl[i];
+      if (ins == SIZE_MAX)
+      {
+        ins = other_vertices.size();
+        other_vertices.emplace_back();
+      }
+    }
+  }
+  if (ins >= other_vertices.size())
+    return false;
+  size_t i = dupl[0] > dupl[1] ? 0 : 1;
+  other_vertices[ins] = ev_it.get(i);
+  Geo::Point deg_pt;
+  ev_it.get(1 - i)->geom(deg_pt);
+  std::vector<Geo::Point> polygon(other_vertices.size());
+  for(i = 0; i < other_vertices.size(); ++i)
+    other_vertices[i]->geom(polygon[i]);
+
+  auto pt_class = Geo::PointInPolygon::classify(polygon, deg_pt);
+  return pt_class == Geo::PointInPolygon::Outside;
+}
+
+bool unique_body_faces(Topo::Wrap<Topo::Type::EDGE> _ed)
+{
+  Topo::Iterator<Topo::Type::EDGE, Topo::Type::FACE> ef_it(_ed);
+  auto it = ef_it.begin();
+  auto b = (*it)->get(Topo::Direction::Up, 0);
+  while (++it != ef_it.end())
+    if (b != (*it)->get(Topo::Direction::Up, 0))
+      return false;
+  return true;
+};
+
 }//namespace
 
 // Removes coincident consecutive vertices in face loops.
@@ -153,17 +203,7 @@ bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body)
           auto ed = *ed_it.begin();
           if (ed == prev_ed)
           {
-            auto same_body_faces = [](Topo::Wrap<Topo::Type::EDGE> _ed)
-            {
-              Topo::Iterator<Topo::Type::EDGE, Topo::Type::FACE> ef_it(_ed);
-              auto it = ef_it.begin();
-              auto b = (*it)->get(Topo::Direction::Up, 0);
-              while (++it != ef_it.end())
-                if (b != (*it)->get(Topo::Direction::Up, 0))
-                  return false;
-              return true;
-            };
-            if (same_body_faces(ed))
+            if (unique_body_faces(ed) || external_spike(face, ed))
             {
               Topo::Iterator<Topo::Type::COEDGE, Topo::Type::VERTEX> cv_it(ced);
               rem_verts.push_back(cv_it.get(0));
