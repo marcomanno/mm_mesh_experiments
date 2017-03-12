@@ -606,9 +606,24 @@ TEST_CASE("buddha_05", "[Bool]")
   REQUIRE(bf_it.size() == 40);
 }
 
-#if 0
-TEST_CASE("buddha", "[Bool]")
+TEST_CASE("buddha_06", "[Bool]")
 {
+  auto a = IO::load_obj(MESH_FOLDER"buddha_06a.obj");
+  auto b = IO::load_obj(MESH_FOLDER"buddha_06b.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(a, b);
+  auto result = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj("result_buddha_06.obj", result);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv1_it(result);
+  REQUIRE(bv1_it.size() == 36);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 40);
+}
+
+namespace {
+Topo::Wrap<Topo::Type::BODY> budda_bools(const char* str_off)
+{
+  double offset = std::stof(str_off);
   auto a = IO::load_obj(MESH_FOLDER"buddha.obj");
   auto b = IO::load_obj(MESH_FOLDER"buddha.obj");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(b);
@@ -616,12 +631,25 @@ TEST_CASE("buddha", "[Bool]")
   {
     Geo::Point pt;
     x->geom(pt);
-    pt[2] += 0.04;
+    pt[2] += offset;
     x->set_geom(pt);
   }
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(a, b);
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
-  IO::save_obj("result_buddha.obj", result);
+  auto out_name = std::string("result_buddha_") + str_off + ".obj";
+  IO::save_obj(out_name.c_str(), result);
+  return result;
 }
-#endif
+
+}
+
+TEST_CASE("buddha_0.04", "[Bool]")
+{
+  auto res = budda_bools("0.04");
+}
+
+TEST_CASE("buddha_0.01", "[Bool]")
+{
+  auto res = budda_bools("0.01");
+}
