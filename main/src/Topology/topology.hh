@@ -154,7 +154,7 @@ template <> struct E<Type::VERTEX> : public IBase
 
 template <> struct E<Type::EDGE> : public IBase
 {
-  virtual Type type() const { return Type::EDGE; };
+  virtual Type type() const { return Type::EDGE; }
   virtual bool geom(Geo::Segment&) const = 0;
   virtual bool set_geom(const Geo::Segment&) = 0;
   virtual double tolerance() const = 0;
@@ -163,17 +163,18 @@ template <> struct E<Type::EDGE> : public IBase
 
 template <> struct E<Type::FACE> : public IBase
 {
-  virtual Type type() const { return Type::FACE; };
+  virtual Type type() const { return Type::FACE; }
 };
 
 template <> struct E<Type::BODY> : public IBase
 {
-  virtual Type type() const { return Type::BODY; };
+  virtual Type type() const { return Type::BODY; }
+  virtual void optimize() {}
 };
 
 template <> struct E<Type::COEDGE> : public IBase
 {
-  virtual Type type() const { return Type::COEDGE; };
+  virtual Type type() const { return Type::COEDGE; }
   virtual bool geom(Geo::Segment&) const = 0;
   virtual bool set_geom(const Geo::Segment&) = 0;
   virtual double tolerance() const = 0;

@@ -86,7 +86,7 @@ template <Type typeT> struct UpEntity : public Base<typeT>
       return low_elems_.empty() ? nullptr : low_elems_[_i % low_elems_.size()];
   }
 
-  bool insert_child(IBase* _el, size_t _pos = SIZE_MAX)
+  virtual bool insert_child(IBase* _el, size_t _pos = SIZE_MAX)
   {
     if (_el == nullptr)
       return false;
@@ -110,13 +110,10 @@ template <Type typeT> struct UpEntity : public Base<typeT>
 
   virtual bool remove_child(IBase* _el)
   {
-    auto it = std::find(low_elems_.begin(), low_elems_.end(), _el);
-    if (it == low_elems_.end())
-      return false;
-    return remove_child(it - low_elems_.begin());
+    return remove_child(find_child(_el));
   }
 
-  bool replace_child(size_t _pos, IBase* _new_obj)
+  virtual bool replace_child(size_t _pos, IBase* _new_obj)
   {
     if (_new_obj == nullptr)
       return false;
@@ -133,7 +130,7 @@ template <Type typeT> struct UpEntity : public Base<typeT>
     return true;
   }
 
-  bool replace_child(IBase* _el, IBase* _new_el)
+  virtual bool replace_child(IBase* _el, IBase* _new_el)
   {
     size_t pos = SIZE_MAX;
     for (bool replaced = false;;)
@@ -173,6 +170,14 @@ template <Type typeT> struct EE;
 template <> struct EE<Type::BODY> : public UpEntity<Type::BODY>
 {
   virtual SubType sub_type() const { return SubType::BODY; }
+  virtual bool insert_child(IBase* _el, size_t _pos = SIZE_MAX);
+  virtual bool replace_child(size_t _pos, IBase* _new_obj);
+  // search for an element in the range [0, _end[ in reverse order.
+  virtual size_t find_child(const IBase* _el, size_t _end = SIZE_MAX) const;
+  virtual void optimize();
+  virtual bool remove();
+
+  bool ordered_children_ = true;
 };
 
 template <> struct EE<Type::FACE> : public UpEntity<Type::FACE>

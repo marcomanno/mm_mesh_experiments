@@ -365,6 +365,8 @@ void Selection::select_faces(
       }
     }
   }
+  _body_a->optimize();
+  _body_b->optimize();
   apply_selection();
 }
 
@@ -402,7 +404,7 @@ void Selection::apply_selection()
 {
   for (auto face : faces_to_remove_)
   {
-    face->remove();
+     THROW_IF(!face->remove(), "Aldready removedface!");
   }
   for (auto face : faces_to_invert_)
   {

@@ -8,6 +8,53 @@
 
 namespace Topo {
 
+bool EE<Type::BODY>::insert_child(IBase* _el, size_t _pos)
+{
+  auto res = UpEntity<Type::BODY>::insert_child(_el, _pos);
+  ordered_children_ &= !res;
+  return res;
+}
+
+bool EE<Type::BODY>::replace_child(size_t _pos, IBase* _new_obj)
+{
+  auto res = UpEntity<Type::BODY>::replace_child(_pos, _new_obj);
+  ordered_children_ &= !res;
+  return res;
+}
+
+namespace {
+bool compare_i_base(const IBase* _a, const IBase* _b) { return _a->id() < _b->id(); };
+}//namespace
+
+ // search for an element in the range [0, _end[ in reverse order.
+size_t EE<Type::BODY>::find_child(const IBase* _el, size_t _end) const
+{
+  if (_end < low_elems_.size() || !ordered_children_)
+    return UpEntity<Type::BODY>::find_child(_el, _end);
+
+  auto it_pos = std::lower_bound(
+    low_elems_.cbegin(), low_elems_.cend(), _el, compare_i_base);
+  if (it_pos == low_elems_.end() || *it_pos != _el)
+    return SIZE_MAX;
+
+  return it_pos - low_elems_.begin();
+}
+
+void EE<Type::BODY>::optimize()
+{
+  if (ordered_children_)
+    return;
+  std::sort(low_elems_.begin(), low_elems_.end(), compare_i_base);
+  ordered_children_ = true;
+}
+
+bool EE<Type::BODY>::remove()
+{
+  auto res = UpEntity<Type::BODY>::remove();
+  ordered_children_ |= res;
+  return res;
+}
+
 bool EE<Type::FACE>::reverse()
 {
   std::reverse(low_elems_.begin(), low_elems_.end());
@@ -40,7 +87,6 @@ Geo::Range<3> EE<Type::FACE>::box() const
   b.fatten(max_tol());
   return b;
 }
-
 
 bool EE<Type::EDGE>::geom(Geo::Segment& /*_seg*/) const
 {
