@@ -574,7 +574,12 @@ TEST_CASE("buddha_05", "[Bool]")
 
 TEST_CASE("buddha_06", "[Bool]")
 {
-  budda_test("06", 29, 25);
+  budda_test("06", 26, 25);
+}
+
+TEST_CASE("buddha_07", "[Bool]")
+{
+  budda_test("07", 31, 34);
 }
 
 namespace {

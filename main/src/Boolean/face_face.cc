@@ -712,13 +712,15 @@ void FaceEdgeMap::split_with_chains()
     {
       auto& faces = std::get<NewFaces>(face_info.second);
       auto& edge_vec = std::get<NewVerts>(face_info.second);
-      for (const auto f : faces)
+      if (edge_vec.empty())
+        break;
+      // Try face split.
+      for (size_t j = 0; j < faces.size() && !edge_vec.empty(); ++j)
       {
-        if (edge_vec.empty())
-          break;
-        Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(f);
+        auto& face = faces[j];
+        Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(face);
         auto prev = *fv_it.begin();
-        for (auto f_it = fv_it.end(); --f_it != fv_it.begin(); prev = *f_it)
+        for (auto f_it = fv_it.end(); f_it-- != fv_it.begin(); prev = *f_it)
         {
           for (auto ed_it = edge_vec.begin(); ed_it != edge_vec.end(); )
           {
@@ -732,14 +734,8 @@ void FaceEdgeMap::split_with_chains()
               ++ed_it;
           }
         }
-      }
-      if (edge_vec.empty())
-        continue;
-      // Try face split.
-      for (size_t j = 0; j < faces.size() && !edge_vec.empty(); ++j)
-      {
-        auto& face = faces[j];
-        Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(face);
+        if (edge_vec.empty())
+          break;
         for (auto vert_it = fv_it.begin(); vert_it != fv_it.end(); )
         {
           EdgeChain edge_ch;
@@ -812,15 +808,6 @@ void FaceEdgeMap::split_with_chains()
           break;
         }
       }
-      /*
-      if (!edge_vec.empty())
-      {
-        for (size_t j = 0; j < faces.size() && !edge_vec.empty(); ++j)
-        {
-          auto& face = faces[j];
-          Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(face);
-        }
-      }*/
     }
   }
 }
