@@ -227,16 +227,19 @@ void PolygonTriangulation::Solution::compute(
       if (_indcs[i] == _indcs[next] || _indcs[i] == _indcs[prev])
         continue;
       double dist_sq = 0;
-      double tol_sq = Geo::sq(std::numeric_limits<double>::epsilon() * 10) *
+      const auto prec = std::numeric_limits<double>::epsilon() * 100;
+      double tol_sq = prec *
         std::max(Geo::length_square(seg[0]), Geo::length_square(seg[1]));
+      //double tol_sq = std::max(Geo::epsilon_sq(seg[0]),
+      //  Geo::epsilon_sq(seg[1]));
       if (Geo::closest_point(seg, tmp_poly[i], nullptr, nullptr, &dist_sq) &&
         dist_sq <= tol_sq)
         return false;
       if (_indcs[j] == _indcs[next] || _indcs[j] == _indcs[prev])
         continue;
       Geo::Segment seg1 = { tmp_poly[i], tmp_poly[j] };
-      tol_sq = std::max({ tol_sq,
-        Geo::epsilon_sq(seg1[0]), Geo::epsilon_sq(seg1[1]) });
+      tol_sq = std::max(tol_sq, prec *
+        std::max(Geo::length_square(seg1[0]), Geo::length_square(seg1[1])));
       if (Geo::closest_point(seg, seg1,
         nullptr, nullptr, &dist_sq) && dist_sq <= tol_sq)
       {

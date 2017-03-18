@@ -582,6 +582,11 @@ TEST_CASE("buddha_07", "[Bool]")
   budda_test("07", 31, 34);
 }
 
+TEST_CASE("buddha_08", "[Bool]")
+{
+  budda_test("08", 30, 27);
+}
+
 namespace {
 Topo::Wrap<Topo::Type::BODY> budda_bools(const char* str_off)
 {
