@@ -59,6 +59,38 @@ template <Type typeT> struct BodyIteratorBase
   std::vector<Wrap<typeT>> elems_;
 };
 
+struct IterElement
+{
+  virtual bool add(IBase*) { return true; };
+  virtual bool process(IBase*) { return true; };
+};
+
+template <Topo::Type typeT>
+struct AddIterElement : public IterElement
+{
+  std::vector<Wrap<typeT>>& elems_;
+  AddIterElement(std::vector<Wrap<typeT>>& _elems) : elems_(_elems) {}
+  virtual bool add(IBase* _el) override
+  {
+    elems_.push_back(static_cast<E<typeT>*>(_el));
+    return true;
+  }
+};
+
+template <Direction dirT, Topo::Type to_typeT>
+bool topo_iterate(IBase* _from, IterElement& _op)
+{
+  if (_from->type() == to_typeT)
+    return _op.add(_from);
+  if ((dirT == Direction::Down) != _from->type() > to_typeT)
+    return false;
+  auto elm_nmbr = _from->size(dirT);
+  for (size_t i = 0; i < elm_nmbr; ++i)
+    if (!topo_iterate<dirT, to_typeT>(_from->get(dirT, i), _op))
+      return _op.process(_from);
+  return true;
+}
+
 }//namespace
 
 template <>
@@ -67,18 +99,10 @@ struct Iterator<Type::BODY, Type::FACE>::Impl : public BodyIteratorBase<Type::FA
   void reset(const Wrap<Type::BODY>& _from)
   {
     clear();
-    if (_from->sub_type() != SubType::BODY)
-      throw;
-    auto body = static_cast<const EE<Type::BODY>*>(_from.get());
-    
-    auto face_nmbr = body->size(Direction::Down);
-    elems_.reserve(face_nmbr);
-    for (size_t i = 0; i < face_nmbr; ++i)
-    {
-      auto child = body->get(Direction::Down, i);
-      if (child->type() == Type::FACE)
-        elems_.emplace_back(static_cast<EE<Type::FACE>*>(child));
-    }
+    THROW_IF(_from->sub_type() != SubType::BODY, "Wrong type");
+    AddIterElement<Type::FACE> add_face(elems_);
+    topo_iterate<Direction::Down, Type::FACE>(
+      const_cast<IBase*>(static_cast<const IBase*>(_from.get())), add_face);
   }
 };
 
@@ -493,7 +517,6 @@ template Iterator<Type::EDGE, Type::COEDGE>;
 template Iterator<Type::COEDGE, Type::EDGE>;
 template Iterator<Type::EDGE, Type::FACE>;
 template Iterator<Type::COEDGE, Type::FACE>;
-template Iterator<Type::FACE, Type::COEDGE>;
 template Iterator<Type::FACE, Type::COEDGE>;
 template Iterator<Type::COEDGE, Type::VERTEX>;
 

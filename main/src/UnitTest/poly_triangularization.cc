@@ -18,6 +18,8 @@ static void write_obj(const char* _flnm,
   }
 }
 
+#define WRITE_OBJ(A, B, C) write_obj("result_" A, B, C)
+
 #undef TEST_NAME
 #define TEST_NAME "poly_1"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
@@ -33,7 +35,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   auto& tris = ptg->triangles();
   REQUIRE(tris.size() == 3);
   REQUIRE(ptg->area() == 0.75);
-  write_obj("1", plgn, tris);
+  write_obj(TEST_NAME, plgn, tris);
 }
 
 #undef TEST_NAME
@@ -55,7 +57,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   auto& tris = ptg->triangles();
   REQUIRE(tris.size() == plgn.size() - 2);
   REQUIRE(ptg->area() == 5125);
-  write_obj("2", plgn, tris);
+  WRITE_OBJ(TEST_NAME, plgn, tris);
 }
 
 #undef TEST_NAME
@@ -76,7 +78,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   auto& tris = ptg->triangles();
   REQUIRE(tris.size() == plgn.size() - 2);
   REQUIRE(ptg->area() == 3.875);
-  write_obj("3", plgn, tris);
+  WRITE_OBJ(TEST_NAME, plgn, tris);
 }
 
 #undef TEST_NAME
@@ -97,7 +99,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   auto& tris = ptg->triangles();
   REQUIRE(tris.size() == plgn.size() - 2);
   REQUIRE(ptg->area() == 3.125);
-  write_obj(TEST_NAME, plgn, tris);
+  WRITE_OBJ(TEST_NAME, plgn, tris);
 }
 
 #undef TEST_NAME
@@ -119,7 +121,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 
   ptg->add(plgn);
   auto& tris = ptg->triangles();
-  write_obj(TEST_NAME, plgn, tris);
+  WRITE_OBJ(TEST_NAME, plgn, tris);
   REQUIRE(ptg->area() == 13.5);
   REQUIRE(tris.size() == plgn.size() - 2);
 }
@@ -149,7 +151,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 
   ptg->add(plgn);
   auto& tris = ptg->triangles();
-  write_obj(TEST_NAME, plgn, tris);
+  WRITE_OBJ(TEST_NAME, plgn, tris);
   REQUIRE(ptg->area() == 7.25);
   REQUIRE(tris.size() == plgn.size() - 2);
 }
@@ -176,7 +178,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   ptg->add(plgn);
 
   auto& tris = ptg->triangles();
-  write_obj(TEST_NAME, ptg->polygon(), tris);
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
   REQUIRE(ptg->area() == 8);
   REQUIRE(tris.size() == 8);
 }
@@ -228,7 +230,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   }
 
   auto& tris = ptg->triangles();
-  write_obj(TEST_NAME, ptg->polygon(), tris);
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
   REQUIRE(tris.size() == 24);
   REQUIRE(ptg->area() == 16);
 }
@@ -252,7 +254,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   }
 
   auto& tris = ptg->triangles();
-  write_obj(TEST_NAME, ptg->polygon(), tris);
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
   REQUIRE(tris.size() == 4);
   REQUIRE(ptg->area() == 4);
 }
@@ -274,7 +276,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   ptg->add(plgn);
 
   auto& tris = ptg->triangles();
-  write_obj(TEST_NAME, ptg->polygon(), tris);
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
   REQUIRE(tris.size() == 4);
   REQUIRE(ptg->area() > 0.14442415);
   REQUIRE(ptg->area() < 0.144431);
@@ -298,7 +300,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   ptg->add(plgn);
 
   auto& tris = ptg->triangles();
-  write_obj(TEST_NAME, ptg->polygon(), tris);
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
 }
 
 #undef TEST_NAME
@@ -322,7 +324,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   ptg->add(plgn);
 
   auto& tris = ptg->triangles();
-  write_obj(TEST_NAME, ptg->polygon(), tris);
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
   REQUIRE(tris.size() == 8);
   REQUIRE(ptg->area() > 0.001364);
   REQUIRE(ptg->area() < 0.001365);
@@ -343,7 +345,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   ptg->add(plgn);
 
   auto& tris = ptg->triangles();
-  write_obj(TEST_NAME, ptg->polygon(), tris);
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
   REQUIRE(tris.size() == 2);
   REQUIRE(ptg->area() == Approx(0.001364).epsilon(0.01));
 }
@@ -366,7 +368,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   ptg->add(plgn);
 
   auto& tris = ptg->triangles();
-  write_obj(TEST_NAME, ptg->polygon(), tris);
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
   REQUIRE(tris.size() == 5);
   REQUIRE(ptg->area() == Approx(9.6755109902549154e-09).epsilon(1.e-12));
 }
@@ -390,7 +392,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   ptg->add(plgn);
 
   auto& tris = ptg->triangles();
-  write_obj(TEST_NAME, ptg->polygon(), tris);
-  REQUIRE(tris.size() == 5);
-  REQUIRE(ptg->area() == Approx(9.6755109902549154e-09).epsilon(1.e-12));
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
+  REQUIRE(tris.size() == 4);
+  REQUIRE(ptg->area() == Approx(9.6755109902549154e-09).epsilon(1.e-8));
 }
