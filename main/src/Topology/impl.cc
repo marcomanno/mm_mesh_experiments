@@ -99,9 +99,21 @@ Geo::Range<3> EE<Type::FACE>::box() const
     max_tol.add(Geo::epsilon(pt));
     b += el->internal_point();
   }
-  b.fatten(max_tol());
+  b.fatten(1.e-5);
   return b;
 }
+
+// A face can have all loops or all not loops.
+bool EE<Type::FACE>::check()
+{
+  if (low_elems_.empty())
+    return true;
+  size_t loop_nmbr = 0;
+  for (const auto el : low_elems_)
+    loop_nmbr += el->type() == Type::LOOP;
+  return loop_nmbr == 0 || loop_nmbr == low_elems_.size();
+}
+
 
 bool EE<Type::EDGE>::geom(Geo::Segment& /*_seg*/) const
 {
@@ -284,9 +296,8 @@ template <> void object_saver<SubType::EDGE>(std::ostream&, const Object*, ISave
 }
 
 template <> WrapObject 
-object_loader<SubType::EDGE>(std::istream& _istr, ILoader* _pload)
+object_loader<SubType::EDGE>(std::istream&, ILoader*)
 {
-  _istr; _pload;
   return nullptr;
 }
 
@@ -295,9 +306,8 @@ template <> void object_saver<SubType::EDGE_REF>(std::ostream&, const Object*, I
 }
 
 template <> WrapObject 
-object_loader<SubType::EDGE_REF>(std::istream& _istr, ILoader* _pload)
+object_loader<SubType::EDGE_REF>(std::istream&, ILoader*)
 {
-  _istr; _pload;
   return nullptr;
 }
 
@@ -306,9 +316,8 @@ template <> void object_saver<SubType::COEDGE>(std::ostream&, const Object*, ISa
 }
 
 template <> WrapObject
-object_loader<SubType::COEDGE>(std::istream& _istr, ILoader* _pload)
+object_loader<SubType::COEDGE>(std::istream&, ILoader*)
 {
-  _istr; _pload;
   return nullptr;
 }
 
@@ -317,9 +326,33 @@ template <> void object_saver<SubType::COEDGE_REF>(std::ostream&, const Object*,
 }
 
 template <> WrapObject
-object_loader<SubType::COEDGE_REF>(std::istream& _istr, ILoader* _pload)
+object_loader<SubType::COEDGE_REF>(std::istream&, ILoader*)
 {
-  _istr; _pload;
+  return nullptr;
+}
+
+template <> void object_saver<SubType::LOOP>(
+  std::ostream& _ostr, const Object* _obj, ISaver* _psav)
+{
+  save_base_entity<Type::LOOP>(
+    _ostr, static_cast<const EE<Type::LOOP>*>(_obj), _psav);
+}
+
+template <> WrapObject
+object_loader<SubType::LOOP>(std::istream& _istr, ILoader* _pload)
+{
+  Topo::Wrap<Type::LOOP> lp;
+  load_base_entity(_istr, lp.make<EE<Type::LOOP>>(), _pload);
+  return lp.get();
+}
+
+template <> void object_saver<SubType::LOOP_REF>(std::ostream&, const Object*, ISaver*)
+{
+}
+
+template <> WrapObject
+object_loader<SubType::LOOP_REF>(std::istream&, ILoader*)
+{
   return nullptr;
 }
 

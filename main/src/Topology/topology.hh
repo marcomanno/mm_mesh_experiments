@@ -10,9 +10,9 @@
 
 namespace Topo {
 
-MAKE_ENUM(Type, VERTEX, EDGE, COEDGE, FACE, SHELL, BODY)
+MAKE_ENUM(Type, VERTEX, EDGE, COEDGE, LOOP, FACE, SHELL, BODY)
 
-MAKE_ENUM(Direction, Up, Down );
+MAKE_ENUM(Direction, Up, Down )
 
 typedef unsigned __int64 Identifier;
 
@@ -140,35 +140,31 @@ protected:
   virtual bool add_parent(IBase* /*_prnt*/) { return false; }
 };
 
-template <Type typeT> struct E;
+template <Type typeT> struct EBase : public IBase
+{
+  virtual Type type() const { return typeT; }
+};
 
-template <> struct E<Type::VERTEX> : public IBase
+template <Type typeT> struct E : public EBase<typeT> {};
+
+template <> struct E<Type::VERTEX> : public EBase<Type::VERTEX>
 {
   virtual bool geom(Geo::Point&) const = 0;
   virtual bool set_geom(const Geo::Point&) = 0;
   virtual double tolerance() const = 0;
   virtual bool set_tolerance(const double _tol) = 0;
-
-  virtual Type type() const { return Type::VERTEX; };
 };
 
-template <> struct E<Type::EDGE> : public IBase
+template <> struct E<Type::EDGE> : public EBase<Type::EDGE>
 {
-  virtual Type type() const { return Type::EDGE; }
   virtual bool geom(Geo::Segment&) const = 0;
   virtual bool set_geom(const Geo::Segment&) = 0;
   virtual double tolerance() const = 0;
   virtual bool set_tolerance(const double _tol) = 0;
 };
 
-template <> struct E<Type::FACE> : public IBase
+template <> struct E<Type::BODY> : public EBase<Type::BODY>
 {
-  virtual Type type() const { return Type::FACE; }
-};
-
-template <> struct E<Type::BODY> : public IBase
-{
-  virtual Type type() const { return Type::BODY; }
   virtual void optimize() {}
   virtual bool remove_children(
     std::vector<IBase*>&)

@@ -188,6 +188,12 @@ template <> struct EE<Type::FACE> : public UpEntity<Type::FACE>
   virtual bool reverse();
   virtual Geo::Point internal_point() const;
   virtual Geo::Range<3> box() const;
+  bool check();
+};
+
+template <> struct EE<Type::LOOP> : public UpEntity<Type::LOOP>
+{
+  virtual SubType sub_type() const { return SubType::LOOP; }
 };
 
 template <> struct EE<Type::EDGE> : public UpEntity<Type::EDGE>
@@ -244,6 +250,12 @@ struct CoEdgeRef : public E<Type::COEDGE>
   virtual bool operator<(const Object& _oth) const;
   virtual bool operator==(const Object& _oth) const;
   virtual bool operator!=(const EdgeRef& _oth) const { return !(*this == _oth); }
+};
+
+struct LoopRef : public E<Type::LOOP>
+{
+  Wrap<Type::FACE> face_;  // Face.
+  virtual SubType sub_type() const { return SubType::LOOP_REF; }
 };
 
 }//namespace Topo
