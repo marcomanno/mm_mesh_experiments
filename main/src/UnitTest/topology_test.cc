@@ -587,7 +587,52 @@ TEST_CASE("buddha_08", "[Bool]")
   budda_test("08", 30, 27);
 }
 
+TEST_CASE("buddha_09", "[Bool]")
+{
+  budda_test("09", 30, 27);
+}
+
+TEST_CASE("buddha_10", "[Bool]")
+{
+  budda_test("10", 30, 27);
+}
+
+TEST_CASE("buddha_11", "[Bool]")
+{
+  budda_test("11", 30, 27);
+}
+
 namespace {
+
+void filter(Topo::Wrap<Topo::Type::BODY>& _body)
+{
+  std::vector<Topo::IBase*> faces_to_remove;
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(_body);
+  for (auto f : bf_it)
+  {
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(f);
+    bool inside = false;
+    for (auto v : fv_it)
+    {
+      Geo::Point pt;
+      v->geom(pt);
+      //inside = pt[0] > -0.02 && pt[0] < 0.003;
+      //inside = pt[1] < 0.1; // ERROR
+      inside = pt[1] < 0.075;
+      //inside &= pt[2] > -0.02 && pt[2] < 0;
+      //inside = pt[0] > -0.02 && pt[0] < 0.003;
+      //inside &= pt[1] > 0.04 && pt[1] < 0.07;
+      //inside &= pt[2] > -0.02 && pt[2] < 0;
+      if (inside)
+        break;
+    }
+    if (!inside)
+      //f->remove();
+      faces_to_remove.push_back(f.get());
+  }
+  _body->remove_children(faces_to_remove);
+}
+
 Topo::Wrap<Topo::Type::BODY> budda_bools(const char* str_off)
 {
   double offset = std::stof(str_off);
@@ -601,9 +646,14 @@ Topo::Wrap<Topo::Type::BODY> budda_bools(const char* str_off)
     pt[2] += offset;
     x->set_geom(pt);
   }
+  filter(a);
+  IO::save_obj("debug___00.obj", a);
+  filter(b);
+  IO::save_obj("debug___01.obj", b);
+
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(a, b);
-  auto result = bool_solver->compute(Boolean::Operation::UNION);
+  auto result = bool_solver->compute(Boolean::Operation::SPLIT);
   auto out_name = std::string("result_buddha_") + str_off + ".obj";
   IO::save_obj(out_name.c_str(), result);
   return result;
@@ -611,12 +661,21 @@ Topo::Wrap<Topo::Type::BODY> budda_bools(const char* str_off)
 
 }
 
-TEST_CASE("buddha_0.04", "[Bool]")
+TEST_CASE("buddha_100_0.04", "[Bool]")
 {
   auto res = budda_bools("0.04");
 }
 
-TEST_CASE("buddha_0.01", "[Bool]")
+TEST_CASE("buddha_100_0.01", "[Bool]")
 {
+    /*
+    8::::
+    329223
+    25::::
+    354848
+    2::::
+    833188
+    18::::
+    889796*/
   auto res = budda_bools("0.01");
 }
