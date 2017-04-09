@@ -11,18 +11,6 @@
 
 namespace Topo {
 
-template <Type> struct TopoSubtype {};
-
-#define SUBTYPE_RELATION(TopoType) template <> struct TopoSubtype<Type::TopoType> \
-{ const SubType Value = SubType::TopoType; };
-
-SUBTYPE_RELATION(BODY)
-SUBTYPE_RELATION(FACE)
-SUBTYPE_RELATION(LOOP)
-SUBTYPE_RELATION(COEDGE)
-SUBTYPE_RELATION(EDGE)
-SUBTYPE_RELATION(VERTEX)
-
 template <Type FromT, Type ToT> 
 Iterator<FromT, ToT>::Iterator() : impl_(new Impl)
 {
@@ -74,7 +62,7 @@ template <Type typeT> struct BodyIteratorBase
 struct IterElement
 {
   virtual bool add(IBase*) { return true; };
-  virtual bool process(IBase*) { return true; };
+  virtual bool process(IBase*, size_t) { return true; };
 };
 
 template <Topo::Type typeT>
@@ -118,7 +106,7 @@ bool topo_iterate(IBase* _from, IterElement& _op)
   auto elm_nmbr = _from->size(dirT);
   for (size_t i = 0; i < elm_nmbr; ++i)
     if (!topo_iterate<dirT, to_typeT>(_from->get(dirT, i), _op))
-      return _op.process(_from);
+      _op.process(_from, i);
   return true;
 }
 
@@ -147,64 +135,31 @@ struct Iterator<Type::BODY, Type::EDGE>::Impl : public BodyIteratorBase<Type::ED
     if (_from->sub_type() != SubType::BODY)
       throw;
 
-    typedef std::array<Object*, 2> Key;
-    struct less_key
+    struct AddIterEdge : public IterElement
     {
-      bool operator()(const Key& _a, const Key& _b) const
+      std::vector<Wrap<Type::EDGE>>& elems_;
+      AddIterEdge(std::vector<Wrap<Type::EDGE>>& _elems) : elems_(_elems) {}
+      ~AddIterEdge()
       {
-        if (less_ptr(_a[0], _b[0]))
-          return true;
-        if (less_ptr(_b[0], _a[0]))
-          return false;
-        return less_ptr(_a[1], _b[1]);
+        std::sort(elems_.begin(), elems_.end());
+        auto new_size = std::unique(elems_.begin(), elems_.end()) - elems_.begin();
+        elems_.resize(new_size);
       }
-      bool less_ptr(const Object* _ob0, const Object* _ob1) const
-      {
-        if (_ob0 == _ob1 || _ob1 == nullptr)
-          return false;
-        if (_ob0 == nullptr)
-          return true;
-        return *_ob0 < *_ob1;
-      }
-    };
-
-    auto body = static_cast<const EE<Type::BODY>*>(_from.get());
-    auto face_nmbr = body->size(Direction::Down);
-    typedef std::map<Key, Wrap<Type::EDGE>, less_key> EdgeMap;
-    EdgeMap edges;
-    for (size_t i = 0; i < face_nmbr; ++i)
-    {
-      auto child = body->get(Direction::Down, i);
-      if (child->type() != Type::FACE)
-        continue;
-      auto face = static_cast<EE<Type::FACE>*>(child);
-      auto edge_nmbr = face->size(Direction::Down);
-      Key verts;
-      verts[0] = face->get(Direction::Down, edge_nmbr - 1);
-      for (size_t j = 0; j < edge_nmbr; ++j)
+      virtual bool process(IBase* _from, size_t _i)
       {
         Wrap<Type::EDGE> edg_wrp;
         auto edg = edg_wrp.make<EdgeRef>();
-        verts[1] = face->get(Direction::Down, j);
-
-        for (size_t k = 0; k < 2; ++k)
-        {
-          THROW_IF(verts[k]->type() != Type::VERTEX, "Unexpected type");
-          edg->verts_[k] = static_cast<E<Type::VERTEX>*>(verts[k]);
-        }
+        edg->verts_[0] = static_cast<E<Type::VERTEX>*>(_from->get(Direction::Down, _i));
+        if (++_i >= _from->size(Direction::Down)) _i = 0;
+        edg->verts_[1] = static_cast<E<Type::VERTEX>*>(_from->get(Direction::Down, _i));
         edg->finalise();
-
-        Key key(verts);
-        if (key[0] > key[1])
-          std::swap(key[0], key[1]);
-        auto it = edges.lower_bound(key);
-        if (it == edges.end() || it->first != key)
-          edges.insert(it, EdgeMap::value_type(key, edg_wrp));
-        verts[0] = verts[1];
+        elems_.push_back(edg);
+        return true;
       }
-    }
-    for (auto ed : edges)
-      elems_.push_back(ed.second);
+    };
+    AddIterEdge edge_adder(elems_);
+    topo_iterate<Direction::Down, Type::EDGE>(
+      const_cast<IBase*>(static_cast<const IBase*>(_from.get())), edge_adder);
   }
 };
 
