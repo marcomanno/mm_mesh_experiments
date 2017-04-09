@@ -713,7 +713,7 @@ void FaceEdgeMap::split_with_chains()
       auto& faces = std::get<NewFaces>(face_info.second);
       auto& edge_vec = std::get<NewVerts>(face_info.second);
       if (edge_vec.empty())
-        break;
+        continue;
       // Try face split.
       for (size_t j = 0; j < faces.size() && !edge_vec.empty(); ++j)
       {
