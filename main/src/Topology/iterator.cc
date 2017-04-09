@@ -11,6 +11,18 @@
 
 namespace Topo {
 
+template <Type> struct TopoSubtype {};
+
+#define SUBTYPE_RELATION(TopoType) template <> struct TopoSubtype<Type::TopoType> \
+{ const SubType Value = SubType::TopoType; };
+
+SUBTYPE_RELATION(BODY)
+SUBTYPE_RELATION(FACE)
+SUBTYPE_RELATION(LOOP)
+SUBTYPE_RELATION(COEDGE)
+SUBTYPE_RELATION(EDGE)
+SUBTYPE_RELATION(VERTEX)
+
 template <Type FromT, Type ToT> 
 Iterator<FromT, ToT>::Iterator() : impl_(new Impl)
 {
@@ -77,7 +89,26 @@ struct AddIterElement : public IterElement
   }
 };
 
-template <Direction dirT, Topo::Type to_typeT>
+template <Topo::Type typeT>
+struct AddIterUniqueElement : public AddIterElement<typeT>
+{
+  using AddIterElement::AddIterElement;
+  std::set<Wrap<typeT>> elems_set_;
+  virtual bool add(IBase* _el) override
+  {
+    if (elems_set_.insert(static_cast<E<typeT>*>(_el)).second)
+      elems_.push_back(static_cast<E<typeT>*>(_el));
+    return true;
+  }
+};
+
+template <Type from_typeT, Type to_typeT> struct AddElementSelector
+{ typedef AddIterElement<to_typeT> Value; };
+
+template <> struct AddElementSelector<Type::BODY, Type::VERTEX>
+{ typedef AddIterUniqueElement<Type::VERTEX> Value; };
+
+template <Direction dirT, Type to_typeT>
 bool topo_iterate(IBase* _from, IterElement& _op)
 {
   if (_from->type() == to_typeT)
@@ -93,16 +124,16 @@ bool topo_iterate(IBase* _from, IterElement& _op)
 
 }//namespace
 
-template <>
-struct Iterator<Type::BODY, Type::FACE>::Impl : public BodyIteratorBase<Type::FACE>
+template <Type from_typeT, Type to_typeT>
+struct Iterator<from_typeT, to_typeT>::Impl : public BodyIteratorBase<to_typeT>
 {
-  void reset(const Wrap<Type::BODY>& _from)
+  void reset(const Wrap<from_typeT>& _from)
   {
     clear();
-    THROW_IF(_from->sub_type() != SubType::BODY, "Wrong type");
-    AddIterElement<Type::FACE> add_face(elems_);
-    topo_iterate<Direction::Down, Type::FACE>(
-      const_cast<IBase*>(static_cast<const IBase*>(_from.get())), add_face);
+    AddElementSelector<from_typeT, to_typeT>::Value add_elems(elems_);
+    const Direction dir = from_typeT > to_typeT ? Direction::Down : Direction::Up;
+    topo_iterate<dir, to_typeT>(
+      const_cast<IBase*>(static_cast<const IBase*>(_from.get())), add_elems);
   }
 };
 
@@ -177,37 +208,6 @@ struct Iterator<Type::BODY, Type::EDGE>::Impl : public BodyIteratorBase<Type::ED
   }
 };
 
-template <> 
-struct Iterator<Type::BODY, Type::VERTEX>::Impl : public BodyIteratorBase<Type::VERTEX>
-{
-  void reset (const Wrap<Type::BODY>& _from)
-  {
-    clear();
-    if (_from->sub_type() != SubType::BODY)
-      throw;
-    auto body = static_cast<const EE<Type::BODY>*>(_from.get());
-    auto face_nmbr = body->size(Direction::Down);
-    std::set<EE<Type::VERTEX>*> vertices;
-    for (size_t i = 0; i < face_nmbr; ++i)
-    {
-      auto child = body->get(Direction::Down, i);
-      if (child->type() != Type::FACE)
-        continue;
-      auto face = static_cast<EE<Type::FACE>*>(child);
-      auto vert_nmbr = face->size(Direction::Down);
-      for (size_t j = 0; j < vert_nmbr; ++j)
-      {
-        auto elem = face->get(Direction::Down, j);
-        if (elem->type() != Type::VERTEX)
-          continue;
-        auto vert = static_cast<EE<Type::VERTEX>*>(elem);
-        if (vertices.insert(vert).second)
-          elems_.push_back(vert);
-      }
-    }
-  }
-};
-
 template <>
 struct Iterator<Type::EDGE, Type::VERTEX>::Impl : public BodyIteratorBase<Type::VERTEX>
 {
@@ -226,21 +226,6 @@ struct Iterator<Type::EDGE, Type::VERTEX>::Impl : public BodyIteratorBase<Type::
     }
     else
       THROW("UNEXPECTED_EDGE_TYPE");
-  }
-};
-
-template <>
-struct Iterator<Type::FACE, Type::VERTEX>::Impl : public BodyIteratorBase<Type::VERTEX>
-{
-  void reset(const Wrap<Type::FACE>& _from)
-  {
-    clear();
-    for (size_t i = 0; i < _from->size(Direction::Down); ++i)
-    {
-      auto vert = _from->get(Direction::Down, i);
-      if (vert->type() == Type::VERTEX)
-        elems_.emplace_back(static_cast<E<Type::VERTEX>*>(vert));
-    }
   }
 };
 
@@ -282,22 +267,6 @@ struct Iterator<Type::VERTEX, Type::EDGE>::Impl : public BodyIteratorBase<Type::
           }
         }
       }
-    }
-  }
-};
-
-template <>
-struct Iterator<Type::VERTEX, Type::FACE>::Impl : public BodyIteratorBase<Type::FACE>
-{
-  void reset(const Wrap<Type::VERTEX>& _from)
-  {
-    clear();
-
-    for (size_t i = 0; i < _from->size(Direction::Up); ++i)
-    {
-      auto face = _from->get(Direction::Up, i);
-      if (face->type() == Type::FACE)
-        elems_.emplace_back(static_cast<E<Type::FACE>*>(face));
     }
   }
 };

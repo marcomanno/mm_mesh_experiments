@@ -68,7 +68,6 @@ TEST_CASE("4VVintersections", "[Bool]")
 {
   body_1 = make_cube(cube_00);
   body_2 = make_cube(cube_01);
-  print_body(body_1);
 
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(body_1, body_2);
@@ -411,7 +410,7 @@ TEST_CASE("2tuna_P4", "[Bool]")
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
   auto result = bool_solver->compute(Boolean::Operation::SPLITB);
-  IO::save_obj("2tuna_P4.obj", result);
+  IO::save_obj("result_2tuna_P4.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   REQUIRE(bv_it.size() == 31);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
@@ -574,7 +573,7 @@ TEST_CASE("buddha_05", "[Bool]")
 
 TEST_CASE("buddha_06", "[Bool]")
 {
-  budda_test("06", 26, 25);
+  budda_test("06", 29, 25);
 }
 
 TEST_CASE("buddha_07", "[Bool]")
@@ -584,12 +583,12 @@ TEST_CASE("buddha_07", "[Bool]")
 
 TEST_CASE("buddha_08", "[Bool]")
 {
-  budda_test("08", 30, 27);
+  budda_test("08", 31, 27);
 }
 
 TEST_CASE("buddha_09", "[Bool]")
 {
-  budda_test("09", 30, 27);
+  budda_test("09", 17, 22);
 }
 
 TEST_CASE("buddha_10", "[Bool]")
@@ -599,7 +598,7 @@ TEST_CASE("buddha_10", "[Bool]")
 
 TEST_CASE("buddha_11", "[Bool]")
 {
-  budda_test("11", 30, 27);
+  budda_test("11", 30, 365541);
 }
 
 namespace {
