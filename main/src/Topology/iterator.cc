@@ -49,6 +49,18 @@ void Iterator<FromT, ToT>::clear() { return impl_->clear(); }
 
 namespace {
 
+template <Type> struct TopoSubtype {};
+
+#define SUBTYPE_RELATION(TopoType) template <> struct TopoSubtype<Type::TopoType> \
+{ static const SubType Value = SubType::TopoType; };
+
+SUBTYPE_RELATION(BODY)
+SUBTYPE_RELATION(FACE)
+SUBTYPE_RELATION(LOOP)
+SUBTYPE_RELATION(COEDGE)
+SUBTYPE_RELATION(EDGE)
+SUBTYPE_RELATION(VERTEX)
+
 template <Type typeT> struct BodyIteratorBase
 {
   size_t size() const { return elems_.size(); }
@@ -125,14 +137,13 @@ struct Iterator<from_typeT, to_typeT>::Impl : public BodyIteratorBase<to_typeT>
   }
 };
 
-
-template <> 
-struct Iterator<Type::BODY, Type::EDGE>::Impl : public BodyIteratorBase<Type::EDGE>
+template <Type FromT>
+struct BodyIteratorToEdge : public BodyIteratorBase<Type::EDGE>
 {
-  void reset(const Wrap<Type::BODY>& _from)
+  void reset(const Wrap<FromT>& _from)
   {
     clear();
-    if (_from->sub_type() != SubType::BODY)
+    if (_from->sub_type() != TopoSubtype<FromT>::Value)
       throw;
 
     struct AddIterEdge : public IterElement
@@ -162,6 +173,10 @@ struct Iterator<Type::BODY, Type::EDGE>::Impl : public BodyIteratorBase<Type::ED
       const_cast<IBase*>(static_cast<const IBase*>(_from.get())), edge_adder);
   }
 };
+
+template <>
+struct Iterator<Type::BODY, Type::EDGE>::Impl : public BodyIteratorToEdge<Type::BODY>
+{};
 
 template <>
 struct Iterator<Type::EDGE, Type::VERTEX>::Impl : public BodyIteratorBase<Type::VERTEX>
@@ -370,27 +385,8 @@ struct Iterator<Type::COEDGE, Type::EDGE>::Impl : public BodyIteratorBase<Type::
 };
 
 template <>
-struct Iterator<Type::FACE, Type::EDGE>::Impl : public BodyIteratorBase<Type::EDGE>
-{
-  void reset(const Wrap<Type::FACE>& _from)
-  {
-    clear();
-    auto nverts = _from->size(Direction::Down);
-    if (nverts < 2)
-      return;
-    auto prev = _from->get(Direction::Down, nverts - 1);
-    for (auto i = 0; i < nverts; ++i)
-    {
-      Wrap<Type::EDGE> edge;
-      auto edref = edge.make<EdgeRef>();
-      edref->verts_[0].reset(static_cast<E<Type::VERTEX>*>(prev));
-      prev = _from->get(Direction::Down, i);
-      edref->verts_[1].reset(static_cast<E<Type::VERTEX>*>(prev));
-      edref->finalise();
-      elems_.emplace_back(edge);
-    }
-  }
-};
+struct Iterator<Type::FACE, Type::EDGE>::Impl : public BodyIteratorToEdge<Type::FACE>
+{};
 
 template <>
 struct Iterator<Type::FACE, Type::COEDGE>::Impl : public BodyIteratorBase<Type::COEDGE>
