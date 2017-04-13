@@ -20,8 +20,8 @@ struct Object
 {
   template <Type typeT> friend class Wrap;
 
-  void add_ref() { ++ref_; }
-  void release_ref() 
+  void add_ref() const { ++ref_; }
+  void release_ref() const
   {
     auto refs = --ref_;
     if (refs == 0)
@@ -44,7 +44,7 @@ private:
   static void* operator new[](std::size_t sz) { return ::operator new(sz); }
 
 private:
-  size_t ref_;
+  mutable size_t ref_;
   Identifier id_;
 };
 
@@ -218,9 +218,7 @@ public:
 
   const E<typeT>* operator->() const { return get(); }
 
-  E<typeT>* get() { return ptr_; }
-
-  const E<typeT>* get() const { return ptr_; }
+  E<typeT>* get() const { return ptr_; }
 
   explicit operator bool() const { return ptr_ != nullptr; }
 

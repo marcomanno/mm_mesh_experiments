@@ -195,13 +195,13 @@ namespace {
 
 struct Vertices
 {
-  Vertices(const Wrap<Type::FACE>& _face, size_t _ind)
+  Vertices(const IBase* _loop, size_t _ind)
   {
-    auto sz = _face->size(Topo::Direction::Down);
+    auto sz = _loop->size(Topo::Direction::Down);
     THROW_IF(_ind >= sz, "Bad toplogy access");
-    auto add_vertex = [this, &_face](size_t _i, size_t _ind)
+    auto add_vertex = [this, &_loop](size_t _i, size_t _ind)
     {
-      auto vert = _face->get(Topo::Direction::Down, _ind);
+      auto vert = _loop->get(Topo::Direction::Down, _ind);
       THROW_IF(vert->type() != Topo::Type::VERTEX, "Unexpected type");
       verts_[_i].reset(static_cast<E<Type::VERTEX> *>(vert));
     };
@@ -213,16 +213,32 @@ struct Vertices
   Wrap<Type::VERTEX> verts_[2];
 };
 }//namespace
-  
+
+CoEdgeRef::~CoEdgeRef()
+{
+  if (loop_) loop_->release_ref();
+}
+
+void CoEdgeRef::set_loop(IBase* _loop)
+{
+  if (loop_ == _loop)
+    return;
+  if (loop_)
+    loop_->release_ref();
+  loop_ = _loop;
+  if (loop_)
+    loop_->add_ref();
+}
+
 bool CoEdgeRef::geom(Geo::Segment& _seg) const
 {
-  Vertices verts(face_, ind_);
+  Vertices verts(loop_, ind_);
   return verts.verts_[0]->geom(_seg[0]) && verts.verts_[1]->geom(_seg[1]);
 }
 
 double CoEdgeRef::tolerance() const
 {
-  Vertices verts(face_, ind_);
+  Vertices verts(loop_, ind_);
   return std::max(verts.verts_[0]->tolerance(), verts.verts_[1]->tolerance());
 }
 
@@ -231,7 +247,7 @@ bool CoEdgeRef::operator<(const Object& _oth) const
   if (_oth.sub_type() != SubType::COEDGE_REF)
     return E<Type::COEDGE>::operator<(_oth);
   auto oth = static_cast<const CoEdgeRef&>(_oth);
-  return face_ < oth.face_ || face_ == oth.face_ && ind_ < oth.ind_;
+  return loop_ < oth.loop_ || loop_ == oth.loop_ && ind_ < oth.ind_;
 }
 
 bool CoEdgeRef::operator==(const Object& _oth) const
@@ -239,7 +255,7 @@ bool CoEdgeRef::operator==(const Object& _oth) const
   if (_oth.sub_type() != SubType::COEDGE_REF)
     return false;
   auto oth = static_cast<const CoEdgeRef&>(_oth);
-  return face_ == oth.face_ && ind_ == oth.ind_;
+  return loop_ == oth.loop_ && ind_ == oth.ind_;
 }
 
 template<Type typeT>

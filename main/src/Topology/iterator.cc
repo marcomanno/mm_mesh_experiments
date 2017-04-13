@@ -122,6 +122,15 @@ bool topo_iterate(IBase* _from, IterElement& _op)
   return true;
 }
 
+template <Type from_typeT, Type to_typeT>
+void get_elements(const Wrap<from_typeT>& _from, std::vector<Wrap<to_typeT>>& _elems)
+{
+  AddElementSelector<from_typeT, to_typeT>::Value add_elems(_elems);
+  const Direction dir = from_typeT > to_typeT ? Direction::Down : Direction::Up;
+  topo_iterate<dir, to_typeT>(
+    const_cast<IBase*>(static_cast<const IBase*>(_from.get())), add_elems);
+}
+
 }//namespace
 
 template <Type from_typeT, Type to_typeT>
@@ -130,10 +139,7 @@ struct Iterator<from_typeT, to_typeT>::Impl : public BodyIteratorBase<to_typeT>
   void reset(const Wrap<from_typeT>& _from)
   {
     clear();
-    AddElementSelector<from_typeT, to_typeT>::Value add_elems(elems_);
-    const Direction dir = from_typeT > to_typeT ? Direction::Down : Direction::Up;
-    topo_iterate<dir, to_typeT>(
-      const_cast<IBase*>(static_cast<const IBase*>(_from.get())), add_elems);
+    get_elements(_from, elems_);
   }
 };
 
@@ -288,7 +294,7 @@ struct Iterator<Type::EDGE, Type::COEDGE>::Impl : public BodyIteratorBase<Type::
 
           Wrap<Type::COEDGE> coedge;
           auto cedge_data = coedge.make<CoEdgeRef>();
-          cedge_data->face_ = face;
+          cedge_data->set_loop(face.get());
           cedge_data->ind_ = i > 0 ? pos : pos_near[0];
           elems_.emplace_back(coedge);
         }
@@ -307,15 +313,10 @@ struct Iterator<Type::EDGE, Type::FACE>::Impl : public BodyIteratorBase<Type::FA
     auto edge_ref = static_cast<const Topo::EdgeRef*>(_from.get());
 
     std::vector<Wrap<Type::FACE>> faces[2], common_faces;
+
     for (int i = 0; i < 2; ++i)
     {
-      auto& vert = edge_ref->verts_[i];
-      for (size_t j = 0; j < vert->size(Topo::Direction::Up); ++j)
-      {
-        auto ptr_face = vert->get(Topo::Direction::Up, j);
-        THROW_IF(ptr_face->type() != Type::FACE, "Unexpected type");
-        faces[i].emplace_back(static_cast<E<Type::FACE>*>(ptr_face));
-      }
+      get_elements(edge_ref->verts_[i], faces[i]);
       std::sort(faces[i].begin(), faces[i].end());
     }
     std::set_intersection(
@@ -356,7 +357,16 @@ struct Iterator<Type::COEDGE, Type::FACE>::Impl : public BodyIteratorBase<Type::
     clear();
     THROW_IF(_from->sub_type() != SubType::COEDGE_REF, "Not expected coedge type");
     auto coedge_ref = static_cast<const Topo::CoEdgeRef*>(_from.get());
-    elems_.emplace_back(coedge_ref->face_);
+    auto loop_or_face = coedge_ref->loop();
+    if (loop_or_face->type() == Type::FACE)
+      elems_.emplace_back(Wrap<Type::FACE>(static_cast<E<Type::FACE>*>(loop_or_face)));
+    else
+      for (size_t i = 0; i < loop_or_face->size(Direction::Up); ++i)
+      {
+        auto face = loop_or_face->get(Direction::Up, i);
+        THROW_IF(face->type() != Type::FACE, "Expected face");
+        elems_.emplace_back(Wrap<Type::FACE>(static_cast<E<Type::FACE>*>(face)));
+      }
   }
 };
 
@@ -369,15 +379,15 @@ struct Iterator<Type::COEDGE, Type::EDGE>::Impl : public BodyIteratorBase<Type::
     THROW_IF(_from->sub_type() != SubType::COEDGE_REF, "Not expected coedge type");
     auto coedge_ref = static_cast<const Topo::CoEdgeRef*>(_from.get());
     auto second = coedge_ref->ind_ + 1;
-    if (second > coedge_ref->face_->size(Direction::Down))
+    if (second > coedge_ref->loop()->size(Direction::Down))
       second = 0;
 
     Wrap<Type::EDGE> edge;
     auto edref = edge.make<EdgeRef>();
     auto v0 = static_cast<E<Type::VERTEX>*>(
-      coedge_ref->face_->get(Direction::Down, coedge_ref->ind_));
+      coedge_ref->loop()->get(Direction::Down, coedge_ref->ind_));
     edref->verts_[0].reset(v0);
-    auto v1 = static_cast<E<Type::VERTEX>*>(coedge_ref->face_->get(Direction::Down, second));
+    auto v1 = static_cast<E<Type::VERTEX>*>(coedge_ref->loop()->get(Direction::Down, second));
     edref->verts_[1].reset(v1);
     edref->finalise();
     elems_.emplace_back(edge);
@@ -401,7 +411,7 @@ struct Iterator<Type::FACE, Type::COEDGE>::Impl : public BodyIteratorBase<Type::
     {
       Wrap<Type::COEDGE> co_edge;
       auto co_edref = co_edge.make<CoEdgeRef>();
-      co_edref->face_ = _from;
+      co_edref->set_loop(_from.get());
       co_edref->ind_ = i;
       elems_.emplace_back(co_edref);
     }
@@ -419,7 +429,7 @@ struct Iterator<Type::COEDGE, Type::VERTEX>::Impl : public BodyIteratorBase<Type
     for (int i = 0; i < 2; ++i)
     {
       auto v = static_cast<E<Type::VERTEX>*>(
-        coedge_ref->face_->get(Direction::Down, coedge_ref->ind_ + i));
+        coedge_ref->loop()->get(Direction::Down, coedge_ref->ind_ + i));
       elems_.emplace_back(v);
     }
   }

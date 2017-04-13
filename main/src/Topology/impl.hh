@@ -240,8 +240,14 @@ struct EdgeRef : public E<Type::EDGE>
 
 struct CoEdgeRef : public E<Type::COEDGE>
 {
-  Wrap<Type::FACE> face_;  // Face.
+private:
+  IBase* loop_ = nullptr;  // Face or Loop.
+public:
   size_t ind_ = 0;
+
+  ~CoEdgeRef();
+  IBase* loop() const { return loop_; }
+  void set_loop(IBase* _loop);
   virtual SubType sub_type() const { return SubType::COEDGE_REF; }
   virtual bool geom(Geo::Segment&) const;
   virtual bool set_geom(const Geo::Segment&) { return false; }
