@@ -160,8 +160,7 @@ struct BodyIteratorToEdge : public BodyIteratorBase<Type::EDGE>
   void reset(const Wrap<FromT>& _from)
   {
     clear();
-    if (_from->sub_type() != TopoSubtype<FromT>::Value)
-      throw;
+    THROW_IF(_from->sub_type() != TopoSubtype<FromT>::Value, "Wrong type");
 
     struct AddIterEdge : public IterElement
     {
@@ -201,18 +200,10 @@ struct Iterator<Type::EDGE, Type::VERTEX>::Impl : public BodyIteratorBase<Type::
   void reset(const Wrap<Type::EDGE>& _from)
   {
     clear();
-    if (_from->sub_type() == SubType::EDGE)
-    {
-      THROW("NOT_IMPLEMENTED");
-    }
-    else if (_from->sub_type() == SubType::EDGE_REF)
-    {
-      auto ed_ref = static_cast<const EdgeRef*>(_from.get());
-      for (size_t i = 0; i < std::size(ed_ref->verts_); ++i)
-        elems_.push_back(ed_ref->verts_[i]);
-    }
-    else
-      THROW("UNEXPECTED_EDGE_TYPE");
+    THROW_IF(_from->sub_type() != SubType::EDGE_REF, "Expected EDGE_REF");
+    auto ed_ref = static_cast<const EdgeRef*>(_from.get());
+    for (size_t i = 0; i < std::size(ed_ref->verts_); ++i)
+      elems_.push_back(ed_ref->verts_[i]);
   }
 };
 
@@ -411,25 +402,45 @@ template <>
 struct Iterator<Type::FACE, Type::EDGE>::Impl : public BodyIteratorToEdge<Type::FACE>
 {};
 
-template <>
-struct Iterator<Type::FACE, Type::COEDGE>::Impl : public BodyIteratorBase<Type::COEDGE>
+namespace {
+
+template <Type FromT>
+struct IterToCoedge : public BodyIteratorBase<Type::COEDGE>
 {
-  void reset(const Wrap<Type::FACE>& _from)
+  void reset(const Wrap<FromT>& _from)
   {
     clear();
-    auto nverts = _from->size(Direction::Down);
-    if (nverts < 2)
-      return;
-    for (auto i = 0; i < nverts; ++i)
+    THROW_IF(_from->sub_type() != TopoSubtype<FromT>::Value, "Wrong type");
+    struct CoedgeAdder : public IterElement
     {
-      Wrap<Type::COEDGE> co_edge;
-      auto co_edref = co_edge.make<CoEdgeRef>();
-      co_edref->set_loop(_from.get());
-      co_edref->ind_ = i;
-      elems_.emplace_back(co_edref);
-    }
+      std::vector<Wrap<Type::COEDGE>>& elems_;
+      CoedgeAdder(std::vector<Wrap<Type::COEDGE>>& _elems) : elems_(_elems) {}
+      virtual bool process(IBase* _parent, size_t _i)
+      {
+        Wrap<Type::COEDGE> co_edge;
+        auto co_edref = co_edge.make<CoEdgeRef>();
+        co_edref->set_loop(_parent);
+        co_edref->ind_ = _i;
+        elems_.emplace_back(co_edge);
+        return true;
+      };
+    };
+    CoedgeAdder coedge_adder(elems_);
+    topo_iterate<Direction::Down, Type::COEDGE>(
+      static_cast<IBase*>(_from.get()), coedge_adder);
   }
 };
+
+} // namespace
+
+template <>
+struct Iterator<Type::BODY, Type::COEDGE>::Impl : public IterToCoedge<Type::BODY> {};
+
+template <>
+struct Iterator<Type::FACE, Type::COEDGE>::Impl : public IterToCoedge<Type::FACE> {};
+
+template <>
+struct Iterator<Type::LOOP, Type::COEDGE>::Impl : public IterToCoedge<Type::LOOP> {};
 
 template <>
 struct Iterator<Type::COEDGE, Type::VERTEX>::Impl : public BodyIteratorBase<Type::VERTEX>
@@ -448,6 +459,48 @@ struct Iterator<Type::COEDGE, Type::VERTEX>::Impl : public BodyIteratorBase<Type
   }
 };
 
+namespace {
+
+template <Type FromT>
+struct IterToLoop : public BodyIteratorBase<Type::LOOP>
+{
+  void reset(const Wrap<FromT>& _from)
+  {
+    clear();
+    THROW_IF(_from->sub_type() != TopoSubtype<FromT>::Value, "Wrong type");
+    struct LoopAdder : public IterElement
+    {
+      std::vector<Wrap<Type::LOOP>>& elems_;
+      LoopAdder(std::vector<Wrap<Type::LOOP>>& _elems) : elems_(_elems) {}
+      virtual bool process(IBase* _parent, size_t)
+      {
+        Wrap<Type::LOOP> loop;
+        auto loop_ref = loop.make<LoopRef>();
+        loop_ref->set_loop(_parent);
+        elems_.emplace_back(loop);
+        return true;
+      };
+      virtual bool add(IBase* _loop)
+      {
+        elems_.emplace_back(static_cast<EE<Type::LOOP>*>(_loop));
+        return true;
+      };
+    };
+    LoopAdder loop_adder(elems_);
+    topo_iterate<Direction::Down, Type::LOOP>(
+      static_cast<IBase*>(_from.get()), loop_adder);
+  }
+};
+
+} // namespace
+
+template <>
+struct Iterator<Type::BODY, Type::LOOP>::Impl : public IterToLoop<Type::BODY> {};
+
+template <>
+struct Iterator<Type::FACE, Type::LOOP>::Impl : public IterToLoop<Type::FACE> {};
+
+
 template Iterator<Type::BODY, Type::FACE>;
 template Iterator<Type::BODY, Type::EDGE>;
 template Iterator<Type::BODY, Type::VERTEX>;
@@ -460,8 +513,13 @@ template Iterator<Type::EDGE, Type::COEDGE>;
 template Iterator<Type::COEDGE, Type::EDGE>;
 template Iterator<Type::EDGE, Type::FACE>;
 template Iterator<Type::COEDGE, Type::FACE>;
+template Iterator<Type::BODY, Type::COEDGE>;
 template Iterator<Type::FACE, Type::COEDGE>;
+template Iterator<Type::LOOP, Type::COEDGE>;
 template Iterator<Type::COEDGE, Type::VERTEX>;
+template Iterator<Type::BODY, Type::LOOP>;
+template Iterator<Type::FACE, Type::LOOP>;
+
 
 }//namespace Topo
 

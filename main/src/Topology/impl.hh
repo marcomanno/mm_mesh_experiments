@@ -240,9 +240,6 @@ struct EdgeRef : public E<Type::EDGE>
 
 struct CoEdgeRef : public E<Type::COEDGE>
 {
-private:
-  IBase* loop_ = nullptr;  // Face or Loop.
-public:
   size_t ind_ = 0;
 
   ~CoEdgeRef();
@@ -256,12 +253,18 @@ public:
   virtual bool operator<(const Object& _oth) const;
   virtual bool operator==(const Object& _oth) const;
   virtual bool operator!=(const EdgeRef& _oth) const { return !(*this == _oth); }
+private:
+  IBase* loop_ = nullptr;  // Face or Loop.
 };
 
 struct LoopRef : public E<Type::LOOP>
 {
-  Wrap<Type::FACE> face_;  // Face.
+  ~LoopRef();
+  IBase* loop() const;
+  void set_loop(IBase* _loop);
   virtual SubType sub_type() const { return SubType::LOOP_REF; }
+private:
+  IBase* loop_ = nullptr;
 };
 
 }//namespace Topo
