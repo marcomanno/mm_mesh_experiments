@@ -1,16 +1,17 @@
 #include "priv.hh"
 #include "Geo/vector.hh"
-#ifdef DEB_ON
+//#ifdef DEB_ON
 #include "Import/import.hh"
-#endif
+//#endif
 #include "Topology/geom.hh"
 #include "Topology/same.hh"
 #include "Topology/shared.hh"
 
 #include "Utils/error_handling.hh"
 
-#include <set>
+#include <fstream>
 #include <list>
+#include <set>
 
 namespace Boolean {
 
@@ -191,7 +192,28 @@ void Selection::select_faces(
     edge_sets[1].begin(), edge_sets[1].end(),
     std::inserter(common_edges_, common_edges_.end()));
 
+//#ifdef DEB_ON
+  static int nnnn = 0;
+  std::ofstream deb_cmm_verts(std::string("deb_cmm_verts_") + std::to_string(nnnn++) + ".obj");
+  for (auto& edge : common_edges_)
+  {
+    Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ev_it(edge);
+    Geo::Point pt;
+    for (auto i : { 0, 1 })
+    {
+      ev_it.get(i)->geom(pt);
+      deb_cmm_verts << "v " << pt[0] << " " << pt[1] << " " << pt[2] << std::endl;
+    }
+    deb_cmm_verts << "v " << pt[0] << " " << pt[1] << " " << pt[2] << std::endl;
+  }
+  for (int i = 1; i <= common_edges_.size(); ++i)
+  {
+    auto v1 = 3 * i;
+    deb_cmm_verts << "f " << v1 << " " << v1 - 1 << " " << v1 - 2 << std::endl;
+  }
+
 #ifdef DEB_ON
+
   // finds a gap in the edges between two bodies. A gap may cause an
   // error and it is a bug with closed bodies.
   std::vector<Topo::Wrap<Topo::Type::VERTEX>> verts;
@@ -220,10 +242,17 @@ void Selection::select_faces(
         verts.erase(verts.cbegin() + n, verts.cbegin() + n + 2);
       }
     }
-    if (sten[0] != sten[1])
+    if (sten[0] == sten[1])
+      continue;
+    
+    std::cout << "Open chain " << sten[0]->id() <<
+      " " << sten[1]->id() << std::endl;
+    for (int ii = 0; ii < 2; ++ii)
     {
-      std::cout << "Open chain " << sten[0]->id() <<
-        " " << sten[1]->id() << std::endl;
+      Topo::Iterator<Topo::Type::VERTEX, Topo::Type::FACE> vf(sten[ii]);
+      static int nn = 0;
+      for (auto& f : vf)
+        IO::save_face(f.get(), nn++, false);
       auto bad_faces =
         Topo::shared_entities<Topo::Type::VERTEX, Topo::Type::FACE>(sten[0], sten[1]);
       for (auto f : bad_faces)
