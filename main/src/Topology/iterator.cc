@@ -131,6 +131,17 @@ void get_elements(const Wrap<from_typeT>& _from, std::vector<Wrap<to_typeT>>& _e
     const_cast<IBase*>(static_cast<const IBase*>(_from.get())), add_elems);
 }
 
+bool base_ptr_less(const IBase* _a, const IBase* _b)
+{
+  if (_a == _b)
+    return false;
+  if (_a == nullptr)
+    return true;
+  if (_b == nullptr)
+    return false;
+  return _a->id() < _b->id();
+}
+
 }//namespace
 
 template <Type from_typeT, Type to_typeT>
@@ -216,36 +227,88 @@ struct Iterator<Type::VERTEX, Type::EDGE>::Impl : public BodyIteratorBase<Type::
     for (size_t i = 0; i < _from->size(Direction::Up); ++i)
     {
       auto face = _from->get(Direction::Up, i);
-      if (face->type() == Type::FACE)
+      THROW_IF(face->type() != Type::FACE && face->type() != Type::LOOP,
+        "Not expectedtype");
+      for (auto pos = face->find_child(_from.get()); pos != SIZE_MAX; 
+        pos = face->find_child(_from.get(), pos))
       {
-        for (auto pos = face->find_child(_from.get()); pos != SIZE_MAX; 
-          pos = face->find_child(_from.get(), pos))
-        {
-          size_t pos_near[2] = {pos , pos + 1 };
-          if (pos_near[0] > 0) --pos_near[0];
-          else pos_near[0] = face->size(Direction::Down) - 1;
-          if (pos_near[1] >= face->size(Direction::Down)) pos_near[1] = 0;
+        size_t pos_near[2] = {pos , pos + 1 };
+        if (pos_near[0] > 0) --pos_near[0];
+        else pos_near[0] = face->size(Direction::Down) - 1;
+        if (pos_near[1] >= face->size(Direction::Down)) pos_near[1] = 0;
 
-          for (auto pos_oth : pos_near)
-          {
-            auto vert_oth = face->get(Direction::Down, pos_oth);
-            if (vert_oth->type() != Type::VERTEX)
-              continue;
-            Wrap<Type::VERTEX> vert(static_cast<E<Type::VERTEX>*>(vert_oth));
-            if (!already_used.insert(vert).second)
-              continue;
-            Wrap<Type::EDGE> edge;
-            auto edref = edge.make<EdgeRef>();
-            edref->verts_[0] = _from;
-            edref->verts_[1].reset(static_cast<E<Type::VERTEX>*>(vert.get()));
-            edref->finalise();
-            elems_.emplace_back(edge);
-          }
+        for (auto pos_oth : pos_near)
+        {
+          auto vert_oth = face->get(Direction::Down, pos_oth);
+          if (vert_oth->type() != Type::VERTEX)
+            continue;
+          Wrap<Type::VERTEX> vert(static_cast<E<Type::VERTEX>*>(vert_oth));
+          if (!already_used.insert(vert).second)
+            continue;
+          Wrap<Type::EDGE> edge;
+          auto edref = edge.make<EdgeRef>();
+          edref->verts_[0] = _from;
+          edref->verts_[1].reset(static_cast<E<Type::VERTEX>*>(vert.get()));
+          edref->finalise();
+          elems_.emplace_back(edge);
         }
       }
     }
   }
 };
+
+namespace {
+
+template <class OperationT>
+void find_coedges(const Wrap<Type::EDGE>& _from, OperationT& _op)
+{
+  THROW_IF(_from->sub_type() != SubType::EDGE_REF, "Not expected edge type");
+  auto edge_ref = static_cast<const Topo::EdgeRef*>(_from.get());
+  std::vector<IBase*> faces[2], common_faces;
+  for (int i = 0; i < 2; ++i)
+  {
+    auto& vert = edge_ref->verts_[i];
+    for (size_t j = 0; j < vert->size(Topo::Direction::Up); ++j)
+    {
+      auto ptr_face = vert->get(Topo::Direction::Up, j);
+      THROW_IF(ptr_face->type() != Type::FACE && ptr_face->type() != Type::LOOP,
+        "Unexpected type");
+      faces[i].emplace_back(ptr_face);
+    }
+    std::sort(faces[i].begin(), faces[i].end(), base_ptr_less);
+    faces[i].erase(std::unique(faces[i].begin(), faces[i].end()), faces[i].end());
+  }
+  std::set_intersection(
+    faces[0].begin(), faces[0].end(),
+    faces[1].begin(), faces[1].end(),
+    std::back_inserter(common_faces),
+    base_ptr_less);
+
+  for (auto parent_el : common_faces)
+  {
+    auto vert_ptr = edge_ref->verts_[0].get();
+    for (auto pos = parent_el->find_child(vert_ptr); pos != SIZE_MAX;
+      pos = parent_el->find_child(vert_ptr, pos))
+    {
+      size_t pos_near[2] = { pos , pos + 1 };
+      if (pos_near[0] > 0) --pos_near[0];
+      else pos_near[0] = parent_el->size(Direction::Down) - 1;
+      if (pos_near[1] >= parent_el->size(Direction::Down)) pos_near[1] = 0;
+
+      for (int i = 0; i < 2; ++i)
+      {
+        auto pos_oth = pos_near[i];
+        auto vert_oth = parent_el->get(Direction::Down, pos_oth);
+        if (vert_oth->type() != Type::VERTEX)
+          continue;
+        if (vert_oth != edge_ref->verts_[1].get())
+          continue;
+        _op(parent_el, i > 0 ? pos : pos_near[0]);
+      }
+    }
+  }
+}
+} // namespace
 
 template <>
 struct Iterator<Type::EDGE, Type::COEDGE>::Impl : public BodyIteratorBase<Type::COEDGE>
@@ -253,53 +316,20 @@ struct Iterator<Type::EDGE, Type::COEDGE>::Impl : public BodyIteratorBase<Type::
   void reset(const Wrap<Type::EDGE>& _from)
   {
     clear();
-    THROW_IF(_from->sub_type() != SubType::EDGE_REF, "Not expected edge type");
-    auto edge_ref = static_cast<const Topo::EdgeRef*>(_from.get());
-
-    std::vector<Wrap<Type::FACE>> faces[2], common_faces;
-    for (int i = 0; i < 2; ++i)
+    struct CoedgeAdder
     {
-      auto& vert = edge_ref->verts_[i];
-      for (size_t j = 0; j < vert->size(Topo::Direction::Up); ++j)
+      std::vector<Wrap<Type::COEDGE>>& elems_;
+      CoedgeAdder(std::vector<Wrap<Type::COEDGE>>& _elems) : elems_(_elems) {}
+      void operator()(IBase* _parent, size_t _pos)
       {
-        auto ptr_face = vert->get(Topo::Direction::Up, j);
-        THROW_IF(ptr_face->type() != Type::FACE, "Unexpected type");
-        faces[i].emplace_back(static_cast<E<Type::FACE>*>(ptr_face));
+        Wrap<Type::COEDGE> coedge;
+        auto cedge_data = coedge.make<CoEdgeRef>();
+        cedge_data->set_loop(_parent);
+        cedge_data->ind_ = _pos;
+        elems_.emplace_back(coedge);
       }
-      std::sort(faces[i].begin(), faces[i].end());
-      faces[i].erase(std::unique(faces[i].begin(), faces[i].end()), faces[i].end());
-    }
-    std::set_intersection(
-      faces[0].begin(), faces[0].end(),
-      faces[1].begin(), faces[1].end(),
-      std::back_inserter(common_faces));
-    for (auto& face : common_faces)
-    {
-      auto vert_ptr = edge_ref->verts_[0].get();
-      for (auto pos = face->find_child(vert_ptr); pos != SIZE_MAX; pos = face->find_child(vert_ptr, pos))
-      {
-        size_t pos_near[2] = { pos , pos + 1 };
-        if (pos_near[0] > 0) --pos_near[0];
-        else pos_near[0] = face->size(Direction::Down) - 1;
-        if (pos_near[1] >= face->size(Direction::Down)) pos_near[1] = 0;
-
-        for (int i = 0; i < 2; ++i)
-        {
-          auto pos_oth = pos_near[i];
-          auto vert_oth = face->get(Direction::Down, pos_oth);
-          if (vert_oth->type() != Type::VERTEX)
-            continue;
-          if (vert_oth != edge_ref->verts_[1].get())
-            continue;
-
-          Wrap<Type::COEDGE> coedge;
-          auto cedge_data = coedge.make<CoEdgeRef>();
-          cedge_data->set_loop(face.get());
-          cedge_data->ind_ = i > 0 ? pos : pos_near[0];
-          elems_.emplace_back(coedge);
-        }
-      }
-    }
+    } coedge_adder(elems_);
+    find_coedges(_from, coedge_adder);
   }
 };
 
@@ -309,43 +339,26 @@ struct Iterator<Type::EDGE, Type::FACE>::Impl : public BodyIteratorBase<Type::FA
   void reset(const Wrap<Type::EDGE>& _from)
   {
     clear();
-    THROW_IF(_from->sub_type() != SubType::EDGE_REF, "Not expected edge type");
-    auto edge_ref = static_cast<const Topo::EdgeRef*>(_from.get());
-
-    std::vector<Wrap<Type::FACE>> faces[2], common_faces;
-
-    for (int i = 0; i < 2; ++i)
+    struct FaceAdder
     {
-      get_elements(edge_ref->verts_[i], faces[i]);
-      std::sort(faces[i].begin(), faces[i].end());
-    }
-    std::set_intersection(
-      faces[0].begin(), faces[0].end(),
-      faces[1].begin(), faces[1].end(),
-      std::back_inserter(common_faces));
-    for (auto& face : common_faces)
-    {
-      auto vert_ptr = edge_ref->verts_[0].get();
-      for (auto pos = face->find_child(vert_ptr); pos != SIZE_MAX; pos = face->find_child(vert_ptr, pos))
+      std::vector<Wrap<Type::FACE>>& elems_;
+      FaceAdder(std::vector<Wrap<Type::FACE>>& _elems) : elems_(_elems) {}
+      void operator()(IBase* _parent, size_t)
       {
-        size_t pos_near[2] = { pos , pos + 1 };
-        if (pos_near[0] > 0) --pos_near[0];
-        else pos_near[0] = face->size(Direction::Down) - 1;
-        if (pos_near[1] >= face->size(Direction::Down)) pos_near[1] = 0;
-
-        for (int i = 0; i < 2; ++i)
+        if (_parent->type() == Type::FACE)
+          elems_.emplace_back(static_cast<E<Type::FACE>*>(_parent));
+        else if (_parent->type() == Type::LOOP)
         {
-          auto pos_oth = pos_near[i];
-          auto vert_oth = face->get(Direction::Down, pos_oth);
-          if (vert_oth->type() != Type::VERTEX)
-            continue;
-          if (vert_oth != edge_ref->verts_[1].get())
-            continue;
-          elems_.emplace_back(face);
-          break;
+          for (rsize_t i = 0; i < _parent->size(Direction::Up); ++i)
+          {
+            auto face = _parent->get(Direction::Up, i);
+            if (face->type() == Type::FACE)
+              elems_.emplace_back(static_cast<E<Type::FACE>*>(face));
+          }
         }
       }
-    }
+    } face_adder(elems_);
+    find_coedges(_from, face_adder);
   }
 };
 
