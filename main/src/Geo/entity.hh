@@ -17,20 +17,17 @@ struct IPolygonalFace
   virtual bool triangle(size_t _idx, Triangle& _tri) const = 0;
   virtual size_t triangle_number() const = 0;
   virtual Point normal() const = 0;
-  template <class IteratorT>
-  static std::shared_ptr<IPolygonalFace> make(const IteratorT& _beg, const IteratorT& _end)
+  static std::shared_ptr<IPolygonalFace> make();
+  template <class IteratorT> void add_loop(const IteratorT& _beg, const IteratorT& _end)
   {
-    auto poly_face = make_me();
+    const auto loop_num = make_new_loop();
     for (auto it = _beg; it != _end; ++it)
-      poly_face->add_point(*it);
-    poly_face->finalize();
-    return poly_face;
+      add_point(*it, loop_num);
   }
+  virtual void compute() = 0;
 protected:
-  virtual void add_point(const Point& _pt) = 0;
-  virtual void finalize() = 0;
-private:
-  static std::shared_ptr<IPolygonalFace> make_me();
+  virtual size_t make_new_loop() = 0;
+  virtual void add_point(const Point& _pt, size_t _loop_num) = 0;
 };
 
 

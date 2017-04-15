@@ -13,7 +13,9 @@ Geo::Point face_normal(Topo::Wrap<Topo::Type::FACE> _face)
     verts.emplace_back();
     vert->geom(verts.back());
   }
-  auto poly_face = Geo::IPolygonalFace::make(verts.begin(), verts.end());
+  auto poly_face = Geo::IPolygonalFace::make();
+  poly_face->add_loop(verts.begin(), verts.end());
+  poly_face->compute();
   return poly_face->normal();
 }
 
