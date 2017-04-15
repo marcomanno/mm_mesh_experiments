@@ -128,6 +128,23 @@ TEST_CASE("3FFintersections", "[Bool]")
   REQUIRE(be_it.size() == 21);
 }
 
+TEST_CASE("internal_loop", "[Bool]")
+{
+  body_1 = make_cube(cube_03);
+  body_2 = IO::load_obj(MESH_FOLDER"pyramid.obj");
+
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(body_1, body_2);
+  auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
+
+  IO::save_obj("result_internal_loop.obj", result);
+
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  REQUIRE(bf_it.size() == 15);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
+  REQUIRE(be_it.size() == 28);
+}
+
 namespace {
 
 Topo::Wrap<Topo::Type::BODY> box_rot_test(

@@ -20,11 +20,18 @@ FaceVersus::face_geom(const Topo::Wrap<Topo::Type::FACE>& _face)
   auto& geom = f_vert_info_[_face];
   if (!geom.poly_face_)
   {
-    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(_face);
-    std::vector<Geo::Point> pts(fv_it.size());
-    for (size_t i = 0; i < fv_it.size(); ++i)
-      fv_it.get(i)->geom(pts[i]);
-    geom.poly_face_ = Geo::IPolygonalFace::make(pts.begin(), pts.end());
+    geom.poly_face_ = Geo::IPolygonalFace::make();
+
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> fl_it(_face);
+    for (auto loop : fl_it)
+    {
+      Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv_it(loop);
+      std::vector<Geo::Point> pts(lv_it.size());
+      for (size_t i = 0; i < lv_it.size(); ++i)
+        lv_it.get(i)->geom(pts[i]);
+      geom.poly_face_->add_loop(pts.begin(), pts.end());
+    }
+    geom.poly_face_->compute();
   }
   return geom;
 }

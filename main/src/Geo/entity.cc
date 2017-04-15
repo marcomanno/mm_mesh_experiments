@@ -5,6 +5,7 @@
 #include <linear_system.hh>
 #include <Utils/statistics.hh>
 #include "PolygonTriangularization/poly_triang.hh"
+#include "Utils/error_handling.hh"
 
 #define JACOBI
 #ifdef JACOBI
@@ -151,20 +152,32 @@ struct PolygonalFace : public IPolygonalFace
   virtual Point normal() const;
 
 protected:
-  virtual void add_point(const Point& _pt) { pts_.push_back(_pt); }
-  virtual void finalize();
+  virtual size_t make_new_loop() override
+  {
+    ptss_.emplace_back();
+    return ptss_.size() - 1;
+  }
+  virtual void add_point(const Point& _pt, size_t _loop_num) override
+  {
+    ptss_[_loop_num].push_back(_pt);
+  }
+  virtual void compute() override;
 
 private:
   std::vector<Triangle> tris_;
-  std::vector<Point> pts_;
+  std::vector<std::vector<Point>> ptss_;
 };
 
-void PolygonalFace::finalize()
+void PolygonalFace::compute()
 {
-  if (pts_.size() < 3)
+  if (ptss_.empty())
     return;
   auto ptg = IPolygonTriangulation::make();
-  ptg->add(pts_);
+  for (auto& pts : ptss_)
+  {
+    THROW_IF(pts.size() < 3, "Loop withless than 3 points.");
+    ptg->add(pts);
+  }
   const auto& tris = ptg->triangles();
   const auto& poly = ptg->polygon();
   for (const auto& tri : tris)
@@ -189,7 +202,7 @@ Point PolygonalFace::normal() const
 
 }//namespace
 
-std::shared_ptr<IPolygonalFace> IPolygonalFace::make_me()
+std::shared_ptr<IPolygonalFace> IPolygonalFace::make()
 {
   return std::make_shared<PolygonalFace>();
 }

@@ -76,7 +76,9 @@ struct FaceEdgeMap
       }
       Geo::Point c, n;
       pl_fit->compute(c, n);
-      auto pl_geom = Geo::IPolygonalFace::make(face_pts.begin(), face_pts.end());
+      auto pl_geom = Geo::IPolygonalFace::make();
+      pl_geom->add_loop(face_pts.begin(), face_pts.end());
+      pl_geom->compute();
       if (pl_geom->normal() * n < 0)
         n = -n;
       std::get<Normal>(data) = n;
@@ -562,7 +564,10 @@ std::shared_ptr<Geo::IPolygonalFace> make_polygonal_face(
     pts.emplace_back();
     vert->geom(pts.back());
   }
-  return Geo::IPolygonalFace::make(pts.begin(), pts.end());
+  auto poly = Geo::IPolygonalFace::make();
+  poly->add_loop(pts.begin(), pts.end());
+  poly->compute();
+  return poly;
 }
 
 Geo::PointInPolygon::Classification 
@@ -806,6 +811,15 @@ void FaceEdgeMap::split_with_chains()
           // We have performed one split. Lets re-process the same face and all the others.
           --j;
           break;
+        }
+      }
+      if (!edge_vec.empty())
+      {
+        std::cout << edge_vec.size() << "::::\n";
+        for (auto ff : faces)
+        {
+          std::cout << ff->id() << std::endl;
+          //THROW_IF(!edge_vec.empty(), "Vector edge not empty.");
         }
       }
     }
