@@ -212,6 +212,18 @@ struct Vertices
   }
   Wrap<Type::VERTEX> verts_[2];
 };
+
+void assign_ibase(IBase*& _to, IBase* _from)
+{
+  if (_to == _from)
+    return;
+  if (_to)
+    _to->release_ref();
+  _to = _from;
+  if (_to)
+    _to->add_ref();
+}
+
 }//namespace
 
 CoEdgeRef::~CoEdgeRef()
@@ -221,13 +233,7 @@ CoEdgeRef::~CoEdgeRef()
 
 void CoEdgeRef::set_loop(IBase* _loop)
 {
-  if (loop_ == _loop)
-    return;
-  if (loop_)
-    loop_->release_ref();
-  loop_ = _loop;
-  if (loop_)
-    loop_->add_ref();
+  assign_ibase(loop_, _loop);
 }
 
 bool CoEdgeRef::geom(Geo::Segment& _seg) const
@@ -256,6 +262,18 @@ bool CoEdgeRef::operator==(const Object& _oth) const
     return false;
   auto oth = static_cast<const CoEdgeRef&>(_oth);
   return loop_ == oth.loop_ && ind_ == oth.ind_;
+}
+
+LoopRef::~LoopRef()
+{
+  if (loop_) loop_->release_ref();
+}
+
+IBase* LoopRef::loop() const { return loop_; }
+
+void LoopRef::set_loop(IBase* _loop)
+{
+  assign_ibase(loop_, _loop);
 }
 
 template<Type typeT>
