@@ -128,7 +128,7 @@ TEST_CASE("3FFintersections", "[Bool]")
   REQUIRE(be_it.size() == 21);
 }
 
-TEST_CASE("internal_loop", "[Bool]")
+TEST_CASE("InternalLoop", "[Bool]")
 {
   body_1 = make_cube(cube_03);
   body_2 = IO::load_obj(MESH_FOLDER"pyramid.obj");

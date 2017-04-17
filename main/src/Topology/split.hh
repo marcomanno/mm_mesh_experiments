@@ -39,7 +39,19 @@ template <> struct Split<Type::FACE>
 {
   Split(Wrap<Type::FACE>& _face) : face_(_face) {}
 
-  bool operator()(VertexChains& _chains);
+  void add_boundary(VertexChain& _vert_chain)
+  {
+    boundary_chains_.emplace_back(std::move(_vert_chain));
+  }
+
+  void add_island(VertexChain& _vert_chain)
+  {
+    island_chains_.emplace_back(std::move(_vert_chain));
+  }
+  
+  void use_face_loops();
+
+  bool compute();
 
   const std::vector<Wrap<Type::FACE>>& new_faces() const { return new_faces_; }
 
@@ -48,6 +60,8 @@ template <> struct Split<Type::FACE>
 private:
   Wrap<Type::FACE> face_;
   std::vector<Wrap<Type::FACE>> new_faces_;
+  std::vector<VertexChain> boundary_chains_;
+  std::vector<VertexChain> island_chains_;
 };
 
 bool split(const Wrap<Type::VERTEX>& _ed_start,

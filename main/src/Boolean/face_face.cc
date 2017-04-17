@@ -454,7 +454,9 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
         }
 
         Topo::Split<Topo::Type::FACE> face_splitter(face);
-        face_splitter(split_chains);
+        for (auto& split_chain : split_chains)
+          face_splitter.add_boundary(split_chain);
+        face_splitter.compute();
         auto& new_faces = face_splitter.new_faces();
         _overlap_faces[i].push_back(new_faces[0]);
         faces.erase(faces.begin() + best_idx);
@@ -475,7 +477,7 @@ bool find_edge_chain(
   EdgeChain& _edge_ch,
   Topo::Wrap<Topo::Type::VERTEX>*& _last_vert)
 {
-  auto follow_chain = [&_ed_sets,&_fv_it, &_last_vert](
+  auto follow_chain = [&_ed_sets,&_fv_it, &_last_vert, &_vert](
     FaceEdgeMap::NewVerts::iterator _edge_itr,
     EdgeChain& _edge_ch)
   {
@@ -487,6 +489,12 @@ bool find_edge_chain(
       _last_vert = std::find(_fv_it.begin(), _fv_it.end(), (*_edge_itr)[1]);
       if (_last_vert != _fv_it.end())
         break;
+
+      if (_vert == (*_edge_itr)[1])
+      {
+        _last_vert = nullptr;
+        break;
+      }
 
       bool found = false;
       for (auto pt_set_it = _ed_sets.begin(); pt_set_it != _ed_sets.end(); ++pt_set_it)
@@ -711,6 +719,15 @@ void add_open_chain(
 
 void FaceEdgeMap::split_with_chains()
 {
+  auto clean_edge_vec = [](NewVerts& _edge_vec, const EdgeChain& _from_edge_ch)
+  {
+    // Remove the used edges from the set of new edges.
+    for (auto ch : _from_edge_ch) ch->clear();
+    _edge_vec.erase(
+      std::remove_if(_edge_vec.begin(), _edge_vec.end(),
+        [](const CommonVertices& _comm_v) { return _comm_v.empty(); }),
+      _edge_vec.end());
+  };
   for (size_t i = 0; i < std::size(map_); ++i)
   {
     for (auto& face_info : map_[i])
@@ -795,7 +812,9 @@ void FaceEdgeMap::split_with_chains()
           //  split_chains, (*edge_ch.front())[0], (*edge_ch.back())[1], norm);
 
           Topo::Split<Topo::Type::FACE> face_splitter(face);
-          face_splitter(split_chains);
+          for (auto& split_chain : split_chains)
+            face_splitter.add_boundary(split_chain);
+          face_splitter.compute();
           auto& new_fa = face_splitter.new_faces();
           if (!new_fa.empty())
           {
@@ -803,15 +822,39 @@ void FaceEdgeMap::split_with_chains()
             faces.insert(faces.end(), new_fa.cbegin() + 1, new_fa.cend());
           }
           // Remove the used edges from the set of new edges.
-          for (auto ch : edge_ch) ch->clear();
-          edge_vec.erase(
-            std::remove_if(edge_vec.begin(), edge_vec.end(),
-              [](const CommonVertices& _comm_v) { return _comm_v.empty(); }),
-            edge_vec.end());
+          clean_edge_vec(edge_vec, edge_ch);
           // We have performed one split. Lets re-process the same face and all the others.
           --j;
           break;
         }
+      }
+      while (!edge_vec.empty())
+      {
+        auto ed = edge_vec.back();
+        EdgeChain edge_ch;
+        Topo::Wrap<Topo::Type::VERTEX>* last_vert_it;
+        auto& cur_face = faces.front();
+        Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(cur_face);
+        if (!find_edge_chain(ed.front(), edge_vec, fv_it, edge_ch, last_vert_it))
+        {
+          edge_vec.pop_back();
+          continue;
+          //add_open_chain(*vert_it, edge_ch, face, edge_vec);
+        }
+        Topo::VertexChain split_chain;
+        for (auto& ed_it : edge_ch)
+          split_chain.push_back((*ed_it)[0]);
+        Topo::Split<Topo::Type::FACE> face_splitter(cur_face);
+        face_splitter.add_island(split_chain);
+        face_splitter.use_face_loops();
+        face_splitter.compute();
+        auto& new_fa = face_splitter.new_faces();
+        if (!new_fa.empty())
+        {
+          faces[0] = face_splitter.new_faces()[0];
+          faces.insert(faces.end(), new_fa.cbegin() + 1, new_fa.cend());
+        }
+        clean_edge_vec(edge_vec, edge_ch);
       }
       if (!edge_vec.empty())
       {
