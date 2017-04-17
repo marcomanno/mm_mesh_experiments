@@ -74,18 +74,52 @@ bool Split<Type::EDGE>::operator()() const
   return true;
 }
 
-
-bool Split<Type::FACE>::operator()(VertexChains& _chains)
+void Split<Type::FACE>::use_face_loops()
 {
-  if (_chains.empty())
-    return false;
-  for (auto& chain : _chains)
+  Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> fl_it(face_);
+  if (fl_it.size() == 0)
+    return;
+  auto make_chain = [](const Topo::Wrap<Topo::Type::LOOP>& _loop,
+    VertexChain& _vert_chain)
   {
+    Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv_it(_loop);
+    for (auto& v : lv_it)
+      _vert_chain.emplace_back(v);
+  };
+  auto loop_it = fl_it.begin();
+  VertexChain vert_chain;
+  make_chain(*loop_it, vert_chain);
+  add_boundary(vert_chain);
+  while (++loop_it != fl_it.end())
+  {
+    make_chain(*loop_it, vert_chain);
+    add_island(vert_chain);
+  }
+}
+
+bool Split<Type::FACE>::compute()
+{
+  if (boundary_chains_.empty())
+    return false;
+  const bool make_loops = false;
+  for (auto& chains : boundary_chains_)
+  {
+    if (chains.empty())
+      continue;
     Wrap<Type::FACE> new_face;
     new_face.make<EE<Type::FACE>>();
-    for (auto& vert : chain)
-      new_face->insert_child(vert.get());
-    
+    IBase* up_elem = new_face.get();
+    if (make_loops)
+    {
+      Wrap<Type::LOOP> new_loop;
+      new_loop.make<EE<Type::LOOP>>();
+      new_face->insert_child(new_loop.get());
+      up_elem = new_loop.get();
+    }
+    else
+      up_elem = new_face.get();
+    for (auto& vert : chains)
+      up_elem->insert_child(vert.get());
     for (size_t i = 0; i < face_->size(Direction::Up); ++i)
     {
       auto parent = face_->get(Direction::Up, i);
