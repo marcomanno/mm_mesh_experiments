@@ -7,6 +7,175 @@
 #include <Geo/iterate.hh>
 
 namespace Topo {
+//#pragma warning (disable : 4505)
+template <Type typeT> 
+size_t Base<typeT>::size(Direction _dir) const
+{
+  return _dir == Direction::Up ? up_elems_.size() : 0;
+}
+
+template <Type typeT>
+IBase* Base<typeT>::get(Direction _dir, size_t _i) const
+{
+  if (_dir == Direction::Up && !up_elems_.empty())
+    return up_elems_[_i % up_elems_.size()];
+  else
+    return nullptr;
+}
+
+template <Type typeT>
+bool Base<typeT>::reversed(Direction /*_dir*/, size_t /*_i*/) const
+{
+  return false;
+}
+
+template <Type typeT>
+bool Base<typeT>::replace(IBase* _new_elem)
+{
+  auto up_elems = up_elems_;
+  for (const auto& prnt : up_elems)
+    prnt->replace_child(this, _new_elem);
+  return true;
+}
+
+template <Type typeT>
+bool Base<typeT>::remove()
+{
+  auto up_elems = up_elems_;
+  for (const auto& prnt : up_elems)
+    prnt->remove_child(this);
+  return true;
+}
+
+template <Type typeT>
+size_t Base<typeT>::find_parent(const IBase* _prnt) const
+{
+  auto it = std::find(up_elems_.begin(), up_elems_.end(), _prnt);
+  if (it == up_elems_.end())
+    return SIZE_MAX;
+  return it - up_elems_.begin();
+}
+
+template <Type typeT>
+bool Base<typeT>::remove_parent(IBase* _prnt)
+{
+  auto it = std::find(up_elems_.begin(), up_elems_.end(), _prnt);
+  if (it == up_elems_.end())
+    return false;
+  up_elems_.erase(it);
+  return true;
+}
+
+template <Type typeT>
+bool Base<typeT>::add_parent(IBase* _prnt)
+{
+  up_elems_.push_back(_prnt); 
+  return true;
+}
+
+template <Type typeT>
+UpEntity<typeT>::~UpEntity()
+{
+  for (size_t i = size(Direction::Down); i-- > 0;)
+    remove_child(i);
+}
+
+template <Type typeT>
+size_t UpEntity<typeT>::size(Direction _dir) const
+{
+  return _dir == Direction::Up ? up_elems_.size() : low_elems_.size();
+}
+
+template <Type typeT>
+IBase* UpEntity<typeT>::get(Direction _dir, size_t _i) const
+{
+  if (_dir == Direction::Up)
+    return up_elems_.empty() ? nullptr : up_elems_[_i % up_elems_.size()];
+  else
+    return low_elems_.empty() ? nullptr : low_elems_[_i % low_elems_.size()];
+}
+
+template <Type typeT>
+bool UpEntity<typeT>::insert_child(IBase* _el, size_t _pos = SIZE_MAX)
+{
+  if (_el == nullptr)
+    return false;
+  auto it = (_pos >= low_elems_.size()) ? low_elems_.end() : low_elems_.begin() + _pos;
+  low_elems_.insert(it, _el);
+  _el->add_ref();
+  _el->add_parent(this);
+  return true;
+}
+
+template <Type typeT>
+bool UpEntity<typeT>::remove_child(size_t _pos)
+{
+  if (_pos >= low_elems_.size())
+    return false;
+  auto obj = low_elems_[_pos];
+  low_elems_.erase(low_elems_.begin() + _pos);
+  obj->remove_parent(this);
+  obj->release_ref();
+  return true;
+}
+
+template <Type typeT>
+bool UpEntity<typeT>::remove_child(IBase* _el)
+{
+  return remove_child(find_child(_el));
+}
+
+template <Type typeT>
+bool UpEntity<typeT>::replace_child(size_t _pos, IBase* _new_obj)
+{
+  if (_new_obj == nullptr)
+    return false;
+  if (low_elems_[_pos] == _new_obj)
+    return true;
+
+  _new_obj->add_ref();
+
+  low_elems_[_pos]->remove_parent(this);
+  low_elems_[_pos]->release_ref();
+
+  low_elems_[_pos] = _new_obj;
+  _new_obj->add_parent(this);
+  return true;
+}
+
+template <Type typeT>
+bool UpEntity<typeT>::replace_child(IBase* _el, IBase* _new_el)
+{
+  size_t pos = SIZE_MAX;
+  for (bool replaced = false;;)
+  {
+    pos = find_child(_el, pos);
+    if (pos == SIZE_MAX)
+      return replaced;
+    replaced |= replace_child(pos, _new_el);
+  }
+}
+
+// search for an element in the range [0, _end[ in reverse order.
+template <Type typeT>
+size_t UpEntity<typeT>::find_child(const IBase* _el, size_t _end = SIZE_MAX) const
+{
+  auto start_it = low_elems_.rbegin();
+  if (_end < low_elems_.size())
+    start_it += low_elems_.size() - _end;
+  auto it = std::find(start_it, low_elems_.rend(), _el);
+  if (it == low_elems_.rend())
+    return SIZE_MAX;
+  return low_elems_.rend() - it - 1;
+}
+
+template <Type typeT>
+bool UpEntity<typeT>::remove()
+{
+  for (size_t i = size(Direction::Down); i-- > 0;)
+    remove_child(i);
+  return Base<typeT>::remove();
+}
 
 bool EE<Type::BODY>::insert_child(IBase* _el, size_t _pos)
 {
@@ -114,17 +283,6 @@ bool EE<Type::FACE>::check()
   return loop_nmbr == 0 || loop_nmbr == low_elems_.size();
 }
 
-
-bool EE<Type::EDGE>::geom(Geo::Segment& /*_seg*/) const
-{
-  return false;
-}
-
-bool EE<Type::EDGE>::set_geom(const Geo::Segment&)
-{
-  return false;
-}
-
 double EE<Type::VERTEX>::tolerance() const
 {
   return std::max(tol_, Geo::epsilon(pt_));
@@ -213,38 +371,22 @@ struct Vertices
   Wrap<Type::VERTEX> verts_[2];
 };
 
-void assign_ibase(IBase*& _to, IBase* _from)
-{
-  if (_to == _from)
-    return;
-  if (_to)
-    _to->release_ref();
-  _to = _from;
-  if (_to)
-    _to->add_ref();
-}
-
 }//namespace
-
-CoEdgeRef::~CoEdgeRef()
-{
-  if (loop_) loop_->release_ref();
-}
 
 void CoEdgeRef::set_loop(IBase* _loop)
 {
-  assign_ibase(loop_, _loop);
+  loop_ = _loop;
 }
 
 bool CoEdgeRef::geom(Geo::Segment& _seg) const
 {
-  Vertices verts(loop_, ind_);
+  Vertices verts(loop_.get(), ind_);
   return verts.verts_[0]->geom(_seg[0]) && verts.verts_[1]->geom(_seg[1]);
 }
 
 double CoEdgeRef::tolerance() const
 {
-  Vertices verts(loop_, ind_);
+  Vertices verts(loop_.get(), ind_);
   return std::max(verts.verts_[0]->tolerance(), verts.verts_[1]->tolerance());
 }
 
@@ -264,17 +406,11 @@ bool CoEdgeRef::operator==(const Object& _oth) const
   return loop_ == oth.loop_ && ind_ == oth.ind_;
 }
 
-LoopRef::~LoopRef()
-{
-  if (loop_) loop_->release_ref();
-}
-
-IBase* LoopRef::loop() const { return loop_; }
-
-void LoopRef::set_loop(IBase* _loop)
-{
-  assign_ibase(loop_, _loop);
-}
+IBase* LoopRef::loop() const { return loop_.get(); }
+void LoopRef::set_loop(IBase* _loop) { loop_ = _loop; }
+bool LoopRef::reverse() { return loop_->reverse(); }
+Geo::Point LoopRef::internal_point() const { return loop_->internal_point(); }
+Geo::Range<3> LoopRef::box() const { return loop_->box(); }
 
 template<Type typeT>
 void save_base_entity(std::ostream& _ostr, const Base<typeT>* _base_ent, ISaver* _psav)

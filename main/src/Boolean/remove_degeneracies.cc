@@ -74,20 +74,20 @@ DegType degenerate_triangle(
 }
 
 void remove_degenerate_triangles(
-  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE>& it_fa)
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::LOOP>& it_loop)
 {
   bool achange = false;
-  for (auto face : it_fa)
+  for (auto loop : it_loop)
   {
-    Topo::Iterator<Topo::Type::FACE, Topo::Type::COEDGE> fc_it(face);
-    if (fc_it.size() < 3)
+    Topo::Iterator<Topo::Type::LOOP, Topo::Type::COEDGE> lc_it(loop);
+    if (lc_it.size() < 3)
       continue;
-    auto& last_coed = *std::prev(fc_it.end());
+    auto& last_coed = *std::prev(lc_it.end());
     Topo::Iterator<Topo::Type::COEDGE, Topo::Type::VERTEX> cv_it(last_coed);
     Topo::Wrap<Topo::Type::VERTEX> verts[3];
     verts[0] = *(cv_it.begin());
     verts[1] = *(std::next(cv_it.begin()));
-    for (auto coed : fc_it)
+    for (auto coed : lc_it)
     {
       cv_it.reset(coed);
       verts[2] = *(std::next(cv_it.begin()));
@@ -108,11 +108,11 @@ void remove_degenerate_triangles(
   }
 }
 
-bool external_spike(const Topo::Wrap<Topo::Type::FACE>& _face,
+bool external_spike(const Topo::Wrap<Topo::Type::LOOP>& _face,
   const Topo::Wrap<Topo::Type::EDGE>& _ed)
 {
   Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ev_it(_ed);
-  Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(_face);
+  Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> fv_it(_face);
   int dupl[2] = { 0, 0 };
   size_t ins = SIZE_MAX;
   std::vector<Topo::Wrap<Topo::Type::VERTEX>> other_vertices;
@@ -164,33 +164,33 @@ bool unique_body_faces(Topo::Wrap<Topo::Type::EDGE> _ed)
 bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body)
 {
   remove_degenerate_edges(_body);
-  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> it_fa(_body);
-  remove_degenerate_triangles(it_fa);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::LOOP> it_loop(_body);
+  remove_degenerate_triangles(it_loop);
   bool achange = false;
-  for (auto face : it_fa)
+  for (auto loop : it_loop)
   {
-    if (!face.get())
+    if (!loop.get())
       continue;
     bool loc_change;
     do {
       loc_change = false;
-      auto n_verts = face->size(Topo::Direction::Down);
+      auto n_verts = loop->size(Topo::Direction::Down);
       if (n_verts >= 3)
       {
-        auto prev_vert_ptr = face->get(Topo::Direction::Down, 0);
+        auto prev_vert_ptr = loop->get(Topo::Direction::Down, 0);
         for (size_t j = n_verts; j-- > 0; )
         {
-          auto curr_vert_ptr = face->get(Topo::Direction::Down, j);
+          auto curr_vert_ptr = loop->get(Topo::Direction::Down, j);
           if (curr_vert_ptr == prev_vert_ptr)
           {
             loc_change = true;
-            face->remove_child(j); // curr_vert_ptr->remove();
+            loop->remove_child(j); // curr_vert_ptr->remove();
           }
           else
             prev_vert_ptr = curr_vert_ptr;
         }
       }
-      Topo::Iterator<Topo::Type::FACE, Topo::Type::COEDGE> fc_it(face);
+      Topo::Iterator<Topo::Type::LOOP, Topo::Type::COEDGE> fc_it(loop);
       if (fc_it.size() >= 4)
       {
         Topo::Iterator<Topo::Type::COEDGE, Topo::Type::EDGE> 
@@ -203,7 +203,7 @@ bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body)
           auto ed = *ed_it.begin();
           if (ed == prev_ed)
           {
-            if (unique_body_faces(ed) || external_spike(face, ed))
+            if (unique_body_faces(ed) || external_spike(loop, ed))
             {
               Topo::Iterator<Topo::Type::COEDGE, Topo::Type::VERTEX> cv_it(ced);
               rem_verts.push_back(cv_it.get(0));
@@ -212,15 +212,15 @@ bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body)
           prev_ed = ed;
         }
         for (auto v : rem_verts)
-          face->remove_child(v.get());
+          loop->remove_child(v.get());
         loc_change |= !rem_verts.empty();
       }
       achange |= loc_change;
     } while (loc_change);
-    if (face->size(Topo::Direction::Down) < 3)
+    if (loop->size(Topo::Direction::Down) < 3)
     {
       achange |= true;
-      face->remove();
+      loop->remove();
     }
   }
   return achange;

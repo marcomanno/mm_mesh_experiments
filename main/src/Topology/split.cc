@@ -2,6 +2,8 @@
 #include "impl.hh"
 #include "shared.hh"
 #include "split.hh"
+#include "Geo/plane_fitting.hh"
+#include "Geo/point_in_polygon.hh"
 #include "Utils/circular.hh"
 #include "Utils/error_handling.hh"
 
@@ -97,34 +99,93 @@ void Split<Type::FACE>::use_face_loops()
   }
 }
 
+namespace {
+
+std::vector<Geo::Vector3> vertex_chain_to_poly(VertexChain& _chain)
+{
+  std::vector<Geo::Vector3> poly;
+  poly.reserve(_chain.size());
+  for (auto& v : _chain)
+  {
+    Geo::Vector3 pt;
+    v->geom(pt);
+    poly.push_back(pt);
+  }
+  return poly;
+}
+
+bool is_inside(const std::vector<Geo::Vector3>& _chain, VertexChain& _isle)
+{
+  Geo::Vector3 pt_inside, norm;
+  _isle[0]->geom(pt_inside);
+  auto pt_clss = Geo::PointInPolygon::classify(_chain, pt_inside, &norm);
+  if (pt_clss != Geo::PointInPolygon::Inside)
+    return false;
+  auto int_norm = Geo::get_polygon_normal(_isle.begin(), _isle.end());
+  if (int_norm * norm > 0)
+    std::reverse(_isle.begin(), _isle.end());
+  return true;
+}
+
+} // namespace
+
 bool Split<Type::FACE>::compute()
 {
   if (boundary_chains_.empty())
     return false;
-  const bool make_loops = false;
-  for (auto& chains : boundary_chains_)
+  for (auto& chain : boundary_chains_)
   {
-    if (chains.empty())
+    if (chain.empty())
       continue;
+    auto poly = vertex_chain_to_poly(chain);
+    std::vector<VertexChain> cur_islands;
+    for (auto& isle : island_chains_)
+    {
+      if (isle.empty())
+        continue;
+      if (is_inside(poly, isle))
+        cur_islands.emplace_back(std::move(isle));
+    }
+    bool make_loops = !cur_islands.empty();
+
+	  auto inherit_parents = [this](Wrap<Type::FACE>& _new_face)
+    {
+        for (size_t i = 0; i < face_->size(Direction::Up); ++i)
+        {
+          auto parent = face_->get(Direction::Up, i);
+          parent->insert_child(_new_face.get());
+        }		
+    };
+	  auto add_face_loop = [](
+	    Wrap<Type::FACE> _new_face, VertexChain& _chain, bool _make_loops)
+    {
+      IBase* up_elem = _new_face.get();
+      if (_make_loops)
+      {
+        Wrap<Type::LOOP> new_loop;
+        new_loop.make<EE<Type::LOOP>>();
+        _new_face->insert_child(new_loop.get());
+        up_elem = new_loop.get();
+      }
+      else
+        up_elem = _new_face.get();
+      for (auto& vert : _chain)
+        up_elem->insert_child(vert.get());
+    };
     Wrap<Type::FACE> new_face;
     new_face.make<EE<Type::FACE>>();
-    IBase* up_elem = new_face.get();
-    if (make_loops)
+    add_face_loop(new_face, chain, make_loops);
+    for (auto loop : cur_islands)
     {
-      Wrap<Type::LOOP> new_loop;
-      new_loop.make<EE<Type::LOOP>>();
-      new_face->insert_child(new_loop.get());
-      up_elem = new_loop.get();
+      add_face_loop(new_face, loop, make_loops);
+      std::reverse(loop.begin(), loop.end());
+      Wrap<Type::FACE> new_int_face;
+      new_int_face.make<EE<Type::FACE>>();
+      add_face_loop(new_int_face, loop, false);
+      inherit_parents(new_int_face);
+      new_faces_.emplace_back(new_int_face);
     }
-    else
-      up_elem = new_face.get();
-    for (auto& vert : chains)
-      up_elem->insert_child(vert.get());
-    for (size_t i = 0; i < face_->size(Direction::Up); ++i)
-    {
-      auto parent = face_->get(Direction::Up, i);
-      parent->insert_child(new_face.get());
-    }
+    inherit_parents(new_face);
     new_faces_.emplace_back(new_face);
   }
   face_->remove();

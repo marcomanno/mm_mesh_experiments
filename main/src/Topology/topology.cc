@@ -9,7 +9,9 @@ Object::Object() : ref_(0)
   id_ = progr_id++;
 }
 
-Object::~Object() {}
+Object::~Object()
+{
+}
 
 bool Object::operator<(const Object& _oth) const { return id_ < _oth.id_; }
 bool Object::operator==(const Object& _oth) const { return id_ == _oth.id_; }

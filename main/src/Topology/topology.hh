@@ -33,7 +33,7 @@ struct Object
   virtual bool operator<(const Object& _oth) const;
   virtual bool operator==(const Object& _oth) const;
 
-  Identifier id() const { return id_; }
+  virtual Identifier id() const { return id_; }
 
 protected:
   Object();
@@ -173,56 +173,48 @@ template <> struct E<Type::BODY> : public EBase<Type::BODY>
   }
 };
 
-template <> struct E<Type::COEDGE> : public IBase
+template <> struct E<Type::COEDGE> : public EBase<Type::COEDGE>
 {
-  virtual Type type() const { return Type::COEDGE; }
   virtual bool geom(Geo::Segment&) const = 0;
   virtual bool set_geom(const Geo::Segment&) = 0;
   virtual double tolerance() const = 0;
   virtual bool set_tolerance(const double _tol) = 0;
 };
 
-template <Type typeT> class Wrap
+template <typename IBaseT> class WrapIbase
 {
 public:
-  Wrap() : ptr_(nullptr) { }
+  WrapIbase() : ptr_(nullptr) { }
 
-  Wrap(E<typeT>* _ptr) : ptr_(nullptr) { reset(_ptr); }
+  WrapIbase(IBaseT* _ptr) : ptr_(nullptr) { reset(_ptr); }
 
-  template <class TopoTypeT> TopoTypeT* make()
-  {
-    auto ptr = new TopoTypeT;
-    reset(ptr);
-    return ptr;
-  }
-
-  Wrap(const Wrap<typeT>& _ew) : ptr_(_ew.ptr_)
+  WrapIbase(const WrapIbase<IBaseT>& _ew) : ptr_(_ew.ptr_)
   {
     if (ptr_ != nullptr)
       ptr_->add_ref();
   }
 
-  ~Wrap()
+  ~WrapIbase()
   {
     if (ptr_)
       ptr_->release_ref();
   }
 
-  Wrap& operator=(const Wrap<typeT>& _oth)
+  WrapIbase& operator=(const WrapIbase<IBaseT>& _oth)
   {
     reset(_oth.ptr_);
     return *this;
   }
 
-  E<typeT>* operator->() { return get(); }
+  IBaseT* operator->() { return get(); }
 
-  const E<typeT>* operator->() const { return get(); }
+  const IBaseT* operator->() const { return get(); }
 
-  E<typeT>* get() const { return ptr_; }
+  IBaseT* get() const { return ptr_; }
 
   explicit operator bool() const { return ptr_ != nullptr; }
 
-  void reset(E<typeT>* _ptr)
+  void reset(IBaseT* _ptr)
   {
     if (ptr_ != _ptr)
     {
@@ -232,7 +224,7 @@ public:
     }
   }
 
-  bool operator<(const Wrap<typeT>& _oth) const 
+  bool operator<(const WrapIbase<IBaseT>& _oth) const
   {
     if (ptr_ == _oth.ptr_)
       return false;
@@ -241,7 +233,7 @@ public:
     return ptr_ == nullptr;
   }
 
-  bool operator==(const Wrap<typeT>& _oth) const 
+  bool operator==(const WrapIbase<IBaseT>& _oth) const
   {
     if (ptr_ == _oth.ptr_)
       return true;
@@ -250,10 +242,23 @@ public:
     return false;
   }
 
-  bool operator!=(const Wrap<typeT>& _oth) const { return !(*this == _oth); }
+  bool operator!=(const WrapIbase<IBaseT>& _oth) const { return !(*this == _oth); }
 
 private:
-  E<typeT>* ptr_;
+  IBaseT* ptr_;
+};
+
+template <Type typeT> class Wrap : public WrapIbase<E<typeT>>
+{
+public:
+  using WrapIbase<E<typeT>>::WrapIbase;
+
+  template <class TopoTypeT> TopoTypeT* make()
+  {
+    auto ptr = new TopoTypeT;
+    reset(ptr);
+    return ptr;
+  }
 };
 
 typedef std::vector<Topo::Wrap<Topo::Type::VERTEX>> VertexChain;

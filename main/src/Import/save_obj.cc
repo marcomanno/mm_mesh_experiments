@@ -43,30 +43,21 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
   for (size_t i = 0; i < face_it.size(); ++i)
   {
     auto f = face_it.get(i);
-    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> ve_it(f);
-#ifndef SPLIT
-    fstr << "f";
-#else
-    std::vector<Geo::Vector3> plgn;
-#endif
-    for (const auto& v : ve_it)
-    {
-#ifndef SPLIT
-      Geo::Point pt;
-      v->geom(pt);
-      auto idx = std::lower_bound(all_pts.begin(),
-        all_pts.end(), pt) - all_pts.begin() + 1;
-      fstr << " " << idx;
-#else
-      plgn.emplace_back();
-      v->geom(plgn.back());
-#endif
-    }
-#ifndef SPLIT
-    fstr << "\n";
-#else
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> fl_it(f);
+    if (fl_it.size() > 1)
+      std::cout << "ecco";
     auto poly_t = IPolygonTriangulation::make();
-    poly_t->add(plgn);
+    for (const auto& loop : fl_it)
+    {
+      std::vector<Geo::Vector3> plgn;
+      Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv_it(loop);
+      for (const auto& v : lv_it)
+      {
+        plgn.emplace_back();
+        v->geom(plgn.back());
+      }
+      poly_t->add(plgn);
+    }
     for (const auto& tri : poly_t->triangles())
     {
       fstr << "f";
@@ -79,7 +70,6 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
       }
       fstr << "\n";
     }
-#endif
   }
   return fstr.good();
 }
