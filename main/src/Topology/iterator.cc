@@ -407,10 +407,15 @@ namespace {
 template <Type FromT>
 struct IterToCoedge : public BodyIteratorBase<Type::COEDGE>
 {
+  virtual IBase* get_parent(const Wrap<FromT>& _from)
+  {
+    THROW_IF(_from->sub_type() != TopoSubtype<FromT>::Value, "Wrong type");
+    return _from.get();
+  }
   void reset(const Wrap<FromT>& _from)
   {
     clear();
-    THROW_IF(_from->sub_type() != TopoSubtype<FromT>::Value, "Wrong type");
+    IBase* parent = get_parent(_from);
     struct CoedgeAdder : public IterElement
     {
       std::vector<Wrap<Type::COEDGE>>& elems_;
@@ -426,8 +431,7 @@ struct IterToCoedge : public BodyIteratorBase<Type::COEDGE>
       };
     };
     CoedgeAdder coedge_adder(elems_);
-    topo_iterate<Direction::Down, Type::COEDGE>(
-      static_cast<IBase*>(_from.get()), coedge_adder);
+    topo_iterate<Direction::Down, Type::COEDGE>(parent, coedge_adder);
   }
 };
 
@@ -440,7 +444,15 @@ template <>
 struct Iterator<Type::FACE, Type::COEDGE>::Impl : public IterToCoedge<Type::FACE> {};
 
 template <>
-struct Iterator<Type::LOOP, Type::COEDGE>::Impl : public IterToCoedge<Type::LOOP> {};
+struct Iterator<Type::LOOP, Type::COEDGE>::Impl : public IterToCoedge<Type::LOOP>
+{
+  virtual IBase* get_parent(const Wrap<Type::LOOP>& _from) override
+  {
+    if (_from->sub_type() == SubType::LOOP_REF)
+      return static_cast<LoopRef*>(_from.get())->loop();
+    return IterToCoedge<Type::LOOP>::get_parent(_from);
+  }
+};
 
 template <>
 struct Iterator<Type::COEDGE, Type::VERTEX>::Impl : public BodyIteratorBase<Type::VERTEX>
