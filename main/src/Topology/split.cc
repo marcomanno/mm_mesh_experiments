@@ -114,16 +114,16 @@ std::vector<Geo::Vector3> vertex_chain_to_poly(VertexChain& _chain)
   return poly;
 }
 
-bool is_inside(const std::vector<Geo::Vector3>& _chain, VertexChain& _isle)
+bool is_inside(const std::vector<Geo::Vector3>& _chain, 
+  VertexChain& _isle, const Geo::Vector3& _norm)
 {
   Geo::Vector3 pt_inside;
-  auto norm = Geo::get_polygon_normal(_isle.begin(), _isle.end());
   _isle[0]->geom(pt_inside);
-  auto pt_clss = Geo::PointInPolygon::classify(_chain, pt_inside, &norm);
+  auto pt_clss = Geo::PointInPolygon::classify(_chain, pt_inside, &_norm);
   if (pt_clss != Geo::PointInPolygon::Inside)
     return false;
   auto int_norm = Geo::get_polygon_normal(_isle.begin(), _isle.end());
-  if (int_norm * norm > 0)
+  if (int_norm * _norm > 0)
     std::reverse(_isle.begin(), _isle.end());
   return true;
 }
@@ -140,11 +140,12 @@ bool Split<Type::FACE>::compute()
       continue;
     auto poly = vertex_chain_to_poly(chain);
     std::vector<VertexChain> cur_islands;
+    auto norm = Geo::get_polygon_normal(chain.begin(), chain.end());
     for (auto& isle : island_chains_)
     {
       if (isle.empty())
         continue;
-      if (is_inside(poly, isle))
+      if (is_inside(poly, isle, norm))
         cur_islands.emplace_back(std::move(isle));
     }
     bool make_loops = !cur_islands.empty();
@@ -181,6 +182,7 @@ bool Split<Type::FACE>::compute()
       add_face_loop(new_face, loop, make_loops);
       Wrap<Type::FACE> new_int_face;
       new_int_face.make<EE<Type::FACE>>();
+      std::reverse(loop.begin(), loop.end());
       add_face_loop(new_int_face, loop, false);
       inherit_parents(new_int_face);
       new_faces_.emplace_back(new_int_face);

@@ -140,9 +140,9 @@ TEST_CASE("InternalLoop", "[Bool]")
   IO::save_obj("result_internal_loop.obj", result);
 
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 15);
+  REQUIRE(bf_it.size() == 10);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
-  REQUIRE(be_it.size() == 28);
+  REQUIRE(be_it.size() == 20);
 }
 
 namespace {
@@ -440,12 +440,12 @@ TEST_CASE("tuna_left", "[Bool]")
   auto pyr2 = IO::load_obj(MESH_FOLDER"TUNA_left1.obj");
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(pyr1, pyr2);
-  auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
+  auto result = bool_solver->compute(Boolean::Operation::SPLIT);
   IO::save_obj("result_tuna_left.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   REQUIRE(bv_it.size() == 17);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 14);
+  REQUIRE(bf_it.size() == 15);
 }
 
 TEST_CASE("2tuna_p2", "[Bool]")

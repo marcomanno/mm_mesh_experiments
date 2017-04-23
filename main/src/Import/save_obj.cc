@@ -44,8 +44,6 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
   {
     auto f = face_it.get(i);
     Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> fl_it(f);
-    if (fl_it.size() > 1)
-      std::cout << "ecco";
     auto poly_t = IPolygonTriangulation::make();
     for (const auto& loop : fl_it)
     {
