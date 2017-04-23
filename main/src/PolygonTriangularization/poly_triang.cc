@@ -117,7 +117,7 @@ void PolygonTriangulation::compute()
       Utils::StatisticsT<double> stats;
       auto pt0 = loops_[0].back();
       std::tuple<Polygon::iterator,       // Near segment end on outer loop.
-                 PolygonVector::iterator, // Nearest internal poop
+                 PolygonVector::iterator, // Nearest internal loop
                  Polygon::iterator,       // Nearest vertex on the intrnal loop
                  double>                  // Projection parameter
         conn_info, best_conn_info;
@@ -155,12 +155,10 @@ void PolygonTriangulation::compute()
         std::get<2>(best_conn_info), std::get<1>(best_conn_info)->end());
       std::get<1>(best_conn_info)->push_back(
         std::get<1>(best_conn_info)->front());
-      std::get<1>(best_conn_info)->insert(
-        std::get<1>(best_conn_info)->begin(),
-        *std::get<0>(best_conn_info));
+      std::get<1>(best_conn_info)->push_back(*std::get<0>(best_conn_info));
       loops_[0].insert(std::next(std::get<0>(best_conn_info)),
-        std::get<1>(best_conn_info)->crbegin(),
-        std::get<1>(best_conn_info)->crend());
+        std::get<1>(best_conn_info)->cbegin(),
+        std::get<1>(best_conn_info)->cend());
       loops_.erase(std::get<1>(best_conn_info));
     }
   }

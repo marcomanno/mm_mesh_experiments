@@ -140,9 +140,9 @@ TEST_CASE("InternalLoop", "[Bool]")
   IO::save_obj("result_internal_loop.obj", result);
 
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 10);
+  REQUIRE(bf_it.size() == 15);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
-  REQUIRE(be_it.size() == 20);
+  REQUIRE(be_it.size() == 28);
 }
 
 namespace {

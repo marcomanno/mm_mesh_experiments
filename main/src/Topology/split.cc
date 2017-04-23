@@ -116,7 +116,8 @@ std::vector<Geo::Vector3> vertex_chain_to_poly(VertexChain& _chain)
 
 bool is_inside(const std::vector<Geo::Vector3>& _chain, VertexChain& _isle)
 {
-  Geo::Vector3 pt_inside, norm;
+  Geo::Vector3 pt_inside;
+  auto norm = Geo::get_polygon_normal(_isle.begin(), _isle.end());
   _isle[0]->geom(pt_inside);
   auto pt_clss = Geo::PointInPolygon::classify(_chain, pt_inside, &norm);
   if (pt_clss != Geo::PointInPolygon::Inside)
@@ -178,7 +179,6 @@ bool Split<Type::FACE>::compute()
     for (auto loop : cur_islands)
     {
       add_face_loop(new_face, loop, make_loops);
-      std::reverse(loop.begin(), loop.end());
       Wrap<Type::FACE> new_int_face;
       new_int_face.make<EE<Type::FACE>>();
       add_face_loop(new_int_face, loop, false);
