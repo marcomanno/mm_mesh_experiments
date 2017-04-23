@@ -2,6 +2,7 @@
 #pragma once
 
 #include <boost/intrusive/set.hpp>
+#include <memory>
 
 namespace Base {
 
