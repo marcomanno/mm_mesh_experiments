@@ -462,6 +462,20 @@ TEST_CASE("2tuna_p2", "[Bool]")
   REQUIRE(bf_it.size() == 67);
 }
 
+TEST_CASE("2tuna_p3", "[Bool]")
+{
+	auto pyr1 = IO::load_obj(MESH_FOLDER"TUNA_p3a.obj");
+	auto pyr2 = IO::load_obj(MESH_FOLDER"TUNA_p3b.obj");
+	auto bool_solver = Boolean::ISolver::make();
+	bool_solver->init(pyr1, pyr2);
+	auto result = bool_solver->compute(Boolean::Operation::SPLIT);
+	IO::save_obj("result_2tuna_p3.obj", result);
+	Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+	REQUIRE(bv_it.size() == 52);
+	Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+	REQUIRE(bf_it.size() == 67);
+}
+
 TEST_CASE("apple_piece0", "[Bool]")
 {
   auto pyr1 = IO::load_obj(MESH_FOLDER"Apple_piece_0a.obj");
