@@ -468,7 +468,7 @@ TEST_CASE("2tuna_p3", "[Bool]")
 	auto pyr2 = IO::load_obj(MESH_FOLDER"TUNA_p3b.obj");
 	auto bool_solver = Boolean::ISolver::make();
 	bool_solver->init(pyr1, pyr2);
-	auto result = bool_solver->compute(Boolean::Operation::SPLIT);
+	auto result = bool_solver->compute(Boolean::Operation::UNION);
 	IO::save_obj("result_2tuna_p3.obj", result);
 	Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
 	REQUIRE(bv_it.size() == 52);

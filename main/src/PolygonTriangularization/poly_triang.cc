@@ -195,19 +195,23 @@ void PolygonTriangulation::Solution::compute(
     tmp_poly[0] = _pts[_indcs[prev]];
     tmp_poly[1] = _pts[_indcs[idx]];
     tmp_poly[2] = _pts[_indcs[next]];
-    bool verify = true;
+    // Check that one other vertex is not isnide thetriangle.
+    // Just to be shure that the rest of the chain is not completely
+    // inside the new triangle.
     for (size_t i = Utils::increase(_i, _indcs.size()); i != prev;
       i = Utils::increase(i, _indcs.size()))
     {
-      bool joint_point = _indcs[i] == _indcs[next] || _indcs[i] == _indcs[prev];
-      if (verify)
+      if (_indcs[i] != _indcs[next] &&
+        _indcs[i] != _indcs[prev] && 
+        _indcs[i] != _indcs[idx])
       {
         auto where = Geo::PointInPolygon::classify(
           tmp_poly, _pts[_indcs[i]], _tol, &_norm);
         if (where != Geo::PointInPolygon::Outside)
           return false;
+        else
+          break;
       }
-      verify = joint_point;
     }
     tmp_poly.clear();
     for (const auto& ind : _indcs)

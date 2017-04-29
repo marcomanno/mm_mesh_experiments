@@ -210,16 +210,28 @@ vtkPolyData* make_tessellation(Topo::Wrap<Topo::Type::BODY> _body)
 
 EXAMPLE(0)
 {
+  std::cout << "Insertfilenumber:";
+  int files_nmbr = 0;
+  std::cin >> files_nmbr;
   std::vector<vtkPolyData*> poly_dats;
-  auto body0 = IO::load_obj(open_file().c_str());
+  Geo::Vector3 rb[2] = { { 1, 0, 0 },{ 0,0,1 } };
+  std::vector<Geo::Vector3> cols;
+  for (int i = 0; i < files_nmbr; ++i)
+  {
+    auto body = IO::load_obj(open_file().c_str());
+    Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(body);
+    for (auto& x : bv_it)
+    {
+      Geo::Point pt;
+      x->geom(pt);
+      pt[0] += 0.002 * i;
+      x->set_geom(pt);
+    }
+    poly_dats.push_back(make_tessellation(body));
+    cols.push_back(rb[i % 2]);
+  }
   //  "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/result.obj");
-  poly_dats.push_back(make_tessellation(body0));
- 
-  auto body1 = IO::load_obj(open_file().c_str());
-  poly_dats.push_back(make_tessellation(body1));
-  Geo::Vector3 cols[2] = { {1, 0, 0}, {0,0,1} };
-
-  render_actors(poly_dats, cols);
+  render_actors(poly_dats, cols.data());
 }
 
 EXAMPLE(1)
