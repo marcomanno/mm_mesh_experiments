@@ -314,9 +314,9 @@ TEST_CASE("2tuna0.1", "[Bool]")
   auto result = bool_solver->compute(Boolean::Operation::DIFFERENCE);
   IO::save_obj("result_tuna_0.1.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it1(result);
-  REQUIRE(bv_it1.size() == 2507);
+  REQUIRE(bv_it1.size() == 2501);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 3844);
+  REQUIRE(bf_it.size() == 3796);
 }
 
 TEST_CASE("2tuna0.2", "[Bool]")
@@ -471,9 +471,9 @@ TEST_CASE("2tuna_p3", "[Bool]")
 	auto result = bool_solver->compute(Boolean::Operation::UNION);
 	IO::save_obj("result_2tuna_p3.obj", result);
 	Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
-	REQUIRE(bv_it.size() == 52);
+	REQUIRE(bv_it.size() == 14);
 	Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-	REQUIRE(bf_it.size() == 67);
+	REQUIRE(bf_it.size() == 11);
 }
 
 TEST_CASE("apple_piece0", "[Bool]")
@@ -627,10 +627,7 @@ TEST_CASE("buddha_10", "[Bool]")
   budda_test("10", 30, 27);
 }
 
-TEST_CASE("buddha_11", "[Bool]")
-{
-  budda_test("11", 30, 365541);
-}
+//TEST_CASE("buddha_11", "[Bool]") {  budda_test("11", 30, 365541); }
 
 namespace {
 
@@ -676,14 +673,14 @@ Topo::Wrap<Topo::Type::BODY> budda_bools(const char* str_off)
     pt[2] += offset;
     x->set_geom(pt);
   }
-  filter(a);
-  IO::save_obj("debug___00.obj", a);
-  filter(b);
-  IO::save_obj("debug___01.obj", b);
+  //filter(a);
+  //IO::save_obj("debug___00.obj", a);
+  //filter(b);
+  //IO::save_obj("debug___01.obj", b);
 
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(a, b);
-  auto result = bool_solver->compute(Boolean::Operation::SPLIT);
+  auto result = bool_solver->compute(Boolean::Operation::INTERSECTION);
   auto out_name = std::string("result_buddha_") + str_off + ".obj";
   IO::save_obj(out_name.c_str(), result);
   return result;
@@ -698,14 +695,5 @@ TEST_CASE("buddha_100_0.04", "[Bool]")
 
 TEST_CASE("buddha_100_0.01", "[Bool]")
 {
-    /*
-    8::::
-    329223
-    25::::
-    354848
-    2::::
-    833188
-    18::::
-    889796*/
   auto res = budda_bools("0.01");
 }
