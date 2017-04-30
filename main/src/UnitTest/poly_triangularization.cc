@@ -76,9 +76,9 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 
   ptg->add(plgn);
   auto& tris = ptg->triangles();
+  WRITE_OBJ(TEST_NAME, plgn, tris);
   REQUIRE(tris.size() == plgn.size() - 2);
   REQUIRE(ptg->area() == 3.875);
-  WRITE_OBJ(TEST_NAME, plgn, tris);
 }
 
 #undef TEST_NAME
@@ -171,10 +171,10 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   ptg->add(plgn);
 
   plgn.clear();
-  plgn.push_back({ 1, 1, 0 });
-  plgn.push_back({ 2, 1, 0 });
-  plgn.push_back({ 2, 2, 0 });
   plgn.push_back({ 1, 2, 0 });
+  plgn.push_back({ 2, 2, 0 });
+  plgn.push_back({ 2, 1, 0 });
+  plgn.push_back({ 1, 1, 0 });
   ptg->add(plgn);
 
   auto& tris = ptg->triangles();
@@ -211,20 +211,20 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   {
     std::vector<Geo::Vector3> plgn =
     {
-      { -0.5,  0.5, 0 },
-      {  0.5,  0.5, 0 },
+      { -0.5,  1.5, 0 },
       {  0.5,  1.5, 0 },
-      { -0.5,  1.5, 0 }
+      { 0.5,  0.5, 0 },
+      { -0.5,  0.5, 0 }
     };
     ptg->add(plgn);
   }
   {
     std::vector<Geo::Vector3> plgn =
     {
-      { -0.5,  3.5, 0 },
-      {  0.5,  3.5, 0 },
+      { -0.5,  4.5, 0 },
       {  0.5,  4.5, 0 },
-      { -0.5,  4.5, 0 }
+      {  0.5,  3.5, 0 },
+      { -0.5,  3.5, 0 }
     };
     ptg->add(plgn);
   }
@@ -426,6 +426,6 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 	ptg->add(plgn1);
 	auto& tris = ptg->triangles();
 	WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
-	REQUIRE(tris.size() == 4);
-	REQUIRE(ptg->area() == Approx(9.6755109902549154e-09).epsilon(1.e-8));
+	REQUIRE(tris.size() == 13);
+	REQUIRE(ptg->area() == Approx(0.0002786241).epsilon(1.e-8));
 }

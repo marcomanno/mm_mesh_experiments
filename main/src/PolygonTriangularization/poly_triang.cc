@@ -116,50 +116,50 @@ void PolygonTriangulation::compute()
     {
       Utils::StatisticsT<double> stats;
       auto pt0 = loops_[0].back();
-      std::tuple<Polygon::iterator,       // Near segment end on outer loop.
-                 PolygonVector::iterator, // Nearest internal loop
-                 Polygon::iterator,       // Nearest vertex on the intrnal loop
-                 double>                  // Projection parameter
-        conn_info, best_conn_info;
-      for (std::get<0>(conn_info) = loops_[0].begin();
-        std::get<0>(conn_info) != loops_[0].end(); 
-        pt0 = *(std::get<0>(conn_info)++))
+      struct ConnInfo
       {
-        Geo::Segment seg = { pt0, *std::get<0>(conn_info) };
-        for (std::get<1>(conn_info) = std::next(loops_.begin());
-          std::get<1>(conn_info) != loops_.end();
-          ++std::get<1>(conn_info))
+        Polygon::iterator near_bnd_v, near_isl_v;
+        PolygonVector::iterator near_island;
+        double near_par = 0;
+      } ci, bci; // connection info and best connection info
+
+      for (ci.near_bnd_v = loops_[0].begin();
+        ci.near_bnd_v != loops_[0].end(); 
+        pt0 = *(ci.near_bnd_v++))
+      {
+        Geo::Segment seg = { pt0, *ci.near_bnd_v };
+        for (ci.near_island = std::next(loops_.begin());
+          ci.near_island != loops_.end();
+          ++ci.near_island)
         {
-          for (std::get<2>(conn_info) = std::get<1>(conn_info)->begin();
-            std::get<2>(conn_info) != std::get<1>(conn_info)->end();
-            ++std::get<2>(conn_info))
+          for (ci.near_isl_v = ci.near_island->begin();
+            ci.near_isl_v != ci.near_island->end();
+            ++ci.near_isl_v)
           {
             double dist_sq;
-            if (!Geo::closest_point(seg, *std::get<2>(conn_info),
-              nullptr, &std::get<3>(conn_info), &dist_sq))
+            if (!Geo::closest_point(seg, *ci.near_isl_v,
+              nullptr, &ci.near_par, &dist_sq))
             {
               continue;
             }
             if (stats.add(dist_sq) & stats.Smallest)
-              best_conn_info = conn_info;
+              bci = ci;
           }
         }
       }
-      if (std::get<3>(best_conn_info) < 0.5)
+      if (bci.near_par < 0.5)
       {
-        if (std::get<0>(best_conn_info) == loops_[0].begin())
-          std::get<0>(best_conn_info) = loops_[0].end();
-        --std::get<0>(best_conn_info);
+        if (bci.near_bnd_v == loops_[0].begin())
+          bci.near_bnd_v = loops_[0].end();
+        --bci.near_bnd_v;
       }
-      std::rotate(std::get<1>(best_conn_info)->begin(),
-        std::get<2>(best_conn_info), std::get<1>(best_conn_info)->end());
-      std::get<1>(best_conn_info)->push_back(
-        std::get<1>(best_conn_info)->front());
-      std::get<1>(best_conn_info)->push_back(*std::get<0>(best_conn_info));
-      loops_[0].insert(std::next(std::get<0>(best_conn_info)),
-        std::get<1>(best_conn_info)->cbegin(),
-        std::get<1>(best_conn_info)->cend());
-      loops_.erase(std::get<1>(best_conn_info));
+      std::rotate(bci.near_island->begin(), bci.near_isl_v, bci.near_island->end());
+      bci.near_island->push_back(bci.near_island->front());
+      bci.near_island->push_back(*bci.near_bnd_v);
+      loops_[0].insert(std::next(bci.near_bnd_v),
+        bci.near_island->cbegin(),
+        bci.near_island->cend());
+      loops_.erase(bci.near_island);
     }
   }
   // creates the indexvector removing duplicates.
@@ -209,8 +209,6 @@ void PolygonTriangulation::Solution::compute(
           tmp_poly, _pts[_indcs[i]], _tol, &_norm);
         if (where != Geo::PointInPolygon::Outside)
           return false;
-        else
-          break;
       }
     }
     tmp_poly.clear();
