@@ -122,7 +122,7 @@ bool is_inside(const std::vector<Geo::Vector3>& _chain,
   auto pt_clss = Geo::PointInPolygon::classify(_chain, pt_inside, &_norm);
   if (pt_clss != Geo::PointInPolygon::Inside)
     return false;
-  auto int_norm = Geo::get_polygon_normal(_isle.begin(), _isle.end());
+  auto int_norm = Geo::vertex_polygon_normal(_isle.begin(), _isle.end());
   if (int_norm * _norm > 0)
     std::reverse(_isle.begin(), _isle.end());
   return true;
@@ -140,7 +140,7 @@ bool Split<Type::FACE>::compute()
       continue;
     auto poly = vertex_chain_to_poly(chain);
     std::vector<VertexChain> cur_islands;
-    auto norm = Geo::get_polygon_normal(chain.begin(), chain.end());
+    auto norm = Geo::vertex_polygon_normal(chain.begin(), chain.end());
     for (auto& isle : island_chains_)
     {
       if (isle.empty())

@@ -175,22 +175,24 @@ void PolygonTriangulation::compute()
       }
     indcs.push_back(j);
   }
-  auto tmp_loop = loops_[0];
-  for (auto& pt : tmp_loop) pt -= centr;
-  sol_.compute(tmp_loop, indcs, tol, norm);
+  sol_.compute(loops_[0], indcs, tol, norm);
 }
 
 void PolygonTriangulation::Solution::compute(
   const std::vector<Geo::Vector3>& _pts,
   std::vector<size_t>& _indcs,
-  const double _tol,
-  Geo::VectorD<3>& _norm)
+  const double,
+  Geo::VectorD<3>&)
 {
-  auto valid_triangle = [&_indcs, &_pts, &_tol, &_norm](const size_t _i)
+  auto valid_triangle = [&_indcs, &_pts](const size_t _i,
+    const std::vector<Geo::Vector3>& proj_poly,
+    const Geo::Vector3& _norm,
+    const double& _tol)
   {
     auto next = _i;
     auto idx = Utils::decrease(_i, _indcs.size());
     auto prev = Utils::decrease(idx, _indcs.size());
+
     std::vector<Geo::Vector3> tmp_poly(3);
     tmp_poly[0] = _pts[_indcs[prev]];
     tmp_poly[1] = _pts[_indcs[idx]];
@@ -211,35 +213,27 @@ void PolygonTriangulation::Solution::compute(
           return false;
       }
     }
-    tmp_poly.clear();
-    for (const auto& ind : _indcs)
-      tmp_poly.push_back(_pts[ind]);
-    auto pt_in = (tmp_poly[prev] + tmp_poly[next]) * 0.5;
-    auto where = Geo::PointInPolygon::classify(tmp_poly, pt_in, _tol, &_norm);
+    auto pt_in = (proj_poly[prev] + proj_poly[next]) * 0.5;
+    auto where = Geo::PointInPolygon::classify(proj_poly, pt_in, _tol, &_norm);
     if (where != Geo::PointInPolygon::Inside)
       return false;
-    for (auto& pt : tmp_poly)
-      pt -= (pt * _norm) * _norm;
-    auto j = tmp_poly.size() - 1;
-    Geo::Segment seg = { tmp_poly[prev], tmp_poly[next] };
-    for (size_t i = 0; i < tmp_poly.size(); j = i++)
+    auto j = proj_poly.size() - 1;
+    Geo::Segment seg = { proj_poly[prev], proj_poly[next] };
+    for (size_t i = 0; i < proj_poly.size(); j = i++)
     {
       if (_indcs[i] == _indcs[next] || _indcs[i] == _indcs[prev])
         continue;
       double dist_sq = 0;
-      const auto prec = std::numeric_limits<double>::epsilon() * 100;
-      double tol_sq = prec *
-        std::max(Geo::length_square(seg[0]), Geo::length_square(seg[1]));
-      //double tol_sq = std::max(Geo::epsilon_sq(seg[0]),
-      //  Geo::epsilon_sq(seg[1]));
-      if (Geo::closest_point(seg, tmp_poly[i], nullptr, nullptr, &dist_sq) &&
+      //const auto prec = std::numeric_limits<double>::epsilon() * 100;
+      //double tol_sq = prec * std::max(Geo::length_square(seg[0]), Geo::length_square(seg[1]));
+      double tol_sq = std::max(Geo::epsilon_sq(seg[0]), Geo::epsilon_sq(seg[1]));
+      if (Geo::closest_point(seg, proj_poly[i], nullptr, nullptr, &dist_sq) &&
         dist_sq <= tol_sq)
         return false;
       if (_indcs[j] == _indcs[next] || _indcs[j] == _indcs[prev])
         continue;
-      Geo::Segment seg1 = { tmp_poly[i], tmp_poly[j] };
-      tol_sq = std::max(tol_sq, prec *
-        std::max(Geo::length_square(seg1[0]), Geo::length_square(seg1[1])));
+      Geo::Segment seg1 = { proj_poly[i], proj_poly[j] };
+      //tol_sq = std::max(tol_sq, prec * std::max(Geo::length_square(seg1[0]), Geo::length_square(seg1[1])));
       if (Geo::closest_point(seg, seg1,
         nullptr, nullptr, &dist_sq) && dist_sq <= tol_sq)
       {
@@ -251,15 +245,28 @@ void PolygonTriangulation::Solution::compute(
 
   while (_indcs.size() > 3)
   {
-    Geo::Vector3 vects[2];
+    Geo::Vector3 vects[2], centre;
     size_t inds[3] = { *(_indcs.end() - 2), _indcs.back(), 0 };
     vects[0] = _pts[inds[0]] - _pts[inds[1]];
     Utils::StatisticsT<double> min_ang;
+    auto norm = Geo::point_polygon_normal(_pts.begin(), _pts.end(), &centre);
+
+    std::vector<Geo::Vector3> proj_poly;
+    Utils::StatisticsT<double> tol_max;
+    for (auto ii : _indcs)
+    {
+      auto pt = _pts[ii] - centre;
+      pt -= (pt * norm) * norm;
+      proj_poly.push_back(pt);
+      tol_max.add(Geo::epsilon_sq(pt));
+    }
+    auto tol = 10 * tol_max.max();
+
     for (size_t i = 0; i < _indcs.size(); ++i)
     {
       inds[2] = _indcs[i];
       vects[1] = _pts[inds[2]] - _pts[inds[1]];
-      if (valid_triangle(i))
+      if (valid_triangle(i, proj_poly, norm, tol))
       {
         auto angl = Geo::angle(vects[0], vects[1]);
         min_ang.add(angl, i);

@@ -38,7 +38,7 @@ struct IPlaneFit
     normal direction it runs in counterclockwise direction.
 */
 template <class VertexIteratorT>
-Geo::Vector3 get_polygon_normal(VertexIteratorT _beg, VertexIteratorT _end)
+Geo::Vector3 vertex_polygon_normal(VertexIteratorT _beg, VertexIteratorT _end)
 {
   auto pl_fit = Geo::IPlaneFit::make();
   pl_fit->init(_end - _beg);
@@ -50,6 +50,22 @@ Geo::Vector3 get_polygon_normal(VertexIteratorT _beg, VertexIteratorT _end)
   }
   Geo::Vector3 c, n;
   pl_fit->compute(c, n, true);
+  return n;
+}
+
+template <class PointIteratorT>
+Geo::Vector3 point_polygon_normal(
+  PointIteratorT _beg, PointIteratorT _end, 
+  Geo::Vector3* _centr = nullptr)
+{
+  auto pl_fit = Geo::IPlaneFit::make();
+  pl_fit->init(_end - _beg);
+  for (auto pt_it = _beg; pt_it != _end; ++pt_it)
+    pl_fit->add_point(*pt_it);
+  Geo::Vector3 c, n;
+  pl_fit->compute(c, n, true);
+  if (_centr != nullptr)
+    *_centr = c;
   return n;
 }
 

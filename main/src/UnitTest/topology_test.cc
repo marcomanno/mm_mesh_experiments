@@ -624,7 +624,7 @@ TEST_CASE("buddha_09", "[Bool]")
 
 TEST_CASE("buddha_10", "[Bool]")
 {
-  budda_test("10", 30, 27);
+  budda_test("10", 913418, 27);
 }
 
 //TEST_CASE("buddha_11", "[Bool]") {  budda_test("11", 30, 365541); }
@@ -696,4 +696,59 @@ TEST_CASE("buddha_100_0.04", "[Bool]")
 TEST_CASE("buddha_100_0.01", "[Bool]")
 {
   auto res = budda_bools("0.01");
+}
+
+TEST_CASE("bambolina_01", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"bambolina_00.obj");
+  for (int i = 1; i < 8; ++i)
+  {
+    std::stringstream ss;
+    ss << MESH_FOLDER << "bambolina_0" << std::to_string(i) << ".obj";
+    auto b1 = IO::load_obj(ss.str().c_str());
+    auto bool_solver = Boolean::ISolver::make();
+    bool_solver->init(b0, b1);
+    b0 = bool_solver->compute(Boolean::Operation::UNION);
+    auto out_flnm = std::string("result_bambolina_0") + std::to_string(i) + ".obj";
+    IO::save_obj(out_flnm.c_str(), b0);
+  }
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  //REQUIRE(bv_it.size() == 12);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  //REQUIRE(bf_it.size() == 6);
+}
+
+namespace {
+void move_body(Topo::Wrap<Topo::Type::BODY> _body, const Geo::Vector3& _off)
+{
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(_body);
+  for (auto& x : bv_it)
+  {
+    Geo::Point pt;
+    x->geom(pt);
+    pt += _off;
+    x->set_geom(pt);
+  }
+}
+}
+
+TEST_CASE("bambolina", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"bambolina.obj");
+  Geo::Vector3 off0{ 0.1, 0.1, 0.1 };
+  Geo::Vector3 off(off0);
+  for (int i = 0; i < 3; ++i)
+  {
+    auto b1 = IO::load_obj(MESH_FOLDER"bambolina.obj");
+    move_body(b1, off);
+    off += off0;
+    auto bool_solver = Boolean::ISolver::make();
+    bool_solver->init(b0, b1);
+    b0 = bool_solver->compute(Boolean::Operation::UNION);
+  }
+  IO::save_obj("result_bambolina.obj", b0);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  //REQUIRE(bv_it.size() == 12);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  //REQUIRE(bf_it.size() == 6);
 }

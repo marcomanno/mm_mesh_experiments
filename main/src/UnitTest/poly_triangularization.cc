@@ -18,6 +18,17 @@ static void write_obj(const char* _flnm,
   }
 }
 
+static void write_obj(const char* _flnm,
+  const std::vector<Geo::Vector3>& _plgn)
+  {
+  std::ofstream ff(std::string(_flnm) + ".obj");
+  for (const auto& v : _plgn) { ff << "v" << v << "\n"; }
+  ff << "f";
+  for (int i = 1; i <= _plgn.size(); ++i)
+    ff << " " << i;
+  ff << "\n";
+  }
+
 #define WRITE_OBJ(A, B, C) write_obj("result_" A, B, C)
 
 #undef TEST_NAME
@@ -342,6 +353,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
     {-0.015397852522544213,0.13453471505698025,0.010227505640857022 },
     {-0.01539350022,0.1344538481535526,0.01024396764032208 }
   };
+  write_obj("poly_13_in.obj", plgn);
   ptg->add(plgn);
 
   auto& tris = ptg->triangles();
@@ -428,4 +440,24 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 	WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
 	REQUIRE(tris.size() == 13);
 	REQUIRE(ptg->area() == Approx(0.0002786241).epsilon(1.e-8));
+}
+
+#undef TEST_NAME
+#define TEST_NAME "poly_17"
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
+  auto ptg = IPolygonTriangulation::make();
+  std::vector<Geo::Vector3> plgn =
+  {
+    { -0.12209898230000001, 0.81369900699999997, -0.20586098729999999 },
+    { -0.10477899760000001, 0.7958909273, -0.2115119845 },
+    { -0.10477888736169111, 0.79589290160722759, -0.21151221689864735 },
+    { -0.10477883876920735, 0.79589373104768923, -0.2115123049028827 },
+    { -0.1038990021, 0.81104397770000003, -0.21314898130000001 } };
+  ptg->add(plgn);
+
+  auto& tris = ptg->triangles();
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
+  REQUIRE(tris.size() == 3);
+  REQUIRE(ptg->area() == Approx(0.0001508917).epsilon(1.e-8));
 }

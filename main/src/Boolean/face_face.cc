@@ -392,10 +392,10 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
         if (double_connection && split_chains[0].size() >= 3)
         {
           if (face_normal == Geo::Vector3{0.})
-            face_normal = Geo::get_polygon_normal(
+            face_normal = Geo::vertex_polygon_normal(
               it_ev.begin(), it_ev.end());
 
-          auto overlap_normal = Geo::get_polygon_normal(
+          auto overlap_normal = Geo::vertex_polygon_normal(
             split_chains[0].begin(), split_chains[0].end());
           if (overlap_normal * face_normal < 0)
           {
@@ -780,7 +780,7 @@ void FaceEdgeMap::split_with_chains()
             // Closed loop inside face starting from one vertex.
             // The chain sense is ambiguos.
             auto norm = std::get<Normal>(face_info.second);
-            auto chain_normal = Geo::get_polygon_normal(
+            auto chain_normal = Geo::vertex_polygon_normal(
               split_chains[0].begin(), split_chains[0].end());
             if (norm * chain_normal > 0)
               std::reverse(split_chains[0].begin(), split_chains[0].end());
