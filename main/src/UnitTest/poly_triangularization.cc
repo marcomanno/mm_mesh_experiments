@@ -1,5 +1,6 @@
 #include "catch/catch.hpp"
 
+#include <Import/import.hh>
 #include <PolygonTriangularization/poly_triang.hh>
 
 #include <fstream>
@@ -21,12 +22,7 @@ static void write_obj(const char* _flnm,
 static void write_obj(const char* _flnm,
   const std::vector<Geo::Vector3>& _plgn)
   {
-  std::ofstream ff(std::string(_flnm) + ".obj");
-  for (const auto& v : _plgn) { ff << "v" << v << "\n"; }
-  ff << "f";
-  for (int i = 1; i <= _plgn.size(); ++i)
-    ff << " " << i;
-  ff << "\n";
+  IO::save_obj(_flnm, _plgn);
   }
 
 #define WRITE_OBJ(A, B, C) write_obj("result_" A, B, C)
@@ -460,4 +456,48 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
   REQUIRE(tris.size() == 3);
   REQUIRE(ptg->area() == Approx(0.0001508917).epsilon(1.e-8));
+}
+
+#undef TEST_NAME
+#define TEST_NAME "poly_18"
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
+  std::vector<Geo::Vector3> plgn = {
+  {-0.098906010389999993, 0.76550602909999999, -0.010635999029999999},
+  {-0.085294011660814045, 0.77377302735461284, -0.0012610171776285871},
+  {-0.085066655823752502, 0.77130537275572841, -0.002411906405151318},
+  {-0.085066038225135698, 0.77129866920243884, -0.002415032881060594},
+  { -0.084091998639999999, 0.76072597500000005, -0.0073459967970000003 }};
+
+  auto ptg = IPolygonTriangulation::make();
+  ptg->add(plgn);
+
+  auto& tris = ptg->triangles();
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
+  REQUIRE(tris.size() == 3);
+  REQUIRE(ptg->area() == Approx(0.0001109154).epsilon(1.e-8));
+}
+
+#undef TEST_NAME
+#define TEST_NAME "poly_19"
+TEST_CASE(TEST_NAME, "[PolyTriang]")
+{
+  std::vector<Geo::Vector3> plgn = {
+  {-0.18554915619976867, 0.83334685546204523, -0.10658609029017733 },
+  {-0.18671896450840569, 0.82393615366562467, -0.090585316377653352 },
+  //{-0.18671898540000001, 0.82393598560000003, -0.090585030620000007 },
+  {-0.18671899388682417, 0.82393595301191547, -0.090585374261265866 },
+  {-0.18711437859974214, 0.82241773722249367, -0.10659495576081568 },
+  {-0.18713198890798496, 0.82235007017989181, -0.10730799508728073 },
+  {-0.18713200090000001, 0.8223500252       , -0.10730897640000001 },
+  {-0.18554900590000001, 0.83334797620000001, -0.1065879986 }
+  };
+  write_obj("poly_19_in.obj", plgn);
+  auto ptg = IPolygonTriangulation::make();
+  ptg->add(plgn);
+
+  auto& tris = ptg->triangles();
+  WRITE_OBJ(TEST_NAME, ptg->polygon(), tris);
+  REQUIRE(tris.size() == plgn.size() - 2);
+  REQUIRE(ptg->area() == Approx(0.0000923309).epsilon(1.e-8));
 }

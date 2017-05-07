@@ -9,7 +9,7 @@ namespace Geo {
 
 constexpr double  reference_unit()
 {
-  return 0.01;
+  return 0.0001;
 }
 
 template <typename ValueT>

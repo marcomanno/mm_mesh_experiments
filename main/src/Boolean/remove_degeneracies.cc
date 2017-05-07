@@ -17,7 +17,7 @@ namespace Boolean {
 
 namespace {
 
-const int SAFE_TOL_MULTIPLE_SQ = 3;
+const int SAFE_TOL_MULTIPLE_SQ = 4;
 
 void remove_degenerate_edges(Topo::Wrap<Topo::Type::BODY>& _body)
 {
@@ -34,8 +34,8 @@ void remove_degenerate_edges(Topo::Wrap<Topo::Type::BODY>& _body)
       Geo::Segment seg;
       edge->geom(seg);
       auto tol = edge->tolerance();
-      if (Geo::length_square(seg[1] - seg[0]) >
-        SAFE_TOL_MULTIPLE_SQ * Geo::sq(tol))
+      auto len2 = Geo::length_square(seg[1] - seg[0]);
+      if (len2 > SAFE_TOL_MULTIPLE_SQ * Geo::sq(tol))
         continue;
       Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> it_ve(edge);
       achange |= Topo::merge(it_ve.get(0), it_ve.get(1));

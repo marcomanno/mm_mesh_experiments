@@ -77,11 +77,10 @@ Topo::Wrap<Topo::Type::BODY> Solver::compute(const Operation _op)
 {
   auto clean_up = [this]()
   {
-    for (auto& bdy_info : bodies_)
-    {
-      while (remove_degeneracies(bdy_info.body_));
-      bdy_info.clear();
-    }
+    while (remove_degeneracies(bodies_[0].body_) || 
+      remove_degeneracies(bodies_[1].body_));
+    bodies_[0].clear();
+    bodies_[1].clear();
 #ifdef DEB_ON
     static int n = 0;
     std::string str = "debug_";

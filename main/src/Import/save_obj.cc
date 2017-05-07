@@ -119,4 +119,21 @@ bool save_face(const Topo::E<Topo::Type::FACE>* _ptr, int _num,
   return fstr.good();
 }
 
+void save_obj(const char* _flnm, 
+  const std::vector<Geo::Vector3>& _plgn,
+  const std::vector<size_t>* _inds)
+{
+  std::ofstream ff(std::string(_flnm) + ".obj");
+  for (const auto& v : _plgn) { ff << "v" << v << "\n"; }
+  
+  ff << "f";
+  if (_inds == nullptr)
+    for (int i = 1; i <= _plgn.size(); ++i)
+      ff << " " << i;
+  else
+    for (auto i : *_inds)
+      ff << " " << i + 1;
+  ff << "\n";
+}
+
 }//namespace Import

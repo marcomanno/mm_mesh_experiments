@@ -303,6 +303,8 @@ void Selection::select_faces(
     }
     if (coe_vects[0].size() != 2 || coe_vects[1].size() != 2)
       std::cout << "Strange split\n";
+    if (bool_op_ == Operation::SPLIT)
+      continue;
     if (bool_op_ == Operation::SPLITA || bool_op_ == Operation::SPLITB)
     {
       for (int i = 0; i < 2; ++i)

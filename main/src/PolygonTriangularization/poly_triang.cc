@@ -10,6 +10,9 @@
 #include <Utils/error_handling.hh>
 #include <numeric>
 
+//#define DEBUG_PolygonTriangularization
+#include "Import/import.hh"
+
 struct PolygonTriangulation : public IPolygonTriangulation
 {
   virtual void add(const std::vector<Geo::Vector3>& _plgn) override;
@@ -200,23 +203,24 @@ void PolygonTriangulation::Solution::compute(
     // Check that one other vertex is not isnide thetriangle.
     // Just to be shure that the rest of the chain is not completely
     // inside the new triangle.
-    for (size_t i = Utils::increase(_i, _indcs.size()); i != prev;
-      i = Utils::increase(i, _indcs.size()))
+    for (auto i : _indcs)
     {
-      if (_indcs[i] != _indcs[next] &&
-        _indcs[i] != _indcs[prev] && 
-        _indcs[i] != _indcs[idx])
-      {
-        auto where = Geo::PointInPolygon::classify(
-          tmp_poly, _pts[_indcs[i]], _tol, &_norm);
-        if (where != Geo::PointInPolygon::Outside)
-          return false;
-      }
+      if (i == _indcs[next] || i == _indcs[prev] || i == _indcs[idx])
+        continue;
+      auto where = Geo::PointInPolygon::classify(tmp_poly, _pts[i], _tol, &_norm);
+      if (where != Geo::PointInPolygon::Outside)
+        return false;
     }
-    auto pt_in = (proj_poly[prev] + proj_poly[next]) * 0.5;
-    auto where = Geo::PointInPolygon::classify(proj_poly, pt_in, _tol, &_norm);
-    if (where != Geo::PointInPolygon::Inside)
-      return false;
+    for (auto frac : { 0.5, 0.25, 0.75 })
+    {
+      auto pt_in = proj_poly[prev] * frac + proj_poly[next] * (1- frac);
+      auto where = Geo::PointInPolygon::classify(
+        proj_poly, pt_in, Geo::epsilon(pt_in), &_norm);
+      if (where == Geo::PointInPolygon::Outside)
+        return false;
+      if (where == Geo::PointInPolygon::Inside)
+        break;
+    }
     auto j = proj_poly.size() - 1;
     Geo::Segment seg = { proj_poly[prev], proj_poly[next] };
     for (size_t i = 0; i < proj_poly.size(); j = i++)
@@ -245,10 +249,15 @@ void PolygonTriangulation::Solution::compute(
 
   while (_indcs.size() > 3)
   {
+#ifdef DEBUG_PolygonTriangularization
+    std::string flnm("debug_poly_");
+    flnm += std::to_string(_indcs.size()) + ".obj";
+    IO::save_obj(flnm.c_str(), _pts, &_indcs);
+#endif
+
     Geo::Vector3 vects[2], centre;
     size_t inds[3] = { *(_indcs.end() - 2), _indcs.back(), 0 };
     vects[0] = _pts[inds[0]] - _pts[inds[1]];
-    Utils::StatisticsT<double> min_ang;
     auto norm = Geo::point_polygon_normal(_pts.begin(), _pts.end(), &centre);
 
     std::vector<Geo::Vector3> proj_poly;
@@ -260,35 +269,45 @@ void PolygonTriangulation::Solution::compute(
       proj_poly.push_back(pt);
       tol_max.add(Geo::epsilon_sq(pt));
     }
-    auto tol = 10 * tol_max.max();
+    auto tol = sqrt(9 * tol_max.max());
+    std::vector<double> angles;
+    const auto invalid_double = std::numeric_limits<double>::max();
 
     for (size_t i = 0; i < _indcs.size(); ++i)
     {
       inds[2] = _indcs[i];
       vects[1] = _pts[inds[2]] - _pts[inds[1]];
       if (valid_triangle(i, proj_poly, norm, tol))
-      {
-        auto angl = Geo::angle(vects[0], vects[1]);
-        min_ang.add(angl, i);
-      }
+        angles.push_back(Geo::angle(vects[0], vects[1]));
+      else
+        angles.push_back(invalid_double);
       inds[0] = inds[1];
       inds[1] = inds[2];
       vects[0] = -vects[1];
     }
-    if (min_ang.count() == 0)
+    std::vector<double> scores(angles);
+    for (size_t i = 0; i < scores.size(); ++i)
     {
+      if (angles[i] < M_PI_2 - 0.1)
+        continue;
+      scores[Utils::decrease(i, scores.size())] -= M_PI;
+      scores[Utils::increase(i, scores.size())] -= M_PI;
+    }
+    Utils::StatisticsT<double> min_ang;
+    for (size_t i = 0; i < scores.size(); ++i)
+      min_ang.add(scores[i], i);
+    if (min_ang.min() == invalid_double)
+    {
+      IO::save_obj("No_good_triangle_found", _pts, &_indcs);
       THROW("No good triangle found.");
     }
     std::array<size_t, 3> tri;
     tri[2] = min_ang.min_idx();
     tri[1] = Utils::decrease(tri[2], _indcs.size());
     auto to_rem = tri[1];
-    if (min_ang.min() > 0)
-    {
-      tri[0] = Utils::decrease(tri[1], _indcs.size());
-      for (auto& pt_ind : tri) pt_ind = _indcs[pt_ind];
-      tris_.push_back(tri);
-    }
+    tri[0] = Utils::decrease(tri[1], _indcs.size());
+    for (auto& pt_ind : tri) pt_ind = _indcs[pt_ind];
+    tris_.push_back(tri);
     _indcs.erase(_indcs.begin() + to_rem);
   }
   if (_indcs.size() == 3)

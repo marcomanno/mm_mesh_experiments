@@ -338,8 +338,7 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
           continue;
         }
         THROW_IF(not_comm_verts.empty(),
-          "Faces without not common vertices but not "
-          "all common vertices are linked.");
+          "Faces without 'not common vertices' but not all common vertices are linked.");
         for (size_t j = 0; j < not_comm_verts.size(); ++j)
         {
           size_t j1 = j, j2 = j;
@@ -536,9 +535,7 @@ bool find_edge_chain(
     if (pt_class == Geo::PointInPolygon::Inside)
       return true;
     if (pt_class == Geo::PointInPolygon::On)
-    {
       THROW("Point not expected on boundary");
-    }
     _edge_ch.clear();
     return false;
   };

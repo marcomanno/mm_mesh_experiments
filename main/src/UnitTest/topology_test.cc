@@ -624,7 +624,7 @@ TEST_CASE("buddha_09", "[Bool]")
 
 TEST_CASE("buddha_10", "[Bool]")
 {
-  budda_test("10", 913418, 27);
+  budda_test("10", 1803152, 913416);
 }
 
 //TEST_CASE("buddha_11", "[Bool]") {  budda_test("11", 30, 365541); }
@@ -698,26 +698,6 @@ TEST_CASE("buddha_100_0.01", "[Bool]")
   auto res = budda_bools("0.01");
 }
 
-TEST_CASE("bambolina_01", "[Bool]")
-{
-  auto b0 = IO::load_obj(MESH_FOLDER"bambolina_00.obj");
-  for (int i = 1; i < 8; ++i)
-  {
-    std::stringstream ss;
-    ss << MESH_FOLDER << "bambolina_0" << std::to_string(i) << ".obj";
-    auto b1 = IO::load_obj(ss.str().c_str());
-    auto bool_solver = Boolean::ISolver::make();
-    bool_solver->init(b0, b1);
-    b0 = bool_solver->compute(Boolean::Operation::UNION);
-    auto out_flnm = std::string("result_bambolina_0") + std::to_string(i) + ".obj";
-    IO::save_obj(out_flnm.c_str(), b0);
-  }
-  //Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
-  //REQUIRE(bv_it.size() == 12);
-  //Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  //REQUIRE(bf_it.size() == 6);
-}
-
 namespace {
 void move_body(Topo::Wrap<Topo::Type::BODY> _body, const Geo::Vector3& _off)
 {
@@ -745,8 +725,45 @@ TEST_CASE("bambolina", "[Bool]")
     auto bool_solver = Boolean::ISolver::make();
     bool_solver->init(b0, b1);
     b0 = bool_solver->compute(Boolean::Operation::UNION);
+    auto flnm = std::string("bambolina_part_") + 
+      std::to_string(i) + ".obk";
+    IO::save_obj(flnm.c_str(), b0);
   }
   IO::save_obj("result_bambolina.obj", b0);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  //REQUIRE(bv_it.size() == 12);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  //REQUIRE(bf_it.size() == 6);
+}
+
+TEST_CASE("bambolina_00", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"bambolina_a_00.obj");
+  auto b1 = IO::load_obj(MESH_FOLDER"bambolina_b_00.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(b0, b1);
+  auto result = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj("result_bambolina_00.obj", result);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  //REQUIRE(bv_it.size() == 12);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  //REQUIRE(bf_it.size() == 6);
+}
+
+TEST_CASE("bambolina_01", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"bambolina_00.obj");
+  for (int i = 1; i < 8; ++i)
+  {
+    std::stringstream ss;
+    ss << MESH_FOLDER << "bambolina_0" << std::to_string(i) << ".obj";
+    auto b1 = IO::load_obj(ss.str().c_str());
+    auto bool_solver = Boolean::ISolver::make();
+    bool_solver->init(b0, b1);
+    b0 = bool_solver->compute(Boolean::Operation::UNION);
+    auto out_flnm = std::string("result_bambolina_0") + std::to_string(i) + ".obj";
+    IO::save_obj(out_flnm.c_str(), b0);
+  }
   //Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   //REQUIRE(bv_it.size() == 12);
   //Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
