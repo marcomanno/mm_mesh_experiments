@@ -14,12 +14,12 @@ public:
   operator VauleTypeT() const { return val_; }
   operator VauleTypeT&() { return val_; }
   //modifiers
-  BasicType& operator=(VauleTypeT v) { val_ = v; return *this; }
-  BasicType& operator+=(VauleTypeT v) { val_ += v; return *this; }
-  BasicType& operator-=(VauleTypeT v) { val_ -= v; return *this; }
-  BasicType& operator*=(VauleTypeT v) { val_ *= val_; return *this; }
-  BasicType& operator/=(VauleTypeT v) { val_ /= val_; return *this; }
-  BasicType& operator%=(VauleTypeT v) { val_ %= val_; return *this; }
+  //BasicType& operator=(VauleTypeT v) { val_ = v; return *this; }
+  //BasicType& operator+=(VauleTypeT v) { val_ += v; return *this; }
+  //BasicType& operator-=(VauleTypeT v) { val_ -= v; return *this; }
+  //BasicType& operator*=(VauleTypeT v) { val_ *= val_; return *this; }
+  //BasicType& operator/=(VauleTypeT v) { val_ /= val_; return *this; }
+  //BasicType& operator%=(VauleTypeT v) { val_ %= val_; return *this; }
   BasicType& operator++() { ++val_; return *this; }
   BasicType& operator--() { --val_; return *this; }
   BasicType operator++(int) { return BasicType(val_++); }

@@ -1,4 +1,5 @@
 #include "face_intersections.hh"
+#include "Base/basic_type.hh"
 #include "Geo/kdtree.hh"
 #include "Geo/plane_fitting.hh"
 #include "Geo/vector.hh"
@@ -28,6 +29,50 @@ std::set<Topo::Wrap<Topo::Type::VERTEX>> face_vertices(
   return vert_set;
 }
 
+bool boundary_chain(
+  const Topo::Wrap<Topo::Type::FACE>& _face,
+  const std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _v_inters,
+  Topo::Wrap<Topo::Type::VERTEX> _start_end[2])
+{
+  _start_end[0].reset(nullptr);
+  _start_end[1].reset(nullptr);
+  Topo::Iterator<Topo::Type::FACE, Topo::Type::COEDGE> coe_it(_face);
+  std::map<Topo::Wrap<Topo::Type::VERTEX>, Base::BasicType<int>> verts_use;
+  for (auto coe : coe_it)
+  {
+    Topo::Iterator<Topo::Type::COEDGE, Topo::Type::VERTEX> vert_it(coe);
+    bool good = true;
+    THROW_IF(vert_it.size() != 2, "Coedgewithout 2 vertices");
+    for (auto vert : vert_it)
+      good &= std::find(_v_inters.begin(), _v_inters.end(), vert) != _v_inters.end();
+    if (!good)
+      continue;
+    for (size_t i = 0; i < 2; ++i)
+      verts_use[vert_it.get(i)] += 1 << i;
+  }
+  if (verts_use.size() < _v_inters.size())
+    return false;
+  for (auto& vert_use : verts_use)
+  {
+    switch (vert_use.second)
+    {
+    case 1:
+    case 2:
+      if (_start_end[vert_use.second - 1])
+        return false;
+      _start_end[vert_use.second - 1] = vert_use.first;
+    case 3:
+      break;
+    default:
+      return false;
+    }
+  }
+  if (!_start_end[0] || !_start_end[1])
+    return false;
+  else
+    return true;
+}
+
 struct FaceEdgeMap
 {
   typedef std::vector<Topo::Wrap<Topo::Type::VERTEX>> CommonVertices;
@@ -39,23 +84,6 @@ struct FaceEdgeMap
     const std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _v_inters,
     bool _is_face_b)
   {
-    if (_v_inters.size() == 2)
-    {
-      auto edges = 
-        Topo::shared_entities<Topo::Type::VERTEX, Topo::Type::EDGE>(
-          _v_inters[0], _v_inters[1]);
-      for (const auto& ed : edges)
-      {
-        Topo::Iterator<Topo::Type::EDGE, Topo::Type::FACE> ef_it(ed);
-        for (const auto& f : ef_it)
-        {
-          // We have already an edge.
-          if (f == _face)
-            return false;
-        }
-
-      }
-    }
     auto& map = map_[_is_face_b];
     auto elem = map.emplace(_face, FaceData());
 
@@ -130,8 +158,35 @@ bool FaceVersus::face_intersect(
     if (v_inters.size() < 2)
       continue;
 
-    face_new_edge_map.add_face_edge(face_a, v_inters, false);
-    face_new_edge_map.add_face_edge(face_b, v_inters, true);
+    Topo::Wrap<Topo::Type::VERTEX> start_end_a[2], start_end_b[2];
+    auto add_a = !boundary_chain(face_a, v_inters, start_end_a);
+    auto add_b = !boundary_chain(face_b, v_inters, start_end_b);
+    if (v_inters.size() > 2 && (!add_a && !add_b))
+    {
+      bool same_sense = false;
+      if (start_end_a[0] == start_end_b[0] && start_end_a[1] == start_end_b[1])
+        same_sense = true;
+      else if (start_end_a[1] == start_end_b[0] && start_end_a[0] == start_end_b[1])
+        same_sense = false;
+      else
+        add_a = true;
+      if (!add_a)
+      {
+        auto face_normal = [](const Topo::Wrap<Topo::Type::FACE>& _face)
+        {
+          Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> l_it(_face);
+          Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> v_it(*l_it.begin());
+          return Geo::vertex_polygon_normal(v_it.begin(), v_it.end());
+        };
+        bool same_dir = (face_normal(face_a) * face_normal(face_b)) > 0;
+        add_a = same_dir == same_sense;
+      }
+      add_b = add_a;
+    }
+    if (add_a)
+      face_new_edge_map.add_face_edge(face_a, v_inters, false);
+    if (add_b)
+      face_new_edge_map.add_face_edge(face_b, v_inters, true);
   }
   face_new_edge_map.init_map();
   face_new_edge_map.split(overlap_faces_);
