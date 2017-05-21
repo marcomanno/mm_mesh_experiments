@@ -75,20 +75,26 @@ bool boundary_chain(
 
 struct FaceEdgeMap
 {
-  typedef std::vector<Topo::Wrap<Topo::Type::VERTEX>> CommonVertices;
+  typedef std::vector<Topo::Wrap<Topo::Type::VERTEX>> CommonVerticesBasic;
+  struct CommonVertices : public CommonVerticesBasic
+  {
+    CommonVertices(const CommonVerticesBasic& _comm_vert, bool _doubious) :
+      CommonVerticesBasic(_comm_vert), doubious_(_doubious) {}
+    bool doubious_ = false;
+  };
   typedef std::vector<CommonVertices> NewVerts;
   typedef std::vector<Topo::Wrap<Topo::Type::FACE>> NewFaces;
 
   bool add_face_edge(
     const Topo::Wrap<Topo::Type::FACE>& _face,
     const std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _v_inters,
-    bool _is_face_b)
+    bool _is_face_b, bool _doubious)
   {
     auto& map = map_[_is_face_b];
     auto elem = map.emplace(_face, FaceData());
 
     auto& data = elem.first->second;
-    std::get<NewVerts>(data).push_back(_v_inters);
+    data.new_verts_.emplace_back(_v_inters, _doubious);
 
     if (elem.second) // It is a new face
     {
@@ -109,7 +115,7 @@ struct FaceEdgeMap
       pl_geom->compute();
       if (pl_geom->normal() * n < 0)
         n = -n;
-      std::get<Normal>(data) = n;
+      data.norm_ = n;
     }
     return true;
   }
@@ -118,11 +124,17 @@ struct FaceEdgeMap
   void split(OverlapFces& _overlap_faces);
 
 private:
+  void check_doubious_faces();
   void split_overlaps_on_boundary(OverlapFces&  _overlap_faces);
   void split_with_chains();
   typedef Geo::Point Normal;
 
-  typedef std::tuple<Normal, NewFaces, NewVerts> FaceData;
+  struct FaceData
+  {
+    Normal norm_;
+    NewFaces new_faces_;
+    NewVerts new_verts_;
+  };
   std::map<Topo::Wrap<Topo::Type::FACE>, FaceData> map_[2];
 };
 
@@ -161,7 +173,7 @@ bool FaceVersus::face_intersect(
     Topo::Wrap<Topo::Type::VERTEX> start_end_a[2], start_end_b[2];
     auto add_a = !boundary_chain(face_a, v_inters, start_end_a);
     auto add_b = !boundary_chain(face_b, v_inters, start_end_b);
-    if (v_inters.size() > 2 && (!add_a && !add_b))
+    if (v_inters.size() > 2 && !add_a && !add_b)
     {
       bool same_sense = false;
       if (start_end_a[0] == start_end_b[0] && start_end_a[1] == start_end_b[1])
@@ -169,8 +181,8 @@ bool FaceVersus::face_intersect(
       else if (start_end_a[1] == start_end_b[0] && start_end_a[0] == start_end_b[1])
         same_sense = false;
       else
-        add_a = true;
-      if (!add_a)
+        add_a = add_b = true;
+      if (!add_a && !add_b)
       {
         auto face_normal = [](const Topo::Wrap<Topo::Type::FACE>& _face)
         {
@@ -178,15 +190,22 @@ bool FaceVersus::face_intersect(
           Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> v_it(*l_it.begin());
           return Geo::vertex_polygon_normal(v_it.begin(), v_it.end());
         };
-        bool same_dir = (face_normal(face_a) * face_normal(face_b)) > 0;
-        add_a = same_dir == same_sense;
+        auto cos_ang = face_normal(face_a) * face_normal(face_b);
+        if (fabs(cos_ang) > 0.7)
+        {
+          bool same_dir = (face_normal(face_a) * face_normal(face_b)) > 0;
+          add_a = same_dir == same_sense;
+        }
+        add_b = add_a;
       }
-      add_b = add_a;
     }
+    if (!add_a && !add_b)
+      continue;
+    // std::sort(v_inters.begin(), v_inters.end());
     if (add_a)
-      face_new_edge_map.add_face_edge(face_a, v_inters, false);
+      face_new_edge_map.add_face_edge(face_a, v_inters, false, !add_b);
     if (add_b)
-      face_new_edge_map.add_face_edge(face_b, v_inters, true);
+      face_new_edge_map.add_face_edge(face_b, v_inters, true, !add_a);
   }
   face_new_edge_map.init_map();
   face_new_edge_map.split(overlap_faces_);
@@ -199,7 +218,7 @@ void FaceEdgeMap::init_map()
 {
   for (auto& map : map_)
     for (auto& face_info : map)
-      std::get<NewFaces>(face_info.second).push_back(face_info.first);
+      face_info.second.new_faces_.push_back(face_info.first);
 }
 
 static bool insert_remaning_common_vertices(
@@ -290,6 +309,37 @@ static bool insert_remaning_common_vertices(
   return _verts.empty();
 }
 
+void FaceEdgeMap::check_doubious_faces()
+{
+  // Can happen that a chain belonging to a boundary of
+  // an overlap is present two timeson a face. This must be avoided.
+  for (size_t i = 0; i < std::size(map_); ++i)
+    for (auto& face_info : map_[i])
+    {
+      auto& vertsets = face_info.second.new_verts_;
+      NewVerts::iterator vertsets_it_next;
+      for (auto vertsets_it = vertsets.begin(); vertsets_it != vertsets.end(); 
+        vertsets_it = vertsets_it_next)
+      {
+        vertsets_it_next = std::next(vertsets_it);
+        if (!vertsets_it->doubious_)
+          continue;
+        bool to_remove = false;
+        for (auto vertsets_it2 = vertsets.begin();
+          !to_remove && vertsets_it2 != vertsets.end();
+          ++vertsets_it2)
+        {
+          if (vertsets_it2->doubious_ || vertsets_it2 == vertsets_it)
+            continue;
+          to_remove = std::includes(vertsets_it2->begin(), vertsets_it2->end(),
+            vertsets_it->begin(), vertsets_it->end());
+        }
+        if (to_remove)
+          vertsets_it_next = vertsets.erase(vertsets_it);
+      }
+    }
+}
+
 void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
 {
   // Process overlaps.
@@ -297,17 +347,17 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
   {
     for (auto& face_info : map_[i])
     {
-      auto& edges = std::get<NewVerts>(face_info.second);
+      auto& edges = face_info.second.new_verts_;
       NewVerts::iterator edge_next;
       for (auto edge_it = edges.begin(); edge_it != edges.end();
         edge_it = edge_next)
       {
         edge_next = std::next(edge_it);
         auto& vert_set = *edge_it;
-        if (vert_set.size() <= 2)
+        if (vert_set.size() <= 2 || vert_set.doubious_)
           continue;
         // We have an overlap (more than 2 vertices in common with another face).
-        auto& faces = std::get<NewFaces>(face_info.second);
+        auto& faces = face_info.second.new_faces_;
         int best_idx = 0;
         if (faces.size() > 1)
         {
@@ -784,8 +834,8 @@ void FaceEdgeMap::split_with_chains()
   {
     for (auto& face_info : map_[i])
     {
-      auto& faces = std::get<NewFaces>(face_info.second);
-      auto& edge_vec = std::get<NewVerts>(face_info.second);
+      auto& faces = face_info.second.new_faces_;
+      auto& edge_vec = face_info.second.new_verts_;
       if (edge_vec.empty())
         continue;
       // Try face split.
@@ -831,7 +881,7 @@ void FaceEdgeMap::split_with_chains()
           {
             // Closed loop inside face starting from one vertex.
             // The chain sense is ambiguos.
-            auto norm = std::get<Normal>(face_info.second);
+            auto norm = face_info.second.norm_;
             auto chain_normal = Geo::vertex_polygon_normal(
               split_chains[0].begin(), split_chains[0].end());
             if (norm * chain_normal > 0)
@@ -923,6 +973,7 @@ void FaceEdgeMap::split_with_chains()
 
 void FaceEdgeMap::split(OverlapFces& _overlap_faces)
 {
+  check_doubious_faces();
   split_overlaps_on_boundary(_overlap_faces);
   split_with_chains();
 }

@@ -224,7 +224,7 @@ EXAMPLE(0)
     {
       Geo::Point pt;
       x->geom(pt);
-      pt[0] += 0.002 * i;
+      //pt[0] += 0.002 * i;
       x->set_geom(pt);
     }
     poly_dats.push_back(make_tessellation(body));
