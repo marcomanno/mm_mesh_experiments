@@ -18,4 +18,4 @@ set_target_properties(unittests PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR
 
 target_link_libraries(unittests
   Base PolygonTriangularization 
-  Geo Boolean Import Topology) 
+  Geo Boolean Import Topology Utils) 

@@ -123,7 +123,14 @@ void save_obj(const char* _flnm,
   const std::vector<Geo::Vector3>& _plgn,
   const std::vector<size_t>* _inds)
 {
-  std::ofstream ff(std::string(_flnm) + ".obj");
+  std::string flnm;
+  static int n = 0;
+  if (_flnm != nullptr)
+    flnm = _flnm;
+  else
+    flnm = std::string("_deb_obj_") + std::to_string(n++);
+  std::ofstream ff(flnm + ".obj");
+  ff << std::setprecision(17);
   for (const auto& v : _plgn) { ff << "v" << v << "\n"; }
   
   ff << "f";
@@ -134,6 +141,18 @@ void save_obj(const char* _flnm,
     for (auto i : *_inds)
       ff << " " << i + 1;
   ff << "\n";
+}
+
+void save_obj(const char* _flnm,
+  const std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _verts)
+{
+  std::vector<Geo::Vector3> plgn;
+  for (auto vert : _verts)
+  {
+    plgn.emplace_back();
+    vert->geom(plgn.back());
+  }
+  save_obj(_flnm, plgn);
 }
 
 }//namespace Import
