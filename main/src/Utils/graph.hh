@@ -5,7 +5,7 @@ struct GraphBase
 {
   template <class ObjectT> friend struct Graph;
   void compute();
-  const void* get_chain_element(size_t _ch_ind, int _elem_pos);
+  const void* get_chain_element(size_t _ch_ind, size_t _elem_pos);
   size_t get_chain_number() const;
   size_t get_chain_element_number(size_t _ch_ind) const;
 private:
@@ -22,9 +22,9 @@ template <class ObjectT> struct Graph : public GraphBase
   {
     GraphBase::add_link(_obj_a, _obj_b);
   }
-  ObjectT* get_chain_element(size_t _ch_ind, int _elem_pos)
+  const ObjectT* get_chain_element(size_t _ch_ind, size_t _elem_pos)
   {
-    return static_cast<ObjectT*>(GraphBase::get_chain_element(_ch_ind, _elem_pos));
+    return static_cast<const ObjectT*>(GraphBase::get_chain_element(_ch_ind, _elem_pos));
   }
 };
 

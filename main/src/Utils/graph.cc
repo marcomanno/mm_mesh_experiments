@@ -46,7 +46,7 @@ public:
     computed_ = false;
   }
   void compute();
-  const void* get_chain_element(size_t _ch_ind, int _elem_pos) const;
+  const void* get_chain_element(size_t _ch_ind, size_t _elem_pos) const;
   size_t get_chain_number() const;
   size_t get_chain_element_number(size_t _ch_ind) const;
 };
@@ -103,7 +103,7 @@ void GraphBase::Impl::compute()
   }
 }
 
-const void* GraphBase::Impl::get_chain_element(size_t _ch_ind, int _elem_pos) const
+const void* GraphBase::Impl::get_chain_element(size_t _ch_ind, size_t _elem_pos) const
 {
   return chain_list_[_ch_ind][_elem_pos];
 }
@@ -128,7 +128,7 @@ void GraphBase::add_link(const void* _obj_a, const void* _obj_b)
   impl_->add_link(_obj_a, _obj_b);
 }
 
-const void* GraphBase::get_chain_element(size_t _ch_ind, int _elem_pos)
+const void* GraphBase::get_chain_element(size_t _ch_ind, size_t _elem_pos)
 {
   return impl_->get_chain_element(_ch_ind, _elem_pos);
 }
