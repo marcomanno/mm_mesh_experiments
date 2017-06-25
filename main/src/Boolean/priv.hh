@@ -69,6 +69,8 @@ struct ISelection
 // Merges faces and splits concave mesh faces in triangles or at least in convex pieces.
 void simplify_and_correct(Topo::Wrap<Topo::Type::BODY>& _body);
 
-bool remove_degeneracies(Topo::Wrap<Topo::Type::BODY>& _body);
+bool remove_degeneracies(
+  Topo::Wrap<Topo::Type::BODY>& _body_1, 
+  Topo::Wrap<Topo::Type::BODY>& _body_2);
 
 }//namespace Boolean

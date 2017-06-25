@@ -1,4 +1,4 @@
-#pragma optimize ("", off)
+//#pragma optimize ("", off)
 #include "impl.hh"
 #include "shared.hh"
 #include "split.hh"

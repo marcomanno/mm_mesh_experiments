@@ -12,8 +12,7 @@ static void print_graph(Utils::Graph<ObjectT>& _graph)
 {
   for (size_t i = 0; i < _graph.get_chain_number(); ++i)
     for (size_t j = 0; j < _graph.get_chain_element_number(i); ++j)
-      std::cout << *(_graph.get_chain_element(i, j)) << " ";
-
+      std::cout << "Graph " << *(_graph.get_chain_element(i, j)) << " ";
 }
 
 TEST_CASE("util_chain00", "[Utils]")

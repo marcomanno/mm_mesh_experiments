@@ -10,6 +10,8 @@
 #include <Topology/shared.hh>
 #include <Topology/split.hh>
 #include "Utils/error_handling.hh"
+#include "Utils/circular.hh"
+#include "Utils/graph.hh"
 
 #include <list>
 #include <set>
@@ -173,7 +175,9 @@ bool FaceVersus::face_intersect(
     Topo::Wrap<Topo::Type::VERTEX> start_end_a[2], start_end_b[2];
     auto add_a = !boundary_chain(face_a, v_inters, start_end_a);
     auto add_b = !boundary_chain(face_b, v_inters, start_end_b);
-    if (v_inters.size() > 2 && !add_a && !add_b)
+    if (v_inters.size() > 2 && add_a != add_b)
+      add_a = add_b = true;
+    else if (v_inters.size() > 2 && !add_a && !add_b)
     {
       bool same_sense = false;
       if (start_end_a[0] == start_end_b[0] && start_end_a[1] == start_end_b[1])
@@ -304,15 +308,77 @@ static bool insert_remaning_common_vertices(
         consumed = true;
       }
     }
-
   } while (consumed);
+#if 0
+  if (_verts.empty())
+    return _verts.empty();
+
+  Utils::Graph<Topo::E<Topo::Type::VERTEX>> graph;
+  auto may_add_link = [&graph](
+    Topo::Wrap<Topo::Type::VERTEX>& _v0, Topo::Wrap<Topo::Type::VERTEX>& _v1)
+  {
+    auto edges =
+      Topo::shared_entities<Topo::Type::VERTEX, Topo::Type::EDGE>(_v0, _v1);
+    if (!edges.empty())
+      graph.add_link(_v1.get(), _v0.get());
+  };
+  for (auto i = _verts.size(); i-- > 0;)
+  {
+    for (auto& split_chain : _split_chains)
+      for (auto& v : split_chain)
+        may_add_link(_verts[i], v);
+    for (auto j = i; j-- > 0;)
+      may_add_link(_verts[i], _verts[j]);
+  }
+  graph.compute();
+  for (size_t i = 0; i < graph.get_chain_number(); ++i)
+  {
+    for (auto& split_chain : _split_chains)
+    {
+      bool done = false;
+      for (size_t k = 0; k < split_chain.size() && !done; ++k)
+      {
+        if (split_chain[k].get() != graph.get_chain_element(i, 0))
+          continue;
+
+        auto last = graph.get_chain_element_number(i) - 1;
+        auto k1 = Utils::decrease(k, split_chain.size());
+        auto ins = k;
+        auto forward = split_chain[k1].get() == graph.get_chain_element(i, last);
+        if (!forward)
+        {
+          k1 = Utils::increase(k, split_chain.size());
+          if (split_chain[k1].get() != graph.get_chain_element(i, last))
+            continue;
+          ins = k1;
+        }
+        Topo::Wrap<Topo::Type::VERTEX> vv;
+        vv.reset(const_cast<Topo::E<Topo::Type::VERTEX>*>(graph.get_chain_element(i, 1)));
+        split_chain.insert(split_chain.begin() + ins, vv);
+        _split_chains.emplace_back();
+        auto& ch = _split_chains.back();
+        if (forward)
+          for (auto l = last + 1; l-- >= 0;)
+            ch.push_back(Topo::Wrap<Topo::Type::VERTEX>(graph.get_chain_element(i, l)));
+        else
+          for (auto l = 0; l <= last; ++l)
+            ch.push_back(Topo::Wrap<Topo::Type::VERTEX>(graph.get_chain_element(i, l)));
+        for (auto vert : ch)
+          std::remove(_verts.begin(), _verts.end(), vert);
+        done = true;
+      }
+      if (done)
+        break;
+    }
+  }
+#endif
   return _verts.empty();
 }
 
 void FaceEdgeMap::check_doubious_faces()
 {
   // Can happen that a chain belonging to a boundary of
-  // an overlap is present two timeson a face. This must be avoided.
+  // an overlap is present two times on a face. This must be avoided.
   for (size_t i = 0; i < std::size(map_); ++i)
     for (auto& face_info : map_[i])
     {
@@ -348,8 +414,8 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
     for (auto& face_info : map_[i])
     {
       auto& edges = face_info.second.new_verts_;
-      NewVerts::iterator edge_next;
-      for (auto edge_it = edges.begin(); edge_it != edges.end();
+      NewVerts::const_iterator edge_next;
+      for (auto edge_it = edges.cbegin(); edge_it != edges.cend();
         edge_it = edge_next)
       {
         edge_next = std::next(edge_it);
@@ -550,6 +616,27 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
               it1 = split_chains[j].begin();
           } while (it1 != it0);
 
+#if 0
+          while (!edge_set_copy.empty())
+          {
+            Geo::Point pt_end;
+            split_chains[0].back()->geom(pt_end);
+            auto min_it = std::min_element(edge_set_copy.begin(),
+              edge_set_copy.end(), [&pt_end](
+                const Topo::Wrap<Topo::Type::VERTEX>& _vert1,
+                const Topo::Wrap<Topo::Type::VERTEX>& _vert2)
+            {
+              Geo::Point pt_curr1, pt_curr2;
+              _vert1->geom(pt_curr1);
+              _vert2->geom(pt_curr2);
+              return Geo::length_square(pt_curr1 - pt_end) < Geo::length_square(pt_curr2 - pt_end);
+            }
+            );
+            split_chains[0].push_back(*min_it);
+            it1 = split_chains[j].insert(it1, *min_it);
+            edge_set_copy.erase(min_it);
+          }
+#endif
           for (const auto& vert : edge_set_copy)
           {
             split_chains[0].push_back(vert);
@@ -557,6 +644,16 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
           }
         }
 
+#if 0
+        if (split_chains.size() == 2 && split_chains[0].size() == vert_set.size())
+        {
+          // Can be an intersection on boundary. Let's check the normals.
+          auto norm = Geo::vertex_polygon_normal(
+            split_chains[0].begin(), split_chains[0].end());
+          if (face_info.second.norm_ * norm < 0)
+            continue; // The split is on the boundary.
+        }
+#endif
         Topo::Split<Topo::Type::FACE> face_splitter(face);
         for (auto& split_chain : split_chains)
           face_splitter.add_boundary(split_chain);
@@ -960,11 +1057,11 @@ void FaceEdgeMap::split_with_chains()
       }
       if (!edge_vec.empty())
       {
-        std::cout << edge_vec.size() << "::::\n";
+        //std::cout << edge_vec.size() << "::::\n";
         for (auto ff : faces)
         {
-          std::cout << ff->id() << std::endl;
-          //THROW_IF(!edge_vec.empty(), "Vector edge not empty.");
+          //std::cout << ff->id() << std::endl;
+          THROW_IF(!edge_vec.empty(), "Vector edge not empty.");
         }
       }
     }

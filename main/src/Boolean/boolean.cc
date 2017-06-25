@@ -77,8 +77,11 @@ Topo::Wrap<Topo::Type::BODY> Solver::compute(const Operation _op)
 {
   auto clean_up = [this]()
   {
-    while (remove_degeneracies(bodies_[0].body_) || 
-      remove_degeneracies(bodies_[1].body_));
+#ifdef DEB_ON
+    //IO::save_obj("pre_0.obj", bodies_[0].body_);
+    //IO::save_obj("pre_1.obj", bodies_[1].body_);
+#endif
+    while (remove_degeneracies(bodies_[0].body_, bodies_[1].body_));
     bodies_[0].clear();
     bodies_[1].clear();
 #ifdef DEB_ON

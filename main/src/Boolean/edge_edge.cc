@@ -1,5 +1,5 @@
 
-#pragma optimize ("", off)
+//#pragma optimize ("", off)
 #include "priv.hh"
 #include "Utils/statistics.hh"
 #include "Topology/iterator.hh"

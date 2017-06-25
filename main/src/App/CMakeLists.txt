@@ -29,4 +29,6 @@ acg_drop_templates(sources)
 set (app_name "vtk_cad")
 add_executable(${app_name} MACOSX_BUNDLE ${sources} ${headers})
 MESSAGE (STATUS "${VTK_LIBRARIES}")
-target_link_libraries(${app_name} ${VTK_LIBRARIES} vtkChartsCore vtkViewsContext2D Import PolygonTriangularization Geo Boolean Topology)
+target_link_libraries(${app_name} ${VTK_LIBRARIES} 
+  vtkChartsCore vtkViewsContext2D Import PolygonTriangularization 
+  Geo Boolean Topology Utils)

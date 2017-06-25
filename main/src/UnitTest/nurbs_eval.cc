@@ -34,7 +34,7 @@ TEST_CASE("Evaluate nurbs", "[NURBS]" )
   mypoly tt(eval_par.data(), unsigned(eval_par.size() - 1)); // Evaluate at polynomial x
   const double tspan = 0.3;
   my_nrb.eval(tt, std::begin(result), std::end(result), &tspan);
-  std::cout << result[0] << " " << result[1] << "\n";
+  std::cout << "Eval nurmbs" << result[0] << " " << result[1] << "\n";
   
   // Result is polynomial x - 2 
   REQUIRE( result[0][0] == 2);
@@ -46,7 +46,7 @@ TEST_CASE("Evaluate nurbs", "[NURBS]" )
   std::array<double, 2> eval_par1{-1, 1};
   mypoly t1(eval_par1.data(), unsigned(eval_par1.size() - 1)); // Evaluate at polynomial x - 1
   my_nrb.eval(t1, std::begin(result), std::end(result), &tspan);
-  std::cout << result[0] << " " << result[1] << "\n";
+  std::cout << "Eval nurmbs" << result[0] << " " << result[1] << "\n";
 
   // Result is polynomial 1 * (x - 1) + 1 
   REQUIRE( result[0][0] == 1);

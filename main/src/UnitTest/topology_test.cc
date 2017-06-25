@@ -584,7 +584,7 @@ TEST_CASE("buddha_01", "[Bool]")
 
 TEST_CASE("buddha_02", "[Bool]")
 {
-  budda_test("02", 24, 24);
+  budda_test("02", 25, 25);
 }
 
 TEST_CASE("buddha_03", "[Bool]")
@@ -604,7 +604,7 @@ TEST_CASE("buddha_05", "[Bool]")
 
 TEST_CASE("buddha_06", "[Bool]")
 {
-  budda_test("06", 29, 25);
+  budda_test("06", 31, 26);
 }
 
 TEST_CASE("buddha_07", "[Bool]")
@@ -624,7 +624,7 @@ TEST_CASE("buddha_09", "[Bool]")
 
 TEST_CASE("buddha_10", "[Bool]")
 {
-  budda_test("10", 1803152, 913416);
+  budda_test("10", 1803158, 913418);
 }
 
 //TEST_CASE("buddha_11", "[Bool]") {  budda_test("11", 30, 365541); }

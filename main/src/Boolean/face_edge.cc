@@ -1,4 +1,4 @@
-#pragma optimize ("", off)
+//#pragma optimize ("", off)
 #include "face_intersections.hh"
 #include "Geo/MinSphere.hh"
 #include "Geo/kdtree.hh"

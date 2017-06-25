@@ -20,7 +20,10 @@ struct Object
 {
   template <Type typeT> friend class Wrap;
 
-  void add_ref() const { ++ref_; }
+  void add_ref() const
+  {
+    ++ref_;
+  }
   void release_ref() const
   {
     auto refs = --ref_;
