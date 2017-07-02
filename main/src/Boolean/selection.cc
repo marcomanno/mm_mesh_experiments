@@ -301,8 +301,10 @@ void Selection::select_faces(
       vcts.face_inside_dir_ = vcts.face_norm_ % vcts.coe_dir_;
       vcts.face_ = face;
     }
+#if 0
     if (coe_vects[0].size() != 2 || coe_vects[1].size() != 2)
       std::cout << "Strange split\n";
+#endif
     if (bool_op_ == Operation::SPLIT)
       continue;
     if (bool_op_ == Operation::SPLITA || bool_op_ == Operation::SPLITB)

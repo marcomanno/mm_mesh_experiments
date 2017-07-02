@@ -414,11 +414,12 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
     for (auto& face_info : map_[i])
     {
       auto& edges = face_info.second.new_verts_;
-      NewVerts::const_iterator edge_next;
-      for (auto edge_it = edges.cbegin(); edge_it != edges.cend();
-        edge_it = edge_next)
+      std::sort(edges.begin(), edges.end(), 
+                [](const CommonVertices& _a, const CommonVertices& _b)
+      { return _a.size() < _b.size(); });
+      for (auto edge_it = edges.crbegin(); edge_it != edges.crend();
+        ++edge_it)
       {
-        edge_next = std::next(edge_it);
         auto& vert_set = *edge_it;
         if (vert_set.size() <= 2 || vert_set.doubious_)
           continue;
@@ -662,7 +663,6 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
         _overlap_faces[i].push_back(new_faces[0]);
         faces.erase(faces.begin() + best_idx);
         faces.insert(faces.end(), std::next(new_faces.begin()), new_faces.end());
-        edge_next = edges.erase(edge_it);
       }
     }
   }
