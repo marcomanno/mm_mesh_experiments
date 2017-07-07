@@ -148,7 +148,8 @@ bool decompose(const std::array<ValT, N>& _w,
   const std::array<ValT, N>& _a, const std::array<ValT, N>& _b,
   ValT& _u, ValT& _v);
 
-template <size_t dimT> using VectorD = std::array<double, dimT>;
+template <typename ValT, size_t dimT> using Vector = std::array<ValT, dimT>;
+template <size_t dimT> using VectorD = Vector<double, dimT>;
 typedef VectorD<3> Vector3;
 typedef VectorD<2> Vector2;
 

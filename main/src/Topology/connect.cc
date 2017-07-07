@@ -9,13 +9,13 @@ bool connect_entities(
   Wrap<Type::VERTEX> _from, Wrap<Type::VERTEX> _to,
   VertexChain& _using_verts,
   VertexChain& _conn,
-  const bool _allow_direct)
+  const size_t _min_size)
 {
   _conn.push_back(_from);
   auto using_verts_backup = _using_verts;
   for (;;)
   {
-    if (_allow_direct || _conn.size() > 1)
+    if (_conn.size() >= _min_size)
     {
       auto shrd_edges = shared_entities<Type::VERTEX, Type::EDGE>(_conn.back(), _to);
       if (!shrd_edges.empty())

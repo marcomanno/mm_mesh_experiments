@@ -126,19 +126,155 @@ struct FaceEdgeMap
   void split(OverlapFces& _overlap_faces);
 
 private:
-  void check_doubious_faces();
-  void split_overlaps_on_boundary(OverlapFces&  _overlap_faces);
-  void split_with_chains();
   typedef Geo::Point Normal;
-
   struct FaceData
   {
     Normal norm_;
     NewFaces new_faces_;
     NewVerts new_verts_;
   };
+
   std::map<Topo::Wrap<Topo::Type::FACE>, FaceData> map_[2];
+  void check_doubious_faces();
+  void split_overlaps(OverlapFces&  _overlap_faces);
+  bool split_on_boundary(
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX>& it_ev,
+    bool first_is_common, bool prev_is_common,
+    Topo::VertexChains& comm_verts, Topo::VertexChains& not_comm_verts,
+    CommonVertices& edge_set_copy,
+    OverlapFcesVectror& _overlap_faces,
+    Topo::Wrap<Topo::Type::FACE>& face,
+    Geo::Vector3& face_normal,
+    Topo::VertexChains& split_chains);
+
+    void split_with_chains();
 };
+
+typedef std::vector<FaceEdgeMap::NewVerts::iterator> EdgeChain;
+
+// Finds a set of connected edges (couple of vertices) and using the Edges in _pt_sets
+bool find_edge_chain(
+  const Topo::Wrap<Topo::Type::VERTEX>& _vert,
+  FaceEdgeMap::NewVerts& _ed_sets,
+  Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX>& _fv_it,
+  EdgeChain& _edge_ch,
+  Topo::Wrap<Topo::Type::VERTEX>*& _last_vert)
+{
+  auto follow_chain = [&_ed_sets, &_fv_it, &_last_vert, &_vert](
+    FaceEdgeMap::NewVerts::iterator _edge_itr,
+    EdgeChain& _edge_ch)
+  {
+    std::vector<bool> used(_ed_sets.size(), false);
+    used[_edge_itr - _ed_sets.begin()] = true;
+    _edge_ch.push_back(_edge_itr);
+    for (;;)
+    {
+      _last_vert = std::find(_fv_it.begin(), _fv_it.end(), (*_edge_itr)[1]);
+      if (_last_vert != _fv_it.end())
+        break;
+
+      if (_vert == (*_edge_itr)[1])
+      {
+        _last_vert = nullptr;
+        break;
+      }
+
+      bool found = false;
+      for (auto pt_set_it = _ed_sets.begin(); pt_set_it != _ed_sets.end(); ++pt_set_it)
+      {
+        if (used[pt_set_it - _ed_sets.begin()] || pt_set_it->size() != 2)
+          continue;
+        auto& pt_set = *pt_set_it;
+        if (pt_set[0] == (*_edge_itr)[1] || pt_set[1] == (*_edge_itr)[1])
+        {
+          if (pt_set[1] == (*_edge_itr)[1])
+            std::swap(pt_set[1], pt_set[0]);
+          _edge_itr = pt_set_it;
+          used[_edge_itr - _ed_sets.begin()] = true;
+          _edge_ch.push_back(_edge_itr);
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+        return false;
+    }
+    // Check that the chain is inside the face.
+    std::vector<Geo::Point> polygon;
+    polygon.reserve(_fv_it.size());
+    for (auto vert : _fv_it)
+    {
+      polygon.emplace_back();
+      vert->geom(polygon.back());
+    }
+    Geo::Point pt;
+    (*_edge_ch[0])[1]->geom(pt);
+    if (_edge_ch.size() == 1)
+    {
+      Geo::Point pt0;
+      (*_edge_ch[0])[0]->geom(pt0);
+      pt = (pt + pt0) * 0.5;
+    }
+    auto pt_class = Geo::PointInPolygon::classify(polygon, pt);
+    if (pt_class == Geo::PointInPolygon::Inside)
+      return true;
+    if (pt_class == Geo::PointInPolygon::On)
+      THROW("Point not expected on boundary");
+    _edge_ch.clear();
+    return false;
+  };
+
+  auto edge_itr = _ed_sets.end();
+  for (auto pt_it = _ed_sets.begin(); pt_it != _ed_sets.end(); ++pt_it)
+  {
+    if (pt_it->size() != 2)
+      continue;
+    auto iter = std::find(pt_it->begin(), pt_it->end(), _vert);
+    if (iter != pt_it->end())
+    {
+      edge_itr = pt_it;
+      if (iter != pt_it->begin())
+        std::swap((*pt_it)[1], (*pt_it)[0]);
+
+      _edge_ch.clear();
+      if (follow_chain(edge_itr, _edge_ch))
+        return true;
+    }
+  }
+  return false;
+}
+
+std::shared_ptr<Geo::IPolygonalFace> make_polygonal_face(
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _verts)
+{
+  std::vector<Geo::Point> pts;
+  pts.reserve(_verts.size());
+  for (auto& vert : _verts)
+  {
+    pts.emplace_back();
+    vert->geom(pts.back());
+  }
+  auto poly = Geo::IPolygonalFace::make();
+  poly->add_loop(pts.begin(), pts.end());
+  poly->compute();
+  return poly;
+}
+
+Geo::PointInPolygon::Classification
+point_in_polygon(
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _verts,
+  const Geo::Point& _pt,
+  const Geo::Vector3* _norm = nullptr)
+{
+  std::vector<Geo::Point> pts;
+  pts.resize(_verts.size());
+  for (auto& vert : _verts)
+  {
+    pts.emplace_back();
+    vert->geom(pts.back());
+  }
+  return Geo::PointInPolygon::classify(pts, _pt, _norm);
+}
 
 } //namespace
 
@@ -286,9 +422,10 @@ static bool insert_remaning_common_vertices(
       }
       v0 = chain[ind];
       v1 = chain[ind1];
-      bool used = false;
-      for (auto& split_chain : _split_chains)
+      std::vector<std::array<size_t, 2>> insertions;
+      for (size_t k = 0; k < _split_chains.size(); ++k)
       {
+        auto& split_chain = _split_chains[k];
         auto prev = split_chain.front();
         for (auto j = split_chain.size(); j-- > 0; prev = split_chain[j])
         {
@@ -296,13 +433,35 @@ static bool insert_remaning_common_vertices(
           else if (prev == v1 && split_chain[j] == v0) {}
           else
             continue;
-          used = true;
-          split_chain.insert(split_chain.begin() + j + 1, _verts[i]);
+          insertions.push_back({ k, j + 1 });
           break;
         }
       }
-      if (used)
+      if (insertions.size() >= 2)
       {
+        if (insertions.size() > 2)
+        {
+          Geo::Point pt_v0;
+          v0->geom(pt_v0);
+          if (_split_chains[0].size() > 1)
+            std::cout << "Unreliable test" << std::endl;
+          for (auto it = insertions.end(); --it != insertions.begin(); )
+          {
+            auto& split_chain = _split_chains[(*it)[0]];
+            if (point_in_polygon(split_chain, pt_v0) ==
+                Geo::PointInPolygon::Classification::Outside)
+            {
+              it = insertions.erase(it);
+            }
+          }
+          if (insertions.size() != 2)
+            continue;
+        }
+        for (auto& ins : insertions)
+        {
+          auto& split_chain = _split_chains[ins[0]];
+          split_chain.insert(split_chain.begin() + ins[1], _verts[i]);
+        }
         chain[ind] = v0;
         _verts.erase(_verts.begin() + i);
         consumed = true;
@@ -406,7 +565,192 @@ void FaceEdgeMap::check_doubious_faces()
     }
 }
 
-void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
+bool FaceEdgeMap::split_on_boundary(
+  Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX>& it_ev,
+  bool first_is_common, bool prev_is_common,
+  Topo::VertexChains& comm_verts, Topo::VertexChains& not_comm_verts,
+  CommonVertices& edge_set_copy,
+  OverlapFcesVectror& _overlap_faces,
+  Topo::Wrap<Topo::Type::FACE>& face,
+  Geo::Vector3& face_normal,
+  Topo::VertexChains& split_chains
+  )
+{
+  auto merge_tail = [&it_ev](Topo::VertexChains& _chain)
+  {
+    if (_chain.size() <= 1 || *it_ev.begin() != _chain[0][0])
+      return;
+
+    _chain.front().insert(
+      _chain.front().begin(),
+      _chain.back().begin(), _chain.back().end());
+    _chain.pop_back();
+  };
+  if (first_is_common == prev_is_common)
+  {
+    if (prev_is_common)
+      merge_tail(comm_verts);
+    else
+      merge_tail(not_comm_verts);
+  }
+  // We split the face assuming that the overlap is just with one face.
+  // It should be true, nevertheless it would be better to 
+  // test for this condition.
+  if (not_comm_verts.empty() && edge_set_copy.empty())
+  {
+    _overlap_faces.push_back(face); // All vertices are in common.
+    return false;
+  }
+  THROW_IF(not_comm_verts.empty(),
+           "Faces without 'not common vertices' but not all common vertices are linked.");
+  for (size_t j = 0; j < not_comm_verts.size(); ++j)
+  {
+    size_t j1 = j, j2 = j;
+    if (first_is_common)
+    {
+      if (++j2 >= comm_verts.size())
+        j2 = 0;
+    }
+    else
+    {
+      if (j1 > 0) --j1;
+      else j1 = comm_verts.size() - 1;
+    }
+    not_comm_verts[j].insert(not_comm_verts[j].begin(), comm_verts[j1].back());
+    not_comm_verts[j].push_back(comm_verts[j2].front());
+  }
+  split_chains.emplace_back();
+  Topo::VertexChains connections;
+  auto end_ch_vert = comm_verts.back().back();
+  bool double_connection = false;
+  for (auto& chain : comm_verts)
+  {
+    bool already_connected = false;
+    for (const auto& conn : connections)
+    {
+      already_connected =
+        conn.front() == end_ch_vert && conn.back() == chain.front();
+      already_connected |=
+        conn.front() == chain.front() && conn.back() == end_ch_vert;
+      if (already_connected)
+        break;
+    }
+    double_connection |= already_connected;
+    connections.emplace_back();
+    auto& curr_conn = connections.back();
+    if (!Topo::connect_entities(end_ch_vert, chain.front(),
+                                edge_set_copy, curr_conn, 
+                                already_connected ? 2 : 0 ))
+    {
+      curr_conn.clear();
+      curr_conn.push_back(end_ch_vert);
+      curr_conn.push_back(chain.front());
+    }
+    end_ch_vert = chain.back();
+    if (curr_conn.size() > 2)
+      split_chains.back().insert(split_chains.back().end(),
+                                 std::next(curr_conn.begin()), std::prev(curr_conn.end()));
+    split_chains.back().insert(split_chains.back().end(), chain.begin(), chain.end());
+  }
+  if (double_connection && split_chains[0].size() >= 3)
+  {
+    if (face_normal == Geo::Vector3{ 0. })
+      face_normal = Geo::vertex_polygon_normal(
+        it_ev.begin(), it_ev.end());
+
+    auto overlap_normal = Geo::vertex_polygon_normal(
+      split_chains[0].begin(), split_chains[0].end());
+    if (overlap_normal * face_normal < 0)
+    {
+      std::reverse(split_chains[0].begin(), split_chains[0].end());
+      for (auto& conn : connections)
+        std::reverse(conn.begin(), conn.end());
+    }
+  }
+  for (auto& chain : not_comm_verts)
+  {
+    for (auto& conn : connections)
+    {
+      if (chain.front() == conn.front() && chain.back() == conn.back())
+      {
+        split_chains.emplace_back();
+        split_chains.back().insert(
+          split_chains.back().end(), chain.begin(), chain.end());
+        split_chains.back().insert(split_chains.back().end(),
+                                   std::next(conn.rbegin()), std::prev(conn.rend()));
+        break;
+      }
+    }
+  }
+  if (!insert_remaning_common_vertices(
+    edge_set_copy, connections, split_chains))
+  {
+    Topo::VertexChain::iterator it0, it1;
+    auto j = split_chains.size();
+    do
+    {
+      while (j-- > 0)
+      {
+        it0 = std::find(split_chains[j].begin(), split_chains[j].end(),
+                        split_chains[0].back());
+        if (it0 == split_chains[j].end())
+          continue;
+        auto start = split_chains[0].front() != split_chains[0].back() ?
+          split_chains[j].begin() : std::next(it0);
+        it1 = std::find(start, split_chains[j].end(),
+                        split_chains[0].front());
+        if (it1 == split_chains[j].end())
+          continue;
+        break;
+      }
+      THROW_IF(j == 0, "Insertion point not found");
+      it1 = std::next(it1);
+      if (it1 == split_chains[j].end())
+        it1 = split_chains[j].begin();
+    } while (it1 != it0);
+
+#if 0
+    while (!edge_set_copy.empty())
+    {
+      Geo::Point pt_end;
+      split_chains[0].back()->geom(pt_end);
+      auto min_it = std::min_element(edge_set_copy.begin(),
+                                     edge_set_copy.end(), [&pt_end](
+                                       const Topo::Wrap<Topo::Type::VERTEX>& _vert1,
+                                       const Topo::Wrap<Topo::Type::VERTEX>& _vert2)
+      {
+        Geo::Point pt_curr1, pt_curr2;
+        _vert1->geom(pt_curr1);
+        _vert2->geom(pt_curr2);
+        return Geo::length_square(pt_curr1 - pt_end) < Geo::length_square(pt_curr2 - pt_end);
+      }
+      );
+      split_chains[0].push_back(*min_it);
+      it1 = split_chains[j].insert(it1, *min_it);
+      edge_set_copy.erase(min_it);
+    }
+#endif
+    for (const auto& vert : edge_set_copy)
+    {
+      split_chains[0].push_back(vert);
+      it1 = split_chains[j].insert(it1, vert);
+    }
+  }
+
+#if 0
+  if (split_chains.size() == 2 && split_chains[0].size() == vert_set.size())
+  {
+    // Can be an intersection on boundary. Let's check the normals.
+    auto norm = Geo::vertex_polygon_normal(
+      split_chains[0].begin(), split_chains[0].end());
+    if (face_info.second.norm_ * norm < 0)
+      continue; // The split is on the boundary.
+  }
+#endif
+  return true;
+}
+
+void FaceEdgeMap::split_overlaps(OverlapFces&  _overlap_faces)
 {
   // Process overlaps.
   for (size_t i = 0; i < std::size(map_); ++i)
@@ -482,182 +826,54 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
           }
           first = false;
         }
-        if (comm_verts.empty())
-          continue;
-        auto merge_tail = [&it_ev](Topo::VertexChains& _chain)
-        {
-          if (_chain.size() <= 1 || *it_ev.begin() != _chain[0][0])
-            return;
-
-          _chain.front().insert(
-            _chain.front().begin(),
-            _chain.back().begin(), _chain.back().end());
-          _chain.pop_back();
-        };
-        if (first_is_common == prev_is_common)
-        {
-          if (prev_is_common)
-            merge_tail(comm_verts);
-          else
-            merge_tail(not_comm_verts);
-        }
-        // We split the face assuming that the overlap is just with one face.
-        // It should be true, nevertheless it would be better to 
-        // test for this condition.
-        if (not_comm_verts.empty() && edge_set_copy.empty())
-        {
-          _overlap_faces[i].push_back(face); // All vertices are in common.
-          continue;
-        }
-        THROW_IF(not_comm_verts.empty(),
-          "Faces without 'not common vertices' but not all common vertices are linked.");
-        for (size_t j = 0; j < not_comm_verts.size(); ++j)
-        {
-          size_t j1 = j, j2 = j;
-          if (first_is_common)
-          {
-            if (++j2 >= comm_verts.size())
-              j2 = 0;
-          }
-          else
-          {
-            if (j1 > 0) --j1;
-            else j1 = comm_verts.size() - 1;
-          }
-          not_comm_verts[j].insert(not_comm_verts[j].begin(), comm_verts[j1].back());
-          not_comm_verts[j].push_back(comm_verts[j2].front());
-        }
         Topo::VertexChains split_chains;
-        split_chains.emplace_back();
-        Topo::VertexChains connections;
-        auto end_ch_vert = comm_verts.back().back();
-        bool double_connection = false;
-        for (auto& chain : comm_verts)
-        {
-          bool already_connected = false;
-          for (const auto& conn : connections)
-          {
-            already_connected =
-              conn.front() == end_ch_vert && conn.back() == chain.front();
-            already_connected |=
-              conn.front() == chain.front() && conn.back() == end_ch_vert;
-            if (already_connected)
-              break;
-          }
-          double_connection |= already_connected;
-          connections.emplace_back();
-          auto& curr_conn = connections.back();
-          if (!Topo::connect_entities(end_ch_vert, chain.front(),
-            edge_set_copy, curr_conn, !already_connected))
-          {
-            curr_conn.clear();
-            curr_conn.push_back(end_ch_vert);
-            curr_conn.push_back(chain.front());
-          }
-          end_ch_vert = chain.back();
-          if (curr_conn.size() > 2)
-            split_chains.back().insert(split_chains.back().end(), 
-              std::next(curr_conn.begin()), std::prev(curr_conn.end()));
-          split_chains.back().insert(split_chains.back().end(), chain.begin(), chain.end());
-        }
-        if (double_connection && split_chains[0].size() >= 3)
-        {
-          if (face_normal == Geo::Vector3{0.})
-            face_normal = Geo::vertex_polygon_normal(
-              it_ev.begin(), it_ev.end());
-
-          auto overlap_normal = Geo::vertex_polygon_normal(
-            split_chains[0].begin(), split_chains[0].end());
-          if (overlap_normal * face_normal < 0)
-          {
-            std::reverse(split_chains[0].begin(), split_chains[0].end());
-            for (auto& conn : connections)
-              std::reverse(conn.begin(), conn.end());
-          }
-        }
-        for (auto& chain : not_comm_verts)
-        {
-          for (auto& conn : connections)
-          {
-            if (chain.front() == conn.front() && chain.back() == conn.back())
-            {
-              split_chains.emplace_back();
-              split_chains.back().insert(
-                split_chains.back().end(), chain.begin(), chain.end());
-              split_chains.back().insert(split_chains.back().end(), 
-                std::next(conn.rbegin()), std::prev(conn.rend()));
-              break;
-            }
-          }
-        }
-        if (!insert_remaning_common_vertices(
-          edge_set_copy, connections, split_chains))
-        {
-          Topo::VertexChain::iterator it0, it1;
-          auto j = split_chains.size();
-          do
-          {
-            while (j-- > 0)
-            {
-              it0 = std::find(split_chains[j].begin(), split_chains[j].end(),
-                split_chains[0].back());
-              if (it0 == split_chains[j].end())
-                continue;
-              auto start = split_chains[0].front() != split_chains[0].back() ?
-                split_chains[j].begin() : std::next(it0);
-              it1 = std::find(start, split_chains[j].end(),
-                  split_chains[0].front());
-              if (it1 == split_chains[j].end())
-                continue;
-              break;
-            }
-            THROW_IF(j == 0, "Insertion point not found");
-            it1 = std::next(it1);
-            if (it1 == split_chains[j].end())
-              it1 = split_chains[j].begin();
-          } while (it1 != it0);
-
-#if 0
-          while (!edge_set_copy.empty())
-          {
-            Geo::Point pt_end;
-            split_chains[0].back()->geom(pt_end);
-            auto min_it = std::min_element(edge_set_copy.begin(),
-              edge_set_copy.end(), [&pt_end](
-                const Topo::Wrap<Topo::Type::VERTEX>& _vert1,
-                const Topo::Wrap<Topo::Type::VERTEX>& _vert2)
-            {
-              Geo::Point pt_curr1, pt_curr2;
-              _vert1->geom(pt_curr1);
-              _vert2->geom(pt_curr2);
-              return Geo::length_square(pt_curr1 - pt_end) < Geo::length_square(pt_curr2 - pt_end);
-            }
-            );
-            split_chains[0].push_back(*min_it);
-            it1 = split_chains[j].insert(it1, *min_it);
-            edge_set_copy.erase(min_it);
-          }
-#endif
-          for (const auto& vert : edge_set_copy)
-          {
-            split_chains[0].push_back(vert);
-            it1 = split_chains[j].insert(it1, vert);
-          }
-        }
-
-#if 0
-        if (split_chains.size() == 2 && split_chains[0].size() == vert_set.size())
-        {
-          // Can be an intersection on boundary. Let's check the normals.
-          auto norm = Geo::vertex_polygon_normal(
-            split_chains[0].begin(), split_chains[0].end());
-          if (face_info.second.norm_ * norm < 0)
-            continue; // The split is on the boundary.
-        }
-#endif
         Topo::Split<Topo::Type::FACE> face_splitter(face);
-        for (auto& split_chain : split_chains)
-          face_splitter.add_boundary(split_chain);
+        if (comm_verts.empty())
+        {
+          bool ok = false;
+          if (edge_set_copy.size() > 1)
+          {
+            Topo::VertexChain edge_set_copy2(edge_set_copy.size() - 2);
+            split_chains.emplace_back();
+            for (auto it0 = edge_set_copy.begin();
+                 it0 != edge_set_copy.end() && !ok; ++it0)
+            {
+              for (auto it1 = it0;
+                   ++it1 != edge_set_copy.end() && !ok;)
+              {
+                split_chains[0].clear();
+                std::copy_if(edge_set_copy.begin(), edge_set_copy.end(),
+                             edge_set_copy2.begin(),
+                             [&it1, &it0](const Topo::Wrap<Topo::Type::VERTEX>& _vert)
+                {
+                  return _vert != *it0 && _vert != *it1;
+                });
+                ok = Topo::connect_entities(
+                  *it0, *it1, edge_set_copy2, split_chains[0], 2) &&
+                  split_chains[0].size() == edge_set_copy.size();
+              }
+            }
+          }
+          if (!ok)
+            continue;
+          face_splitter.use_face_loops();
+          for (auto& split_chain : split_chains)
+            face_splitter.add_island(split_chain);
+        }
+        else
+        {
+          if (!split_on_boundary(
+            it_ev, first_is_common, prev_is_common,
+            comm_verts, not_comm_verts, edge_set_copy,
+            _overlap_faces[i],
+            face, face_normal, split_chains))
+          {
+            continue;
+          }
+          for (auto& split_chain : split_chains)
+            face_splitter.add_boundary(split_chain);
+        }
+
         face_splitter.compute();
         auto& new_faces = face_splitter.new_faces();
         _overlap_faces[i].push_back(new_faces[0]);
@@ -668,130 +884,6 @@ void FaceEdgeMap::split_overlaps_on_boundary(OverlapFces&  _overlap_faces)
   }
 }
 
-typedef std::vector<FaceEdgeMap::NewVerts::iterator> EdgeChain;
-
-// Finds a set of connected edges (couple of vertices) and using the Edges in _pt_sets
-bool find_edge_chain(
-  const Topo::Wrap<Topo::Type::VERTEX>& _vert,
-  FaceEdgeMap::NewVerts& _ed_sets,
-  Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX>& _fv_it,
-  EdgeChain& _edge_ch,
-  Topo::Wrap<Topo::Type::VERTEX>*& _last_vert)
-{
-  auto follow_chain = [&_ed_sets,&_fv_it, &_last_vert, &_vert](
-    FaceEdgeMap::NewVerts::iterator _edge_itr,
-    EdgeChain& _edge_ch)
-  {
-    std::vector<bool> used(_ed_sets.size(), false);
-    used[_edge_itr - _ed_sets.begin()] = true;
-    _edge_ch.push_back(_edge_itr);
-    for (;;)
-    {
-      _last_vert = std::find(_fv_it.begin(), _fv_it.end(), (*_edge_itr)[1]);
-      if (_last_vert != _fv_it.end())
-        break;
-
-      if (_vert == (*_edge_itr)[1])
-      {
-        _last_vert = nullptr;
-        break;
-      }
-
-      bool found = false;
-      for (auto pt_set_it = _ed_sets.begin(); pt_set_it != _ed_sets.end(); ++pt_set_it)
-      {
-        if (used[pt_set_it - _ed_sets.begin()] || pt_set_it->size() != 2)
-          continue;
-        auto& pt_set = *pt_set_it;
-        if (pt_set[0] == (*_edge_itr)[1] || pt_set[1] == (*_edge_itr)[1])
-        {
-          if (pt_set[1] == (*_edge_itr)[1])
-            std::swap(pt_set[1], pt_set[0]);
-          _edge_itr = pt_set_it;
-          used[_edge_itr - _ed_sets.begin()] = true;
-          _edge_ch.push_back(_edge_itr);
-          found = true;
-          break;
-        }
-      }
-      if (!found)
-        return false;
-    }
-    // Check that the chain is inside the face.
-    std::vector<Geo::Point> polygon;
-    polygon.reserve(_fv_it.size());
-    for (auto vert : _fv_it)
-    {
-      polygon.emplace_back();
-      vert->geom(polygon.back());
-    }
-    Geo::Point pt;
-    (*_edge_ch[0])[1]->geom(pt);
-    if (_edge_ch.size() == 1)
-    {
-      Geo::Point pt0;
-      (*_edge_ch[0])[0]->geom(pt0);
-      pt = (pt + pt0) * 0.5;
-    }
-    auto pt_class = Geo::PointInPolygon::classify(polygon, pt);
-    if (pt_class == Geo::PointInPolygon::Inside)
-      return true;
-    if (pt_class == Geo::PointInPolygon::On)
-      THROW("Point not expected on boundary");
-    _edge_ch.clear();
-    return false;
-  };
-
-  auto edge_itr = _ed_sets.end();
-  for (auto pt_it = _ed_sets.begin(); pt_it != _ed_sets.end(); ++pt_it)
-  {
-    if (pt_it->size() != 2)
-      continue;
-    auto iter = std::find(pt_it->begin(), pt_it->end(), _vert);
-    if (iter != pt_it->end())
-    {
-      edge_itr = pt_it;
-      if (iter != pt_it->begin())
-        std::swap((*pt_it)[1], (*pt_it)[0]);
-
-      if (follow_chain(edge_itr, _edge_ch))
-        return true;
-    }
-  }
-  return false;
- }
-
-std::shared_ptr<Geo::IPolygonalFace> make_polygonal_face(
-  std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _verts)
-{
-  std::vector<Geo::Point> pts;
-  pts.reserve(_verts.size());
-  for (auto& vert : _verts)
-  {
-    pts.emplace_back();
-    vert->geom(pts.back());
-  }
-  auto poly = Geo::IPolygonalFace::make();
-  poly->add_loop(pts.begin(), pts.end());
-  poly->compute();
-  return poly;
-}
-
-Geo::PointInPolygon::Classification 
-point_in_polygon(
-  std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _verts,
-  const Geo::Point& _pt,
-  const Geo::Vector3* _norm = nullptr)
-{
-  std::vector<Geo::Point> pts;
-  pts.resize(_verts.size());
-  for (auto& vert : _verts)
-  {
-    pts.emplace_back();
-    vert->geom(pts.back());
-  }
-  return Geo::PointInPolygon::classify(pts, _pt, _norm);
-}
 
 // Given the chains of vertices to be used as new vertices for the split faces,
 // and the vertices _vert_a and _vert_b where the split part split the face, solves
@@ -1071,7 +1163,7 @@ void FaceEdgeMap::split_with_chains()
 void FaceEdgeMap::split(OverlapFces& _overlap_faces)
 {
   check_doubious_faces();
-  split_overlaps_on_boundary(_overlap_faces);
+  split_overlaps(_overlap_faces);
   split_with_chains();
 }
 

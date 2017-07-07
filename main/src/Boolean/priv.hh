@@ -33,7 +33,8 @@ struct IEdgeVersusEdges
   static std::shared_ptr<IEdgeVersusEdges> make();
 };
 
-typedef std::array<std::vector<Topo::Wrap<Topo::Type::FACE>>, 2> OverlapFces;
+typedef std::vector<Topo::Wrap<Topo::Type::FACE>> OverlapFcesVectror;
+typedef std::array<OverlapFcesVectror, 2> OverlapFces;
 
 struct IFaceVersus
 {

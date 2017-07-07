@@ -631,29 +631,25 @@ TEST_CASE("buddha_10", "[Bool]")
 
 namespace {
 
-void filter(Topo::Wrap<Topo::Type::BODY>& _body)
+void filter(Topo::Wrap<Topo::Type::BODY>& _body, 
+            const Geo::Point& c, double dist)
 {
   std::vector<Topo::IBase*> faces_to_remove;
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(_body);
   for (auto f : bf_it)
   {
     Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(f);
-    bool inside = false;
+    bool take = false;
     for (auto v : fv_it)
     {
       Geo::Point pt;
       v->geom(pt);
-      //inside = pt[0] > -0.02 && pt[0] < 0.003;
-      //inside = pt[1] < 0.1; // ERROR
-      inside = pt[1] < 0.075;
-      //inside &= pt[2] > -0.02 && pt[2] < 0;
-      //inside = pt[0] > -0.02 && pt[0] < 0.003;
-      //inside &= pt[1] > 0.04 && pt[1] < 0.07;
-      //inside &= pt[2] > -0.02 && pt[2] < 0;
-      if (inside)
-        break;
+      if (Geo::length(pt - c) > dist)
+        continue;
+      take = true;
+      break;
     }
-    if (!inside)
+    if (!take)
       //f->remove();
       faces_to_remove.push_back(f.get());
   }
@@ -774,9 +770,15 @@ TEST_CASE("bambolina_02", "[Bool]")
 {
   auto b0 = IO::load_obj(MESH_FOLDER"bambolina_a_02.obj");
   auto b1 = IO::load_obj(MESH_FOLDER"bambolina_b_02.obj");
+  const double dist = 0.03;
+  Geo::Point pt_sel{ -0.18138191099083475, 0.81187284217155131, -0.13104286764790701 };
+  //Geo::Point pt_sel{ 0.16645552112884549, 0.83080013530992458, -0.042750927121052280 };
+  //Geo::Point pt_sel{ 0.16308298455324305, 0.72173600663393245, -0.16341504329380221 };
+  //filter(b0, pt_sel, dist);
+  //filter(b1, pt_sel, dist);
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(b0, b1);
-  b0 = bool_solver->compute(Boolean::Operation::SPLIT);
+  b0 = bool_solver->compute(Boolean::Operation::UNION);
   IO::save_obj("result_bambolina_02.obj", b0);
   //Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   //REQUIRE(bv_it.size() == 12);
@@ -876,7 +878,49 @@ TEST_CASE("bambolina_09", "[Bool]")
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(b0, b1);
   b0 = bool_solver->compute(Boolean::Operation::SPLIT);
-  IO::save_obj("result_bambolina_08.obj", b0);
+  IO::save_obj("result_bambolina_09.obj", b0);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  //REQUIRE(bv_it.size() == 12);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  //REQUIRE(bf_it.size() == 6);
+}
+
+TEST_CASE("bambolina_10", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"bambolina_a_10.obj");
+  auto b1 = IO::load_obj(MESH_FOLDER"bambolina_b_10.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(b0, b1);
+  b0 = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj("result_bambolina_10.obj", b0);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  //REQUIRE(bv_it.size() == 12);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  //REQUIRE(bf_it.size() == 6);
+}
+
+TEST_CASE("bambolina_11", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"bambolina_a_11.obj");
+  auto b1 = IO::load_obj(MESH_FOLDER"bambolina_b_11.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(b0, b1);
+  b0 = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj("result_bambolina_11.obj", b0);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
+  //REQUIRE(bv_it.size() == 12);
+  //Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
+  //REQUIRE(bf_it.size() == 6);
+}
+
+TEST_CASE("bambolina_13", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"bambolina_a_13.obj");
+  auto b1 = IO::load_obj(MESH_FOLDER"bambolina_b_13.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(b0, b1);
+  b0 = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj("result_bambolina_13.obj", b0);
   //Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   //REQUIRE(bv_it.size() == 12);
   //Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
