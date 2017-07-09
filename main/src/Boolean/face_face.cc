@@ -1,3 +1,4 @@
+//#pragma optimize ("", off)
 #include "face_intersections.hh"
 #include "Base/basic_type.hh"
 #include "Geo/kdtree.hh"
@@ -73,6 +74,21 @@ bool boundary_chain(
     return false;
   else
     return true;
+}
+
+bool mid_point_in_face(Topo::Wrap<Topo::Type::VERTEX> _start_end[2],
+                       const Topo::Wrap<Topo::Type::FACE>& _face)
+{
+  Geo::Vector3 mid_pt = { 0 };
+  for (int i = 0; i < 2; ++i)
+  {
+    Geo::Point pt;
+    _start_end[i]->geom(pt);
+    mid_pt += pt;
+  }
+  mid_pt /= 2.;
+  return Topo::PointInFace::classify(_face, mid_pt) == 
+    Geo::PointInPolygon::Inside;
 }
 
 struct FaceEdgeMap
@@ -312,7 +328,12 @@ bool FaceVersus::face_intersect(
     auto add_a = !boundary_chain(face_a, v_inters, start_end_a);
     auto add_b = !boundary_chain(face_b, v_inters, start_end_b);
     if (v_inters.size() > 2 && add_a != add_b)
-      add_a = add_b = true;
+    {
+      if (!add_a)
+        add_a = add_b = mid_point_in_face(start_end_a, face_a);
+      else
+        add_a = add_b = mid_point_in_face(start_end_b, face_b);
+    }
     else if (v_inters.size() > 2 && !add_a && !add_b)
     {
       bool same_sense = false;
@@ -758,13 +779,17 @@ void FaceEdgeMap::split_overlaps(OverlapFces&  _overlap_faces)
     for (auto& face_info : map_[i])
     {
       auto& edges = face_info.second.new_verts_;
+      if (edges.empty())
+        continue;
+      std::sort(edges.begin(), edges.end());
+      auto new_end = std::unique(edges.begin(), edges.end());
+      edges.erase(new_end, edges.end());
       std::sort(edges.begin(), edges.end(), 
                 [](const CommonVertices& _a, const CommonVertices& _b)
       { return _a.size() < _b.size(); });
-      for (auto edge_it = edges.crbegin(); edge_it != edges.crend();
-        ++edge_it)
+      for (auto edge_it = edges.cend(); edge_it != edges.cbegin();)
       {
-        auto& vert_set = *edge_it;
+        auto& vert_set = *--edge_it;
         if (vert_set.size() <= 2 || vert_set.doubious_)
           continue;
         // We have an overlap (more than 2 vertices in common with another face).
@@ -879,6 +904,7 @@ void FaceEdgeMap::split_overlaps(OverlapFces&  _overlap_faces)
         _overlap_faces[i].push_back(new_faces[0]);
         faces.erase(faces.begin() + best_idx);
         faces.insert(faces.end(), std::next(new_faces.begin()), new_faces.end());
+        edge_it = edges.erase(edge_it);
       }
     }
   }
@@ -1060,6 +1086,25 @@ void FaceEdgeMap::split_with_chains()
             continue;
           }
 
+          auto loops =
+            Topo::shared_entities<Topo::Type::VERTEX, Topo::Type::LOOP>(*last_vert_it, *vert_it);
+          Topo::Wrap<Topo::Type::LOOP> the_loop;
+          for (auto loop : loops)
+          {
+            Topo::Iterator<Topo::Type::LOOP, Topo::Type::FACE> lf(loop);
+            if (lf.size() == 1 && *(lf.begin()) == face)
+            {
+              the_loop = loop;
+              break;
+            }
+          }
+
+          if (the_loop.get() == nullptr)
+          {
+            // handle multiloop. Joint 2 loops
+            continue;
+          }
+
           Topo::VertexChains split_chains;
           split_chains.resize(2);
           split_chains[0].push_back((*edge_ch[0])[0]);
@@ -1119,6 +1164,7 @@ void FaceEdgeMap::split_with_chains()
           break;
         }
       }
+      // Internal loops
       while (!edge_vec.empty())
       {
         auto ed = edge_vec.back();

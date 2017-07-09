@@ -95,7 +95,7 @@ void Split<Type::FACE>::use_face_loops()
   while (++loop_it != fl_it.end())
   {
     make_chain(*loop_it, vert_chain);
-    add_island(vert_chain);
+    add_original_island(vert_chain);
   }
 }
 
@@ -141,13 +141,20 @@ bool Split<Type::FACE>::compute()
     auto poly = vertex_chain_to_poly(chain);
     std::vector<VertexChain> cur_islands;
     auto norm = Geo::vertex_polygon_normal(chain.begin(), chain.end());
-    for (auto& isle : island_chains_)
+    auto select_chains = [&cur_islands, &poly, &norm](
+      std::vector<VertexChain>& _island_chains)
     {
-      if (isle.empty())
-        continue;
-      if (is_inside(poly, isle, norm))
-        cur_islands.emplace_back(std::move(isle));
-    }
+      for (auto& isle : _island_chains)
+      {
+        if (isle.empty())
+          continue;
+        if (is_inside(poly, isle, norm))
+          cur_islands.emplace_back(std::move(isle));
+      }
+    };
+    select_chains(original_island_chains_);
+    auto original_size = cur_islands.size();
+    select_chains(island_chains_);
     bool make_loops = !cur_islands.empty();
 
 	  auto inherit_parents = [this](Wrap<Type::FACE>& _new_face)
@@ -180,6 +187,11 @@ bool Split<Type::FACE>::compute()
     for (auto loop : cur_islands)
     {
       add_face_loop(new_face, loop, make_loops);
+      if (original_size > 0)
+      {
+        --original_size;
+        continue;
+      }
       Wrap<Type::FACE> new_int_face;
       new_int_face.make<EE<Type::FACE>>();
       std::reverse(loop.begin(), loop.end());
