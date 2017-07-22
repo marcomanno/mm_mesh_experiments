@@ -192,6 +192,13 @@ struct LoopRef : public E<Type::LOOP>
   // From Object
   Identifier id() const override { return loop_->id(); }
 
+  bool operator==(const Object& _oth) const
+  {
+    if (sub_type() != _oth.sub_type())
+      return false;
+    return *loop() == *static_cast<const LoopRef&>(_oth).loop();
+  }
+
 private:
   WrapIbase<IBase> loop_;
 };

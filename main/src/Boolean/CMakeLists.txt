@@ -4,6 +4,7 @@ include_directories (
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/..
   C:/Users/marco/OneDrive/Documents/PROJECTS/ThirdParties/eigen-eigen-07105f7124f9
+  C:/Users/marco/OneDrive/Documents/PROJECTS/ThirdParties/boost_1_61_0
 )
 
 # source code directories

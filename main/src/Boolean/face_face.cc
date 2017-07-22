@@ -1,4 +1,4 @@
-//#pragma optimize ("", off)
+#pragma optimize ("", off)
 #include "face_intersections.hh"
 #include "Base/basic_type.hh"
 #include "Geo/kdtree.hh"
@@ -13,6 +13,9 @@
 #include "Utils/error_handling.hh"
 #include "Utils/circular.hh"
 #include "Utils/graph.hh"
+
+#include <boost/range/adaptor/reversed.hpp>
+#include <boost/range/adaptor/copied.hpp>
 
 #include <list>
 #include <set>
@@ -1032,6 +1035,91 @@ void add_open_chain(
     _edge_vec.end());
 }
 
+bool split_with_bridge(Topo::Wrap<Topo::Type::FACE> _face,
+                       EdgeChain _edge_ch,
+                       Topo::Split<Topo::Type::FACE>& _face_splitter)
+{
+  Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> f_loop(_face);
+  Topo::Wrap<Topo::Type::LOOP> loop[2];
+  int search_for = 3;
+  for (const auto& l : f_loop)
+  {
+    Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv(l);
+    auto find_insertion_point = [&l, &lv, &loop, &search_for](
+      int _ind, Topo::Wrap<Topo::Type::VERTEX> _vert)
+    {
+      if (loop[_ind].get())
+        return false;
+      auto it_ins = std::find(lv.begin(), lv.end(), _vert);
+      if (it_ins == lv.end())
+        return false;
+      loop[_ind] = l;
+      search_for &= ~(1 << _ind);
+      return true;
+    };
+    bool found0 = false;
+    if (search_for & 1)
+      found0 = find_insertion_point(0, (*_edge_ch.front())[0]);
+    if ((search_for & 2) && !found0)
+      find_insertion_point(1, (*_edge_ch.back())[1]);
+    if (!search_for)
+      break;
+  }
+  if (search_for != 0)
+    return false;
+  Topo::VertexChains split_chains;
+  bool bridge_done = false;
+  for (const auto& l : f_loop)
+  {
+    if (l != loop[0] && l != loop[1])
+    {
+      split_chains.emplace_back();
+      Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv(l);
+      for (auto vert : lv)
+        split_chains.back().push_back(vert);
+    }
+    else if (!bridge_done)
+    {
+      bridge_done = true;
+      split_chains.emplace_back();
+      Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv(l);
+      for (auto vert : lv)
+      {
+        auto& new_ch = split_chains.back();
+        new_ch.push_back(vert);
+        if (vert == (*_edge_ch.back())[1])
+        {
+          for (auto& ed : _edge_ch)
+            new_ch.push_back((*ed)[1]);
+        }
+        else if (vert == (*_edge_ch.front())[0])
+        {
+          for (auto& ed : boost::adaptors::reverse(_edge_ch))
+            new_ch.push_back((*ed)[1]);
+        }
+        else
+          continue;
+        bool next_loop = l == loop[0];
+        Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lvn(loop[next_loop]);
+        auto ins_pos = std::find(lvn.begin(), lvn.end(), new_ch.back());
+        THROW_IF(ins_pos == lvn.end(), "Loop chain error");
+        for (auto it = ins_pos; ++it != lvn.end(); )
+          new_ch.push_back(*it);
+        for (auto it = lvn.begin(); it != ins_pos; ++it)
+          new_ch.push_back(*it);
+        new_ch.push_back(*ins_pos);
+      }
+    }
+  }
+  _face_splitter.add_boundary(split_chains[0]);
+  if (split_chains.size() > 1)
+  {
+    for (auto it = std::next(split_chains.begin()); it != split_chains.end(); ++it)
+      _face_splitter.add_island(*it);
+  }
+  return false;
+}
+
 }
 
 void FaceEdgeMap::split_with_chains()
@@ -1075,14 +1163,13 @@ void FaceEdgeMap::split_with_chains()
         }
         if (edge_vec.empty())
           break;
-        for (auto vert_it = fv_it.begin(); vert_it != fv_it.end(); )
+        for (auto vert_it = fv_it.begin(); vert_it != fv_it.end(); ++vert_it)
         {
           EdgeChain edge_ch;
           Topo::Wrap<Topo::Type::VERTEX>* last_vert_it;
           if (!find_edge_chain(*vert_it, edge_vec, fv_it, edge_ch, last_vert_it))
           {
             add_open_chain(*vert_it, edge_ch, face, edge_vec);
-            ++vert_it; // Try next vertex.
             continue;
           }
 
@@ -1099,10 +1186,11 @@ void FaceEdgeMap::split_with_chains()
             }
           }
 
+          Topo::Split<Topo::Type::FACE> face_splitter(face);
           if (the_loop.get() == nullptr)
           {
-            // handle multiloop. Joint 2 loops
-            continue;
+            if (split_with_bridge(face, edge_ch, face_splitter))
+              continue;
           }
 
           Topo::VertexChains split_chains;
@@ -1147,7 +1235,6 @@ void FaceEdgeMap::split_with_chains()
           //resolve_ambiguities(
           //  split_chains, (*edge_ch.front())[0], (*edge_ch.back())[1], norm);
 
-          Topo::Split<Topo::Type::FACE> face_splitter(face);
           for (auto& split_chain : split_chains)
             face_splitter.add_boundary(split_chain);
           face_splitter.compute();
@@ -1164,7 +1251,7 @@ void FaceEdgeMap::split_with_chains()
           break;
         }
       }
-      // Internal loops
+      // Add internal loops
       while (!edge_vec.empty())
       {
         auto ed = edge_vec.back();
