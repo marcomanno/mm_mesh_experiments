@@ -1,4 +1,4 @@
-#pragma optimize ("", off)
+//#pragma optimize ("", off)
 #include "face_intersections.hh"
 #include "Base/basic_type.hh"
 #include "Geo/kdtree.hh"
@@ -1036,7 +1036,7 @@ void add_open_chain(
 }
 
 bool split_with_bridge(Topo::Wrap<Topo::Type::FACE> _face,
-                       EdgeChain _edge_ch,
+                       EdgeChain& _edge_ch,
                        Topo::Split<Topo::Type::FACE>& _face_splitter)
 {
   Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> f_loop(_face);
@@ -1086,19 +1086,24 @@ bool split_with_bridge(Topo::Wrap<Topo::Type::FACE> _face,
       for (auto vert : lv)
       {
         auto& new_ch = split_chains.back();
+        auto insert_bridge = [&new_ch, &_edge_ch](bool _rev)
+        {
+          if (_rev)
+            for (auto& ed : boost::adaptors::reverse(_edge_ch))
+              new_ch.push_back((*ed)[0]);
+          else
+            for (auto& ed : _edge_ch)
+              new_ch.push_back((*ed)[1]);
+        };
         new_ch.push_back(vert);
+        bool rev;
         if (vert == (*_edge_ch.back())[1])
-        {
-          for (auto& ed : _edge_ch)
-            new_ch.push_back((*ed)[1]);
-        }
+          rev = true;
         else if (vert == (*_edge_ch.front())[0])
-        {
-          for (auto& ed : boost::adaptors::reverse(_edge_ch))
-            new_ch.push_back((*ed)[1]);
-        }
+          rev = false;
         else
           continue;
+        insert_bridge(rev);
         bool next_loop = l == loop[0];
         Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lvn(loop[next_loop]);
         auto ins_pos = std::find(lvn.begin(), lvn.end(), new_ch.back());
@@ -1107,7 +1112,7 @@ bool split_with_bridge(Topo::Wrap<Topo::Type::FACE> _face,
           new_ch.push_back(*it);
         for (auto it = lvn.begin(); it != ins_pos; ++it)
           new_ch.push_back(*it);
-        new_ch.push_back(*ins_pos);
+        insert_bridge(!rev);
       }
     }
   }
@@ -1115,9 +1120,9 @@ bool split_with_bridge(Topo::Wrap<Topo::Type::FACE> _face,
   if (split_chains.size() > 1)
   {
     for (auto it = std::next(split_chains.begin()); it != split_chains.end(); ++it)
-      _face_splitter.add_island(*it);
+      _face_splitter.add_original_island(*it);
   }
-  return false;
+  return true;
 }
 
 }
@@ -1189,54 +1194,56 @@ void FaceEdgeMap::split_with_chains()
           Topo::Split<Topo::Type::FACE> face_splitter(face);
           if (the_loop.get() == nullptr)
           {
-            if (split_with_bridge(face, edge_ch, face_splitter))
+            if (!split_with_bridge(face, edge_ch, face_splitter))
               continue;
           }
-
-          Topo::VertexChains split_chains;
-          split_chains.resize(2);
-          split_chains[0].push_back((*edge_ch[0])[0]);
-          for (auto& edge_it : edge_ch)
-            split_chains[0].push_back((*edge_it)[1]);
-
-          if (*vert_it == *last_vert_it)
-          {
-            // Closed loop inside face starting from one vertex.
-            // The chain sense is ambiguos.
-            auto norm = face_info.second.norm_;
-            auto chain_normal = Geo::vertex_polygon_normal(
-              split_chains[0].begin(), split_chains[0].end());
-            if (norm * chain_normal > 0)
-              std::reverse(split_chains[0].begin(), split_chains[0].end());
-          }
-
-          split_chains[1] = split_chains[0];
-
-          Topo::Wrap<Topo::Type::VERTEX>* first_vert_it = vert_it;
-          std::reverse(split_chains[1].begin(), split_chains[1].end());
-          auto complete_chain = [&fv_it](Topo::Wrap<Topo::Type::VERTEX>* _first,
-            Topo::Wrap<Topo::Type::VERTEX>* _last, Topo::VertexChain& _chain)
-          {
-            auto v_it = _first;
-            while (++v_it != _last && v_it != fv_it.end())
-              _chain.push_back(*v_it);
-            if (v_it == _last)
-              return;
-            for (v_it = fv_it.begin(); v_it != _last; ++v_it)
-              _chain.push_back(*v_it);
-          };
-          if (last_vert_it != first_vert_it)
-            complete_chain(first_vert_it, last_vert_it, split_chains[1]);
           else
-            split_chains[1].pop_back(); // Last element is duplicated.
-          complete_chain(last_vert_it, first_vert_it, split_chains[0]);
+          {
+            Topo::VertexChains split_chains;
+            split_chains.resize(2);
+            split_chains[0].push_back((*edge_ch[0])[0]);
+            for (auto& edge_it : edge_ch)
+              split_chains[0].push_back((*edge_it)[1]);
 
-          //auto norm = std::get<Normal>(face_info.second);
-          //resolve_ambiguities(
-          //  split_chains, (*edge_ch.front())[0], (*edge_ch.back())[1], norm);
+            if (*vert_it == *last_vert_it)
+            {
+              // Closed loop inside face starting from one vertex.
+              // The chain sense is ambiguos.
+              auto norm = face_info.second.norm_;
+              auto chain_normal = Geo::vertex_polygon_normal(
+                split_chains[0].begin(), split_chains[0].end());
+              if (norm * chain_normal > 0)
+                std::reverse(split_chains[0].begin(), split_chains[0].end());
+            }
 
-          for (auto& split_chain : split_chains)
-            face_splitter.add_boundary(split_chain);
+            split_chains[1] = split_chains[0];
+
+            Topo::Wrap<Topo::Type::VERTEX>* first_vert_it = vert_it;
+            std::reverse(split_chains[1].begin(), split_chains[1].end());
+            auto complete_chain = [&fv_it](Topo::Wrap<Topo::Type::VERTEX>* _first,
+                                           Topo::Wrap<Topo::Type::VERTEX>* _last, Topo::VertexChain& _chain)
+            {
+              auto v_it = _first;
+              while (++v_it != _last && v_it != fv_it.end())
+                _chain.push_back(*v_it);
+              if (v_it == _last)
+                return;
+              for (v_it = fv_it.begin(); v_it != _last; ++v_it)
+                _chain.push_back(*v_it);
+            };
+            if (last_vert_it != first_vert_it)
+              complete_chain(first_vert_it, last_vert_it, split_chains[1]);
+            else
+              split_chains[1].pop_back(); // Last element is duplicated.
+            complete_chain(last_vert_it, first_vert_it, split_chains[0]);
+
+            //auto norm = std::get<Normal>(face_info.second);
+            //resolve_ambiguities(
+            //  split_chains, (*edge_ch.front())[0], (*edge_ch.back())[1], norm);
+
+            for (auto& split_chain : split_chains)
+              face_splitter.add_boundary(split_chain);
+          }
           face_splitter.compute();
           auto& new_fa = face_splitter.new_faces();
           if (!new_fa.empty())

@@ -484,8 +484,10 @@ struct IterToLoop : public BodyIteratorBase<Type::LOOP>
     {
       std::vector<Wrap<Type::LOOP>>& elems_;
       LoopAdder(std::vector<Wrap<Type::LOOP>>& _elems) : elems_(_elems) {}
-      virtual bool process(IBase* _parent, size_t)
+      virtual bool process(IBase* _parent, size_t _i)
       {
+        if (_parent->type() < Type::LOOP)
+          _parent = _parent->get(Direction::Up, _i);
         if (added_.insert(_parent).second)
         {
           Wrap<Type::LOOP> loop;
@@ -504,7 +506,8 @@ struct IterToLoop : public BodyIteratorBase<Type::LOOP>
       std::set<IBase*> added_;
     };
     LoopAdder loop_adder(elems_);
-    topo_iterate<Direction::Down, Type::LOOP>(
+    const Direction DIR = FromT > Type::LOOP ? Direction::Down : Direction::Up;
+    topo_iterate<DIR, Type::LOOP>(
       static_cast<IBase*>(_from.get()), loop_adder);
   }
 };
@@ -516,6 +519,9 @@ struct Iterator<Type::BODY, Type::LOOP>::Impl : public IterToLoop<Type::BODY> {}
 
 template <>
 struct Iterator<Type::FACE, Type::LOOP>::Impl : public IterToLoop<Type::FACE> {};
+
+template <>
+struct Iterator<Type::VERTEX, Type::LOOP>::Impl : public IterToLoop<Type::VERTEX> {};
 
 template <>
 struct Iterator<Type::LOOP, Type::VERTEX>::Impl : BodyIteratorBase<Type::VERTEX>
@@ -538,6 +544,26 @@ struct Iterator<Type::LOOP, Type::VERTEX>::Impl : BodyIteratorBase<Type::VERTEX>
   };
 };
 
+template <>
+struct Iterator<Type::LOOP, Type::FACE>::Impl : public BodyIteratorBase<Type::FACE>
+{
+  void reset(const Wrap<Type::LOOP>& _from)
+  {
+    clear();
+    IBase * ptr_base = nullptr;
+    if (_from->sub_type() == SubType::LOOP)
+      ptr_base = _from.get();
+    else if (_from->sub_type() == SubType::LOOP_REF)
+    {
+      LoopRef* lr = static_cast<LoopRef*>(_from.get());
+      ptr_base = lr->loop();
+    }
+    else
+      THROW("Wrong type");
+    elems_.push_back(static_cast<E<Type::FACE>*>(ptr_base));
+  }
+};
+
 
 template Iterator<Type::BODY, Type::FACE>;
 template Iterator<Type::BODY, Type::EDGE>;
@@ -558,6 +584,9 @@ template Iterator<Type::COEDGE, Type::VERTEX>;
 template Iterator<Type::BODY, Type::LOOP>;
 template Iterator<Type::FACE, Type::LOOP>;
 template Iterator<Type::LOOP, Type::VERTEX>;
+template Iterator<Type::LOOP, Type::FACE>;
+template Iterator<Type::VERTEX, Type::LOOP>;
+
 
 }//namespace Topo
 

@@ -328,7 +328,8 @@ bool remove_degeneracies(
     remove_degenerate_edges(body);
 
   bool achange = false;
-  for (;;)
+  size_t iter = 30;
+  for(; iter > 0; --iter)
   {
     DegenerateTriangleCLean dtc;
     dtc.find(_body_1);
@@ -336,6 +337,11 @@ bool remove_degeneracies(
     if (!dtc.compute())
       break;
     achange = true;
+  }
+  if (iter == 0)
+  {
+    std::cout << "Bad error non endig remove degeneracies.\n";
+    achange = false;
   }
 
   for (auto& body : bodies)
