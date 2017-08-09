@@ -223,7 +223,9 @@ void Selection::select_faces(
     verts.emplace_back(ev_it.get(0));
     verts.emplace_back(ev_it.get(1));
   }
-  Topo::Wrap<Topo::Type::VERTEX> sten[2];
+  typedef std::array<Topo::Wrap<Topo::Type::VERTEX>, 2> VertexCouple;
+  VertexCouple sten;
+  std::vector<VertexCouple> all_ends;
   while (!verts.empty())
   {
     sten[0] = verts.back(); verts.pop_back();
@@ -247,6 +249,36 @@ void Selection::select_faces(
     
     std::cout << "Open chain " << sten[0]->id() <<
       " " << sten[1]->id() << std::endl;
+
+    auto print_face_info = [](const Topo::Wrap<Topo::Type::VERTEX>& _a,
+                              const Topo::Wrap<Topo::Type::VERTEX>& _b)
+    {
+      auto bad_faces =
+        Topo::shared_entities<Topo::Type::VERTEX, Topo::Type::FACE>(_a, _b);
+      if (bad_faces.empty())
+        return;
+      std::cout << "Bad faces v" << _a->id() << " v" << _b->id();
+      for (auto f : bad_faces)
+      {
+        std::cout << " f" << f->id();
+        auto body = f->get(Topo::Direction::Up, 0);
+        std::cout << " B" << body->id();
+        if (body->id() == 32)
+        {
+          Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv(f);
+          std::cout << std::endl;
+          for (auto v : fv)
+            std::cout << " " << v->id();
+          std::cout << std::endl;
+        }
+      }
+      std::cout << "\n";
+    };
+    for (auto& oth : all_ends)
+      for (size_t ii = 0; ii < 4; ++ii)
+        print_face_info(oth[ii % 2], sten[ii / 2]);
+    all_ends.push_back(sten);
+
     for (int ii = 0; ii < 2; ++ii)
     {
       Topo::Iterator<Topo::Type::VERTEX, Topo::Type::FACE> vf(sten[ii]);

@@ -176,10 +176,11 @@ bool find_edge_chain(
   const Topo::Wrap<Topo::Type::VERTEX>& _vert,
   FaceEdgeMap::NewVerts& _ed_sets,
   Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX>& _fv_it,
+  Topo::Wrap<Topo::Type::FACE>& _face,
   EdgeChain& _edge_ch,
   Topo::Wrap<Topo::Type::VERTEX>*& _last_vert)
 {
-  auto follow_chain = [&_ed_sets, &_fv_it, &_last_vert, &_vert](
+  auto follow_chain = [&_ed_sets, &_fv_it, &_face, &_last_vert, &_vert](
     FaceEdgeMap::NewVerts::iterator _edge_itr,
     EdgeChain& _edge_ch)
   {
@@ -219,13 +220,6 @@ bool find_edge_chain(
         return false;
     }
     // Check that the chain is inside the face.
-    std::vector<Geo::Point> polygon;
-    polygon.reserve(_fv_it.size());
-    for (auto vert : _fv_it)
-    {
-      polygon.emplace_back();
-      vert->geom(polygon.back());
-    }
     Geo::Point pt;
     (*_edge_ch[0])[1]->geom(pt);
     if (_edge_ch.size() == 1)
@@ -234,7 +228,7 @@ bool find_edge_chain(
       (*_edge_ch[0])[0]->geom(pt0);
       pt = (pt + pt0) * 0.5;
     }
-    auto pt_class = Geo::PointInPolygon::classify(polygon, pt);
+    auto pt_class = Topo::PointInFace::classify(_face, pt);
     if (pt_class == Geo::PointInPolygon::Inside)
       return true;
     if (pt_class == Geo::PointInPolygon::On)
@@ -1112,6 +1106,7 @@ bool split_with_bridge(Topo::Wrap<Topo::Type::FACE> _face,
           new_ch.push_back(*it);
         for (auto it = lvn.begin(); it != ins_pos; ++it)
           new_ch.push_back(*it);
+        new_ch.push_back(*ins_pos);
         insert_bridge(!rev);
       }
     }
@@ -1150,29 +1145,35 @@ void FaceEdgeMap::split_with_chains()
       for (size_t j = 0; j < faces.size() && !edge_vec.empty(); ++j)
       {
         auto& face = faces[j];
-        Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(face);
-        auto prev = *fv_it.begin();
-        for (auto f_it = fv_it.end(); f_it-- != fv_it.begin(); prev = *f_it)
+        Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> fl_it(face);
+        for (auto& loop : fl_it)
         {
-          for (auto ed_it = edge_vec.begin(); ed_it != edge_vec.end(); )
+          Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv_it(loop);
+          auto prev = *lv_it.begin();
+          for (auto f_it = lv_it.end(); f_it-- != lv_it.begin(); prev = *f_it)
           {
-            if (ed_it->size() == 2 &&
-              (prev == (*ed_it)[0] && *f_it == (*ed_it)[1]) ||
-              (prev == (*ed_it)[1] && *f_it == (*ed_it)[0]))
+            for (auto ed_it = edge_vec.begin(); ed_it != edge_vec.end(); )
             {
-              ed_it = edge_vec.erase(ed_it);
+              if (ed_it->size() == 2 &&
+                (prev == (*ed_it)[0] && *f_it == (*ed_it)[1]) ||
+                  (prev == (*ed_it)[1] && *f_it == (*ed_it)[0]))
+              {
+                ed_it = edge_vec.erase(ed_it);
+              }
+              else
+                ++ed_it;
             }
-            else
-              ++ed_it;
           }
         }
+
         if (edge_vec.empty())
           break;
+        Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(face);
         for (auto vert_it = fv_it.begin(); vert_it != fv_it.end(); ++vert_it)
         {
           EdgeChain edge_ch;
           Topo::Wrap<Topo::Type::VERTEX>* last_vert_it;
-          if (!find_edge_chain(*vert_it, edge_vec, fv_it, edge_ch, last_vert_it))
+          if (!find_edge_chain(*vert_it, edge_vec, fv_it, face, edge_ch, last_vert_it))
           {
             add_open_chain(*vert_it, edge_ch, face, edge_vec);
             continue;
@@ -1266,7 +1267,7 @@ void FaceEdgeMap::split_with_chains()
         Topo::Wrap<Topo::Type::VERTEX>* last_vert_it;
         auto& cur_face = faces.front();
         Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(cur_face);
-        if (!find_edge_chain(ed.front(), edge_vec, fv_it, edge_ch, last_vert_it))
+        if (!find_edge_chain(ed.front(), edge_vec, fv_it, cur_face, edge_ch, last_vert_it))
         {
           edge_vec.pop_back();
           continue;

@@ -31,13 +31,24 @@ Geo::Point coedge_direction(Topo::Wrap<Topo::Type::COEDGE> _coed)
 
 namespace PointInFace {
 Geo::PointInPolygon::Classification classify(
-  Topo::Wrap<Topo::Type::FACE> _face, const Geo::Point& _pt)
+  const Topo::Wrap<Topo::Type::FACE>& _face, const Geo::Point& _pt)
 {
-  Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fv_it(_face);
-  std::vector<Geo::Point> polygon(fv_it.size());
-  for (int i = 0; i < fv_it.size(); ++i)
-    fv_it.get(i)->geom(polygon[i]);
-  return Geo::PointInPolygon::classify(polygon, _pt);
+  Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> fl_it(_face);
+  Geo::PointInPolygon::Classification out_res = Geo::PointInPolygon::Classification::Outside;
+  for (auto& loop : fl_it)
+  {
+    Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> fv_it(loop);
+    std::vector<Geo::Point> polygon(fv_it.size());
+    for (int i = 0; i < fv_it.size(); ++i)
+      fv_it.get(i)->geom(polygon[i]);
+    auto pt_cl = Geo::PointInPolygon::classify(polygon, _pt);
+    if (pt_cl == Geo::PointInPolygon::Classification::On)
+      return pt_cl;
+    if (pt_cl == out_res)
+      return Geo::PointInPolygon::Classification::Outside;
+    out_res = Geo::PointInPolygon::Classification::Inside;
+  }
+  return Geo::PointInPolygon::Classification::Inside;
 }
 
 }//namespace PointInFace

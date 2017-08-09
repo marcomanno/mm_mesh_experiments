@@ -614,7 +614,7 @@ TEST_CASE("buddha_07", "[Bool]")
 
 TEST_CASE("buddha_08", "[Bool]")
 {
-  budda_test("08", 31, 27);
+  budda_test("08", 32, 27);
 }
 
 TEST_CASE("buddha_09", "[Bool]")
@@ -625,6 +625,11 @@ TEST_CASE("buddha_09", "[Bool]")
 TEST_CASE("buddha_10", "[Bool]")
 {
   budda_test("10", 1803158, 913418);
+}
+
+TEST_CASE("buddha_13", "[Bool]")
+{
+  budda_test("13", 4, 8);
 }
 
 //TEST_CASE("buddha_11", "[Bool]") {  budda_test("11", 30, 365541); }

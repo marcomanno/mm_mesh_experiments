@@ -77,10 +77,10 @@ bool save_face(const Topo::E<Topo::Type::FACE>* _ptr, int _num,
 {
   std::ofstream fstr(std::to_string(_num) + ".obj");
   fstr << std::setprecision(17);
-  Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> vert_it(
-    const_cast<Topo::E<Topo::Type::FACE>*>(_ptr));
-  if (!_split)
+  if (_split)
   {
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> vert_it(
+      const_cast<Topo::E<Topo::Type::FACE>*>(_ptr));
     std::vector<Geo::Vector3> plgn;
     for (const auto& vert : vert_it)
     {
@@ -104,15 +104,23 @@ bool save_face(const Topo::E<Topo::Type::FACE>* _ptr, int _num,
   }
   else
   {
-    std::string fv("f");
+    std::string fv;
     int i = 0;
-    for (const auto& vert : vert_it)
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> loop_it(
+      const_cast<Topo::E<Topo::Type::FACE>*>(_ptr));
+    for (const auto& loop : loop_it)
     {
-      Geo::Point pt;
-      vert->geom(pt);
-      fstr << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
-      fv += ' ';
-      fv += std::to_string(++i);
+      Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> vert_it(loop);
+      fv += "f";
+      for (const auto& vert : vert_it)
+      {
+        Geo::Point pt;
+        vert->geom(pt);
+        fstr << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+        fv += ' ';
+        fv += std::to_string(++i);
+      }
+      fv += "\n";
     }
     fstr << fv;
   }
