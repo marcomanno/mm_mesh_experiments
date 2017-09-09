@@ -1,3 +1,4 @@
+//#pragma optimize("", off)
 #include "priv.hh"
 #include "Geo/vector.hh"
 //#ifdef DEB_ON
@@ -387,11 +388,22 @@ void Selection::select_faces(
       continue;
     if (coe_vects[0].size() != 2 || coe_vects[1].size() != 2)
     {
-      static std::string err_mess;
-      err_mess ="Not supporing open bodies - common edges must have 2 faces per body.";
-      err_mess += std::to_string(coe_vects[0].size()) + " " + 
+      static std::string err_mess_root("Not supporing open bodies - common edges must have 2 faces per body.");
+      auto err_mess = err_mess_root + std::to_string(coe_vects[0].size()) + " " +
         std::to_string(coe_vects[1].size());
-      THROW(err_mess.c_str());
+      static int num = 0;
+      for (auto& coe : coe_vects)
+      {
+        for (auto& f : coe)
+        {
+          IO::save_face(f.face_.get(), 
+            (std::string("deb_selection_") + std::to_string(num++) + ".obj").c_str(), false);
+        }
+        num = 10 * (num / 10 + 1);
+      }
+      num = 100 * (num / 100 + 1);
+      continue;
+      //THROW(err_mess.c_str());
     }
     for (int i = 0; i < 2; ++i)
     {

@@ -72,10 +72,10 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
   return fstr.good();
 }
 
-bool save_face(const Topo::E<Topo::Type::FACE>* _ptr, int _num,
+bool save_face(const Topo::E<Topo::Type::FACE>* _ptr, const char* _flnm,
   const bool _split)
 {
-  std::ofstream fstr(std::to_string(_num) + ".obj");
+  std::ofstream fstr(_flnm);
   fstr << std::setprecision(17);
   if (_split)
   {
@@ -125,6 +125,12 @@ bool save_face(const Topo::E<Topo::Type::FACE>* _ptr, int _num,
     fstr << fv;
   }
   return fstr.good();
+}
+
+bool save_face(const Topo::E<Topo::Type::FACE>* _ptr, int _num,
+               const bool _split)
+{
+  return save_face(_ptr, (std::to_string(_num) + ".obj").c_str(), _split);
 }
 
 void save_obj(const char* _flnm, 

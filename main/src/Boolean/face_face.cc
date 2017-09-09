@@ -5,11 +5,12 @@
 #include "Geo/plane_fitting.hh"
 #include "Geo/vector.hh"
 #include <Geo/point_in_polygon.hh>
+#include "Import/import.hh"
 #include "Topology/connect.hh"
 #include "Topology/geom.hh"
-#include <Topology/impl.hh>
-#include <Topology/shared.hh>
-#include <Topology/split.hh>
+#include "Topology/impl.hh"
+#include "Topology/shared.hh"
+#include "Topology/split.hh"
 #include "Utils/error_handling.hh"
 #include "Utils/circular.hh"
 #include "Utils/graph.hh"
@@ -459,21 +460,20 @@ static bool insert_remaning_common_vertices(
       {
         if (insertions.size() > 2)
         {
-          Geo::Point pt_v0;
-          v0->geom(pt_v0);
+          Geo::Point pt_vi;
+          _verts[i]->geom(pt_vi);
           if (_split_chains[0].size() > 1)
             std::cout << "Unreliable test" << std::endl;
           for (auto it = insertions.end(); --it != insertions.begin(); )
           {
             auto& split_chain = _split_chains[(*it)[0]];
-            if (point_in_polygon(split_chain, pt_v0) ==
+            if (point_in_polygon(split_chain, pt_vi) ==
                 Geo::PointInPolygon::Classification::Outside)
             {
               it = insertions.erase(it);
             }
           }
-          if (insertions.size() != 2)
-            continue;
+          THROW_IF(insertions.size() != 2, "Cannot insert extra vertex");
         }
         for (auto& ins : insertions)
         {
@@ -656,9 +656,14 @@ bool FaceEdgeMap::split_on_boundary(
     double_connection |= already_connected;
     connections.emplace_back();
     auto& curr_conn = connections.back();
+    size_t min_size = 0;
+    if (end_ch_vert == chain.front())
+      min_size = edge_set_copy.size() + 1;
+    else if (already_connected)
+      min_size = 2;
     if (!Topo::connect_entities(end_ch_vert, chain.front(),
                                 edge_set_copy, curr_conn, 
-                                already_connected ? 2 : 0 ))
+                                min_size))
     {
       curr_conn.clear();
       curr_conn.push_back(end_ch_vert);
@@ -768,6 +773,81 @@ bool FaceEdgeMap::split_on_boundary(
   return true;
 }
 
+namespace {
+
+// Handle cases where a chain contains the same vertex many times.
+struct VertexAlternative
+{
+  bool skip(const Topo::Wrap<Topo::Type::VERTEX>* _start,
+            const Topo::Wrap<Topo::Type::VERTEX>* _end,
+            const Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX>& _vert_ch,
+            const FaceEdgeMap::CommonVertices& _vert_set)
+  {
+    auto it = _start;
+    std::vector<const Topo::Wrap<Topo::Type::VERTEX>*> options;
+    while (++it != _end)
+    {
+      if (*_start == *it)
+      {
+        if (options.empty())
+          options.push_back(_start);
+        options.push_back(it);
+      }
+    }
+    if (options.empty())
+      return false;
+    size_t best_score = 0;
+    const Topo::Wrap<Topo::Type::VERTEX>* best_pos = nullptr;
+    for (const auto vert_it : options)
+    {
+      size_t score = 1;
+      auto v1 = vert_it;
+      auto increase = [&_vert_ch, &v1](
+        const Topo::Wrap<Topo::Type::VERTEX>* _vert_it)
+      {
+        if (++v1 == _vert_ch.end())
+          v1 = _vert_ch.begin();
+        return *v1 != *_vert_it;
+      };
+      auto decrease = [&_vert_ch, &v1](
+        const Topo::Wrap<Topo::Type::VERTEX>* _vert_it)
+      {
+        if (v1 == _vert_ch.begin())
+          v1 = _vert_ch.end();
+        return *--v1 != *_vert_it;
+      };
+      while(increase(vert_it))
+      {
+        auto pos = std::find(_vert_set.begin(), _vert_set.end(), *v1);
+        if (pos != _vert_set.end())
+          ++score;
+        else
+        {
+          v1 = vert_it;
+          while (decrease(vert_it))
+          {
+            auto pos1 = std::find(_vert_set.begin(), _vert_set.end(), *v1);
+            if (pos1 != _vert_set.end())
+              ++score;
+            else
+              break;
+          }
+          break;
+        }
+      }
+      if (score > best_score)
+      {
+        best_score = score;
+        best_pos = vert_it;
+      }
+    }
+    return best_pos != _start;
+  }
+};
+
+} // namespace
+
+
 void FaceEdgeMap::split_overlaps(OverlapFces&  _overlap_faces)
 {
   // Process overlaps.
@@ -826,9 +906,13 @@ void FaceEdgeMap::split_overlaps(OverlapFces&  _overlap_faces)
         bool first = true;
         bool first_is_common = false;
         Geo::Vector3 face_normal{ 0 };
-        for (auto vert : it_ev)
+        VertexAlternative alterns;
+        for (auto it_v = it_ev.begin(); it_v != it_ev.end(); ++it_v)
         {
+          const auto& vert = *it_v;
           auto it = std::find(edge_set_copy.begin(), edge_set_copy.end(), vert);
+          if (it != edge_set_copy.end() && alterns.skip(it_v, it_ev.end(), it_ev, vert_set))
+            it = edge_set_copy.end();
           if (it == edge_set_copy.end())
           {
             if (prev_is_common || not_comm_verts.empty())
@@ -838,6 +922,14 @@ void FaceEdgeMap::split_overlaps(OverlapFces&  _overlap_faces)
           }
           else
           {
+            auto it1 = it;
+            for (;;)
+            {
+              it1 = std::find(std::next(it1), edge_set_copy.end(), vert);
+              if (it1 == edge_set_copy.end())
+                break;
+              it = it1;
+            }
             edge_set_copy.erase(it);
             if (!prev_is_common)
               comm_verts.emplace_back();
@@ -902,6 +994,15 @@ void FaceEdgeMap::split_overlaps(OverlapFces&  _overlap_faces)
         faces.erase(faces.begin() + best_idx);
         faces.insert(faces.end(), std::next(new_faces.begin()), new_faces.end());
         edge_it = edges.erase(edge_it);
+
+#if 0
+        static int kk;
+        auto flnm = std::to_string(kk++) + "_debdeb_split_" + std::to_string(face_info.first->id()) + ".obj";
+        auto body = face_info.second.new_faces_.front()->get(Topo::Direction::Up, 0);
+        Topo::Wrap<Topo::Type::BODY> b;
+        b.reset((Topo::E<Topo::Type::BODY>*)body);
+        IO::save_obj(flnm.c_str(), b);
+#endif
       }
     }
   }

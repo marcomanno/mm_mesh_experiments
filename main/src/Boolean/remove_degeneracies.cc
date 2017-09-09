@@ -340,7 +340,7 @@ bool remove_degeneracies(
   }
   if (iter == 0)
   {
-    std::cout << "Bad error non endig remove degeneracies.\n";
+    std::cout << "Bad error non ending remove degeneracies.\n";
     achange = false;
   }
 

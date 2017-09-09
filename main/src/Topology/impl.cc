@@ -96,7 +96,7 @@ IBase* UpEntity<typeT>::get(Direction _dir, size_t _i) const
 }
 
 template <Type typeT>
-bool UpEntity<typeT>::insert_child(IBase* _el, size_t _pos = SIZE_MAX)
+bool UpEntity<typeT>::insert_child(IBase* _el, size_t _pos)
 {
   if (_el == nullptr)
     return false;
@@ -158,7 +158,7 @@ bool UpEntity<typeT>::replace_child(IBase* _el, IBase* _new_el)
 
 // search for an element in the range [0, _end[ in reverse order.
 template <Type typeT>
-size_t UpEntity<typeT>::find_child(const IBase* _el, size_t _end = SIZE_MAX) const
+size_t UpEntity<typeT>::find_child(const IBase* _el, size_t _end) const
 {
   auto start_it = low_elems_.rbegin();
   if (_end < low_elems_.size())
