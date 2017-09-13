@@ -129,4 +129,16 @@ struct FindMinMax : public FindMax<NumericT>, FindMin<NumericT>
   }
 };
 
-}//namespace Geo
+template <typename NumberT> void a_eq_b_if_a_lt_b(NumberT& _a, const NumberT& _b)
+{
+  if (_a < _b)
+    _a = _b;
+}
+
+template <typename NumberT> void a_eq_b_if_a_gt_b(NumberT& _a, const NumberT& _b)
+{
+  if (_a > _b)
+    _a = _b;
+}
+
+}//namespace Utils
