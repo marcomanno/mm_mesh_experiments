@@ -1,8 +1,13 @@
 #include "split_chain.hh"
+#include "geom.hh"
+
 #include "Geo/plane_fitting.hh"
+#include "Utils/error_handling.hh"
+#include "Utils/circular.hh"
 #include "Utils/statistics.hh"
 
 #include <array>
+#include <functional>
 #include <set>
 
 namespace Topo {
@@ -28,10 +33,18 @@ private:
   typedef std::set<Connection> Connections;
 
   VertexChain find_chain(Connections::iterator _conns_it);
-  double find_angle(const Connection& _a, const Connection& _b);
+  double find_angle(const Topo::Wrap<Topo::Type::VERTEX>& _a,
+                    const Topo::Wrap<Topo::Type::VERTEX>& _b,
+                    const Topo::Wrap<Topo::Type::VERTEX>& _c);
 
-  VertexChain follow_chain(const Connection& _conn, 
+  void remove_chain_from_connection(
+    VertexChain& _ch, 
+    bool _open, 
+    Connections::iterator* _conn_it = nullptr);
+
+  VertexChain follow_chain(const Connection& _conn,
                            std::set<Topo::Wrap<Topo::Type::VERTEX>>& _all_vert_ch);
+  bool locate(const VertexChain& _ch, size_t& _loop_ind, std::array<size_t, 2>& _pos);
 
   VertexChains result_;
   Connections connections_;
@@ -54,17 +67,8 @@ const VertexChains& SplitChain::split()
     ++conn_it;
     if (new_ch.empty())
       continue;
-    auto& prev_vert = new_ch.back();
-    for (auto& vert : new_ch)
-    {
-      auto used_conn_it = connections_.find(Connection{ prev_vert , vert });
-      if (used_conn_it != connections_.end())
-      {
-        if (used_conn_it == conn_it)
-          ++conn_it;
-        connections_.erase(used_conn_it);
-      }
-    }
+
+    remove_chain_from_connection(new_ch, false, &conn_it);
     result_.push_back(std::move(new_ch));
   }
   std::set<Topo::Wrap<Topo::Type::VERTEX>> all_chain_vertices;
@@ -79,6 +83,30 @@ const VertexChains& SplitChain::split()
     VertexChain new_ch = follow_chain(*conn_it, all_chain_vertices);
     if (new_ch.empty())
       continue;
+    std::array<size_t, 2> ins;
+    size_t chain_ind;
+    THROW_IF(!locate(new_ch, chain_ind, ins), "No attah chain");
+    VertexChain split_chains[2];
+    bool curr_chain = ins[0] > ins[1];
+    for (size_t i = 0; i < result_[chain_ind].size(); ++i)
+    {
+      if (i != ins[0] && i != ins[1])
+        split_chains[curr_chain].push_back(result_[chain_ind][i]);
+      else
+      {
+        split_chains[0].push_back(result_[chain_ind][i]);
+        split_chains[1].push_back(result_[chain_ind][i]);
+        if (i == ins[0])
+          split_chains[0].insert(split_chains[0].end(), new_ch.begin(), new_ch.end());
+        else
+          split_chains[1].insert(split_chains[0].end(), new_ch.rbegin(), new_ch.rend());
+        curr_chain = !curr_chain;
+      }
+    }
+    result_[chain_ind] = std::move(split_chains[0]);
+    result_.push_back(std::move(split_chains[1]));
+    remove_chain_from_connection(new_ch, true);
+    all_chain_vertices.insert(new_ch.begin(), new_ch.end());
   }
 
   return result_;
@@ -114,7 +142,7 @@ VertexChain SplitChain::find_chain(Connections::iterator _conns_it)
     const double ANG_EPS = 1e-8;
     for (; pos != connections_.end() && (*pos)[0] == end_v; )
     {
-      auto ang = find_angle(edge, *pos);
+      auto ang = find_angle(edge[0], edge[1], (*pos)[1]);
       Utils::a_eq_b_if_a_gt_b(min_ang, ang);
       if (ang > 2 * M_PI - ANG_EPS && (*pos)[1] != edge[0])
         ang = 0;
@@ -130,18 +158,18 @@ VertexChain SplitChain::find_chain(Connections::iterator _conns_it)
   return result;
 }
 
-double SplitChain::find_angle(const Connection& _a, const Connection& _b)
+double SplitChain::find_angle(
+  const Topo::Wrap<Topo::Type::VERTEX>& _a, 
+  const Topo::Wrap<Topo::Type::VERTEX>& _b,
+  const Topo::Wrap<Topo::Type::VERTEX>& _c)
 {
-  auto make_vector = [](const Connection& _con)
-  {
-    Geo::Point pts[2];
-    _con[0]->geom(pts[0]);
-    _con[1]->geom(pts[1]);
-    return pts[1] - pts[0];
-  };
-  auto v0 = make_vector(_a);
-  auto v1 = make_vector(_b);
-  auto ang = Geo::signed_angle(-v0, v1, norm_);
+  Geo::Point pts[3];
+  _a->geom(pts[0]);
+  _b->geom(pts[1]);
+  _c->geom(pts[2]);
+  auto v0 = pts[0] - pts[1];
+  auto v1 = pts[2] - pts[1];
+  auto ang = Geo::signed_angle(v0, v1, norm_);
   if (ang < 0)
     ang = 2 * M_PI + ang;
   return ang;
@@ -165,6 +193,124 @@ VertexChain SplitChain::follow_chain(
     v_ch.push_back(curr_conn[1]);
   }
   return v_ch;
+}
+
+bool SplitChain::locate(
+  const VertexChain& _ch, size_t& _loop_ind,
+  std::array<size_t, 2>& _pos)
+{
+  typedef std::array<size_t, 2> InsPoint;
+  std::vector<InsPoint> choices[2];
+  for (auto i = result_.size(); i-- > 0;)
+  {
+    for (auto j = result_[i].size(); j-- > 0;)
+    {
+      size_t ins;
+      if (result_[i][j] == _ch.front())     ins = 0;
+      else if (result_[i][j] == _ch.back()) ins = 1;
+      else
+        continue;
+      choices[ins].push_back({ i, j });
+    }
+  }
+  // Start and end points must be inside the same chain.
+  // Remove ins points that are using chains not present in
+  // the other point.
+  for (size_t i = 0; i < std::size(choices); ++i)
+  {
+    if (choices[i].size() < 2)
+      continue;
+    for (auto j = choices[i].size(); j-- > 0;)
+    {
+      auto it_ch =
+        std::lower_bound(choices[1 - i].begin(), choices[1 - i].end(),
+                         InsPoint({ choices[i][j][0], 0 }),
+                         std::greater<InsPoint>());
+      if (it_ch == choices[1 - i].end() || choices[i][j][0] != (*it_ch)[0])
+        choices[i].erase(choices[i].begin() + j);
+    }
+  }
+  // Select the chain
+  if (choices[0].front()[0] != choices[0].back()[0])
+  {
+    Geo::Point pt_in;
+    _ch[1]->geom(pt_in);
+    if (_ch.size() == 2)
+    {
+      Geo::Point pt_0;
+      _ch[0]->geom(pt_0);
+      pt_in += pt_0;
+      pt_in /= 2.;
+    }
+    // There is more than one chain.
+    size_t prev_chain_ind = std::numeric_limits<size_t>::max();
+    size_t sel_chain_ind = std::numeric_limits<size_t>::max();
+    for (auto& ins_pt : choices[0])
+    {
+      if (prev_chain_ind == ins_pt[0])
+        continue;
+
+      prev_chain_ind = ins_pt[0];
+      auto pt_cl = PointInFace::classify(result_[ins_pt[0]], pt_in);
+      if (pt_cl == Geo::PointInPolygon::Classification::Inside)
+      {
+        sel_chain_ind = ins_pt[0];
+        break;
+      }
+    }
+    THROW_IF(sel_chain_ind == std::numeric_limits<size_t>::max(),
+             "no loop contains the chain");
+    for (auto& ch : choices)
+      for (auto i = ch.size(); i-- > 0;)
+        if (ch[i][0] != sel_chain_ind)
+          ch.erase(ch.begin() + i);
+  }
+  // Select the insetion point.
+  Topo::Wrap<Topo::Type::VERTEX> vv[2] = { _ch[1], _ch[_ch.size() - 1] };
+  for (auto i : { 0, 1 })
+  {
+    auto& cur = choices[i];
+    if (cur.size() < 2)
+      continue;
+    for (auto j = cur.size(); j-- > 0; )
+    {
+      auto& achoice = cur[j];
+      auto& sel_ch = result_[achoice[0]];
+      Topo::Wrap<Topo::Type::VERTEX>* vert_ptrs[4] = {
+        &sel_ch[Utils::decrease(achoice[1], sel_ch.size())],
+        &sel_ch[achoice[1]],
+        &sel_ch[Utils::increase(achoice[1], sel_ch.size())],
+        &vv[i]
+      };
+      auto out_angle = find_angle(*vert_ptrs[0], *vert_ptrs[1], *vert_ptrs[2]);
+      auto int_angle = find_angle(*vert_ptrs[0], *vert_ptrs[1], vv[i]);
+      if (int_angle > out_angle)
+        cur.erase(cur.begin() + j);
+    }
+  }
+  if (choices[0].size() != 1 || choices[1].size() != 1)
+    return false;
+  _loop_ind = choices[0].front()[0];
+  _pos[0] = choices[0].front()[1];
+  _pos[1] = choices[1].front()[1];
+  return true;
+}
+
+void SplitChain::remove_chain_from_connection(
+  VertexChain& _ch, bool _open, Connections::iterator* _conn_it)
+{
+  auto prev_vert = _open ? _ch.front() : _ch.back();
+  for (auto vert_it = _ch.begin() + _open;  vert_it != _ch.begin(); ++vert_it)
+  {
+    auto used_conn_it = connections_.find(Connection{ prev_vert , *vert_it });
+    if (used_conn_it != connections_.end())
+    {
+      if (_conn_it && used_conn_it == *_conn_it)
+        ++*_conn_it;
+      connections_.erase(used_conn_it);
+    }
+  }
+
 }
 
 

@@ -51,5 +51,13 @@ Geo::PointInPolygon::Classification classify(
   return Geo::PointInPolygon::Classification::Inside;
 }
 
+Geo::PointInPolygon::Classification classify(
+  const VertexChain& _vert_ch, const Geo::Point& _pt)
+{
+  std::vector<Geo::Point> polygon(_vert_ch.size());
+  for (int i = 0; i < _vert_ch.size(); ++i)
+    _vert_ch[i].get()->geom(polygon[i]);
+  return Geo::PointInPolygon::classify(polygon, _pt);
+}
 }//namespace PointInFace
 }//namespace Topo
