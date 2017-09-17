@@ -8,6 +8,7 @@
 
 #include <array>
 #include <functional>
+#include <map>
 #include <set>
 
 namespace Topo {
@@ -16,7 +17,7 @@ struct SplitChain : public ISplitChain
 {
   virtual void add_chain(const VertexChain _chain)
   {
-    result_.push_back(_chain);
+    boundaries_.push_back(_chain);
   }
   virtual void add_connection(const Topo::Wrap<Topo::Type::VERTEX>& _v0,
                               const Topo::Wrap<Topo::Type::VERTEX>& _v1,
@@ -26,7 +27,16 @@ struct SplitChain : public ISplitChain
     if (_bidirectional)
       connections_.emplace(Connection({ _v1, _v0 }));
   }
-  const VertexChains& split();
+  void split();
+  const VertexChains& boundaries() const { return boundaries_; }
+  const VertexChains& boundary_islands(size_t _bondary_ind) const
+  {
+    auto isl_it = islands_.find(_bondary_ind);
+    if (isl_it == islands_.end())
+      return VertexChains();
+    else
+      return isl_it->second;
+  }
 
 private:
   typedef std::array<Topo::Wrap<Topo::Type::VERTEX>, 2> Connection;
@@ -37,16 +47,19 @@ private:
                     const Topo::Wrap<Topo::Type::VERTEX>& _b,
                     const Topo::Wrap<Topo::Type::VERTEX>& _c);
 
+  size_t find_boundary_index(const VertexChain& _ch) const;
+
   void remove_chain_from_connection(
-    VertexChain& _ch, 
-    bool _open, 
-    Connections::iterator* _conn_it = nullptr);
+    VertexChain& _ch,
+    Connections::iterator* _conn_it,
+    bool _open);
 
   VertexChain follow_chain(const Connection& _conn,
                            std::set<Topo::Wrap<Topo::Type::VERTEX>>& _all_vert_ch);
   bool locate(const VertexChain& _ch, size_t& _loop_ind, std::array<size_t, 2>& _pos);
 
-  VertexChains result_;
+  VertexChains boundaries_;
+  std::map<size_t, VertexChains> islands_;
   Connections connections_;
   Geo::Vector3 norm_;
 };
@@ -56,23 +69,13 @@ std::shared_ptr<ISplitChain> ISplitChain::make()
   return std::make_shared<SplitChain>();
 }
 
-const VertexChains& SplitChain::split()
+void SplitChain::split()
 {
-  if (result_.empty())
-    return result_;
-  norm_ = Geo::vertex_polygon_normal(result_[0].begin(), result_[0].end());
-  for (auto conn_it = connections_.begin(); conn_it != connections_.end(); )
-  {
-    auto new_ch = find_chain(conn_it);
-    ++conn_it;
-    if (new_ch.empty())
-      continue;
-
-    remove_chain_from_connection(new_ch, false, &conn_it);
-    result_.push_back(std::move(new_ch));
-  }
+  if (boundaries_.empty())
+    return;
+  norm_ = Geo::vertex_polygon_normal(boundaries_[0].begin(), boundaries_[0].end());
   std::set<Topo::Wrap<Topo::Type::VERTEX>> all_chain_vertices;
-  for (auto& ch : result_)
+  for (auto& ch : boundaries_)
     for (auto& v : ch)
       all_chain_vertices.insert(v);
 
@@ -88,14 +91,14 @@ const VertexChains& SplitChain::split()
     THROW_IF(!locate(new_ch, chain_ind, ins), "No attah chain");
     VertexChain split_chains[2];
     bool curr_chain = ins[0] > ins[1];
-    for (size_t i = 0; i < result_[chain_ind].size(); ++i)
+    for (size_t i = 0; i < boundaries_[chain_ind].size(); ++i)
     {
       if (i != ins[0] && i != ins[1])
-        split_chains[curr_chain].push_back(result_[chain_ind][i]);
+        split_chains[curr_chain].push_back(boundaries_[chain_ind][i]);
       else
       {
-        split_chains[0].push_back(result_[chain_ind][i]);
-        split_chains[1].push_back(result_[chain_ind][i]);
+        split_chains[0].push_back(boundaries_[chain_ind][i]);
+        split_chains[1].push_back(boundaries_[chain_ind][i]);
         if (i == ins[0])
           split_chains[0].insert(split_chains[0].end(), new_ch.begin(), new_ch.end());
         else
@@ -103,13 +106,30 @@ const VertexChains& SplitChain::split()
         curr_chain = !curr_chain;
       }
     }
-    result_[chain_ind] = std::move(split_chains[0]);
-    result_.push_back(std::move(split_chains[1]));
-    remove_chain_from_connection(new_ch, true);
+    boundaries_[chain_ind] = std::move(split_chains[0]);
+    boundaries_.push_back(std::move(split_chains[1]));
+    remove_chain_from_connection(new_ch, nullptr, true);
     all_chain_vertices.insert(new_ch.begin(), new_ch.end());
   }
 
-  return result_;
+  VertexChains islands;
+  for (auto conn_it = connections_.begin(); 
+       conn_it != connections_.end(); )
+  {
+    auto new_ch = find_chain(conn_it);
+    ++conn_it;
+    if (new_ch.empty())
+      continue;
+    boundaries_.push_back(new_ch);
+    std::reverse(new_ch.begin(), new_ch.end());
+    islands.push_back(std::move(new_ch));
+    remove_chain_from_connection(new_ch, &conn_it, false);
+  }
+  for (auto& ch : islands)
+  {
+    auto ind = find_boundary_index(ch);
+    islands_[ind].push_back(std::move(ch));
+  }
 }
 
 VertexChain SplitChain::find_chain(Connections::iterator _conns_it)
@@ -201,13 +221,13 @@ bool SplitChain::locate(
 {
   typedef std::array<size_t, 2> InsPoint;
   std::vector<InsPoint> choices[2];
-  for (auto i = result_.size(); i-- > 0;)
+  for (auto i = boundaries_.size(); i-- > 0;)
   {
-    for (auto j = result_[i].size(); j-- > 0;)
+    for (auto j = boundaries_[i].size(); j-- > 0;)
     {
       size_t ins;
-      if (result_[i][j] == _ch.front())     ins = 0;
-      else if (result_[i][j] == _ch.back()) ins = 1;
+      if (boundaries_[i][j] == _ch.front())     ins = 0;
+      else if (boundaries_[i][j] == _ch.back()) ins = 1;
       else
         continue;
       choices[ins].push_back({ i, j });
@@ -251,7 +271,7 @@ bool SplitChain::locate(
         continue;
 
       prev_chain_ind = ins_pt[0];
-      auto pt_cl = PointInFace::classify(result_[ins_pt[0]], pt_in);
+      auto pt_cl = PointInFace::classify(boundaries_[ins_pt[0]], pt_in);
       if (pt_cl == Geo::PointInPolygon::Classification::Inside)
       {
         sel_chain_ind = ins_pt[0];
@@ -275,7 +295,7 @@ bool SplitChain::locate(
     for (auto j = cur.size(); j-- > 0; )
     {
       auto& achoice = cur[j];
-      auto& sel_ch = result_[achoice[0]];
+      auto& sel_ch = boundaries_[achoice[0]];
       Topo::Wrap<Topo::Type::VERTEX>* vert_ptrs[4] = {
         &sel_ch[Utils::decrease(achoice[1], sel_ch.size())],
         &sel_ch[achoice[1]],
@@ -297,21 +317,33 @@ bool SplitChain::locate(
 }
 
 void SplitChain::remove_chain_from_connection(
-  VertexChain& _ch, bool _open, Connections::iterator* _conn_it)
+  VertexChain& _ch,
+  Connections::iterator* _conn_it,
+  bool _open)
 {
-  auto prev_vert = _open ? _ch.front() : _ch.back();
-  for (auto vert_it = _ch.begin() + _open;  vert_it != _ch.begin(); ++vert_it)
+  auto prev_vert_it = _open ? _ch.begin() : std::prev(_ch.end());
+  for (auto vert_it = _ch.begin() + _open;  vert_it != _ch.begin();
+       prev_vert_it = vert_it++)
   {
-    auto used_conn_it = connections_.find(Connection{ prev_vert , *vert_it });
-    if (used_conn_it != connections_.end())
+    auto remove_connection = [this, _conn_it](
+      const Wrap<Type::VERTEX>& _a,
+      const Wrap<Type::VERTEX>& _b)
     {
-      if (_conn_it && used_conn_it == *_conn_it)
-        ++*_conn_it;
-      connections_.erase(used_conn_it);
-    }
+      auto used_conn_it = connections_.find(Connection{ _a , _b });
+      if (used_conn_it != connections_.end())
+      {
+        if (_conn_it != nullptr && used_conn_it == *_conn_it)
+          ++(*_conn_it);
+        connections_.erase(used_conn_it);
+      }
+    };
+    remove_connection(*prev_vert_it, *vert_it);
+    remove_connection(*vert_it, *prev_vert_it);
   }
-
 }
 
+size_t SplitChain::find_boundary_index(const VertexChain& _ch) const
+{
+}
 
 } // namespace Topo

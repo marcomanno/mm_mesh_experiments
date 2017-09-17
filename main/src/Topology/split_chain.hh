@@ -11,7 +11,10 @@ struct ISplitChain
   virtual void add_connection(const Topo::Wrap<Topo::Type::VERTEX>& _v0,
                               const Topo::Wrap<Topo::Type::VERTEX>& _v1,
                               bool _bidirectional = true) = 0;
-  virtual const VertexChains& split() = 0;
+  virtual void split() = 0;
+  virtual const VertexChains& boundaries() const = 0;
+  virtual const VertexChains& boundary_islands(
+    size_t _bondary_ind) const = 0;
   static std::shared_ptr<ISplitChain> make();
 };
 
