@@ -28,7 +28,7 @@ struct SplitChain : public ISplitChain
     if (_bidirectional)
       connections_.emplace(Connection({ _v1, _v0 }));
   }
-  void split();
+  void compute();
   const VertexChains& boundaries() const { return boundaries_; }
   const VertexChains* boundary_islands(size_t _bondary_ind) const
   {
@@ -70,7 +70,7 @@ std::shared_ptr<ISplitChain> ISplitChain::make()
   return std::make_shared<SplitChain>();
 }
 
-void SplitChain::split()
+void SplitChain::compute()
 {
   if (boundaries_.empty())
     return;
@@ -98,18 +98,16 @@ void SplitChain::split()
         split_chains[curr_chain].push_back(boundaries_[chain_ind][i]);
       else
       {
-        split_chains[0].push_back(boundaries_[chain_ind][i]);
-        split_chains[1].push_back(boundaries_[chain_ind][i]);
         if (i == ins[0])
           split_chains[0].insert(split_chains[0].end(), new_ch.begin(), new_ch.end());
         else
-          split_chains[1].insert(split_chains[0].end(), new_ch.rbegin(), new_ch.rend());
+          split_chains[1].insert(split_chains[1].end(), new_ch.rbegin(), new_ch.rend());
         curr_chain = !curr_chain;
       }
     }
     boundaries_[chain_ind] = std::move(split_chains[0]);
     boundaries_.push_back(std::move(split_chains[1]));
-    remove_chain_from_connection(new_ch, nullptr, true);
+    remove_chain_from_connection(new_ch, &conn_it, true);
     all_chain_vertices.insert(new_ch.begin(), new_ch.end());
   }
 
@@ -323,7 +321,7 @@ void SplitChain::remove_chain_from_connection(
   bool _open)
 {
   auto prev_vert_it = _open ? _ch.begin() : std::prev(_ch.end());
-  for (auto vert_it = _ch.begin() + _open;  vert_it != _ch.begin();
+  for (auto vert_it = _ch.begin() + _open;  vert_it != _ch.end();
        prev_vert_it = vert_it++)
   {
     auto remove_connection = [this, _conn_it](
