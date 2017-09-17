@@ -13,6 +13,9 @@
 //#define DEBUG_PolygonTriangularization
 #include "Import/import.hh"
 
+namespace Geo
+{
+
 struct PolygonTriangulation : public IPolygonTriangulation
 {
   virtual void add(const std::vector<Geo::Vector3>& _plgn) override;
@@ -38,19 +41,19 @@ private:
   struct Solution
   {
     void compute(const std::vector<Geo::Vector3>& _pos,
-      std::vector<size_t>& _indcs,
-      const double _tols,
-      Geo::VectorD<3>& _norm);
+                 std::vector<size_t>& _indcs,
+                 const double _tols,
+                 Geo::VectorD<3>& _norm);
     bool concave(size_t _i) const
     {
       return _i < concav_.size() && concav_[_i];
     }
 
     bool contain_concave(size_t _inds[3], Geo::Vector3 _vects[2],
-      const std::vector<Geo::Vector3>& _pts) const;
+                         const std::vector<Geo::Vector3>& _pts) const;
 
     bool find_concave(const std::vector<Geo::Vector3>& _pts,
-      std::vector<bool>& _concav) const;
+                      std::vector<bool>& _concav) const;
 
     std::vector<std::array<size_t, 3>> tris_;
     double area_ = 0;
@@ -104,10 +107,10 @@ void PolygonTriangulation::compute()
     // Put the outer loop at the begin of the list.
     auto pt = loops_[0][0];
     for (auto loop_it = std::next(loops_.begin());
-      loop_it != loops_.end(); 
-      ++loop_it)
+         loop_it != loops_.end();
+         ++loop_it)
     {
-      auto where = 
+      auto where =
         Geo::PointInPolygon::classify(*loop_it, pt, tol, &norm);
       if (where == Geo::PointInPolygon::Inside)
       {
@@ -127,21 +130,21 @@ void PolygonTriangulation::compute()
       } ci, bci; // connection info and best connection info
 
       for (ci.near_bnd_v = loops_[0].begin();
-        ci.near_bnd_v != loops_[0].end(); 
-        pt0 = *(ci.near_bnd_v++))
+           ci.near_bnd_v != loops_[0].end();
+           pt0 = *(ci.near_bnd_v++))
       {
         Geo::Segment seg = { pt0, *ci.near_bnd_v };
         for (ci.near_island = std::next(loops_.begin());
-          ci.near_island != loops_.end();
-          ++ci.near_island)
+             ci.near_island != loops_.end();
+             ++ci.near_island)
         {
           for (ci.near_isl_v = ci.near_island->begin();
-            ci.near_isl_v != ci.near_island->end();
-            ++ci.near_isl_v)
+               ci.near_isl_v != ci.near_island->end();
+               ++ci.near_isl_v)
           {
             double dist_sq;
             if (!Geo::closest_point(seg, *ci.near_isl_v,
-              nullptr, &ci.near_par, &dist_sq))
+                                    nullptr, &ci.near_par, &dist_sq))
             {
               continue;
             }
@@ -160,8 +163,8 @@ void PolygonTriangulation::compute()
       bci.near_island->push_back(bci.near_island->front());
       bci.near_island->push_back(*bci.near_bnd_v);
       loops_[0].insert(std::next(bci.near_bnd_v),
-        bci.near_island->cbegin(),
-        bci.near_island->cend());
+                       bci.near_island->cbegin(),
+                       bci.near_island->cend());
       loops_.erase(bci.near_island);
     }
   }
@@ -188,9 +191,9 @@ void PolygonTriangulation::Solution::compute(
   Geo::VectorD<3>&)
 {
   auto valid_triangle = [&_indcs, &_pts](const size_t _i,
-    const std::vector<Geo::Vector3>& proj_poly,
-    const Geo::Vector3& _norm,
-    const double& _tol)
+                                         const std::vector<Geo::Vector3>& proj_poly,
+                                         const Geo::Vector3& _norm,
+                                         const double& _tol)
   {
     auto next = _i;
     auto idx = Utils::decrease(_i, _indcs.size());
@@ -213,7 +216,7 @@ void PolygonTriangulation::Solution::compute(
     }
     for (auto frac : { 0.5, 0.25, 0.75 })
     {
-      auto pt_in = proj_poly[prev] * frac + proj_poly[next] * (1- frac);
+      auto pt_in = proj_poly[prev] * frac + proj_poly[next] * (1 - frac);
       auto where = Geo::PointInPolygon::classify(
         proj_poly, pt_in, Geo::epsilon(pt_in), &_norm);
       if (where == Geo::PointInPolygon::Outside)
@@ -232,14 +235,14 @@ void PolygonTriangulation::Solution::compute(
       //double tol_sq = prec * std::max(Geo::length_square(seg[0]), Geo::length_square(seg[1]));
       double tol_sq = std::max(Geo::epsilon_sq(seg[0]), Geo::epsilon_sq(seg[1]));
       if (Geo::closest_point(seg, proj_poly[i], nullptr, nullptr, &dist_sq) &&
-        dist_sq <= tol_sq)
+          dist_sq <= tol_sq)
         return false;
       if (_indcs[j] == _indcs[next] || _indcs[j] == _indcs[prev])
         continue;
       Geo::Segment seg1 = { proj_poly[i], proj_poly[j] };
       //tol_sq = std::max(tol_sq, prec * std::max(Geo::length_square(seg1[0]), Geo::length_square(seg1[1])));
       if (Geo::closest_point(seg, seg1,
-        nullptr, nullptr, &dist_sq) && dist_sq <= tol_sq)
+                             nullptr, nullptr, &dist_sq) && dist_sq <= tol_sq)
       {
         return false;
       }
@@ -349,10 +352,10 @@ size_t inside_triangle(
 }
 
 size_t inside_triangle(const Geo::Vector3& _pt,
-  const Geo::Vector3& _vrt0, 
-  const Geo::Vector3& _vrt1, 
-  const Geo::Vector3& _vrt2
-  )
+                       const Geo::Vector3& _vrt0,
+                       const Geo::Vector3& _vrt1,
+                       const Geo::Vector3& _vrt2
+)
 {
   const Geo::Vector3 verts[2] = { _vrt1 - _vrt0, _vrt2 - _vrt0 };
   return inside_triangle(verts, _pt - _vrt0);
@@ -400,3 +403,5 @@ bool PolygonTriangulation::Solution::contain_concave(
   }
   return false;
 }
+
+} // namespace Geo

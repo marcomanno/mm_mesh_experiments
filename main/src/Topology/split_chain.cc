@@ -2,6 +2,7 @@
 #include "geom.hh"
 
 #include "Geo/plane_fitting.hh"
+#include "PolygonTriangularization/poly_triang.hh"
 #include "Utils/error_handling.hh"
 #include "Utils/circular.hh"
 #include "Utils/statistics.hh"
@@ -29,13 +30,13 @@ struct SplitChain : public ISplitChain
   }
   void split();
   const VertexChains& boundaries() const { return boundaries_; }
-  const VertexChains& boundary_islands(size_t _bondary_ind) const
+  const VertexChains* boundary_islands(size_t _bondary_ind) const
   {
     auto isl_it = islands_.find(_bondary_ind);
     if (isl_it == islands_.end())
-      return VertexChains();
+      return nullptr;
     else
-      return isl_it->second;
+      return &isl_it->second;
   }
 
 private:
@@ -344,6 +345,39 @@ void SplitChain::remove_chain_from_connection(
 
 size_t SplitChain::find_boundary_index(const VertexChain& _ch) const
 {
+  THROW_IF(_ch.empty(), "Empty chain ov vertices");
+  Geo::Point pt;
+  _ch[0]->geom(pt);
+  std::vector<size_t> choices;
+  for (auto i = boundaries_.size(); i-- > 0; )
+  {
+    if (PointInFace::classify(boundaries_[i], pt) ==
+        Geo::PointInPolygon::Classification::Inside)
+    {
+      choices.push_back(i);
+    }
+  }
+  THROW_IF(choices.empty(), "Island without a boundary");
+  if (choices.size() == 1)
+    return choices[0];
+  double min_area = std::numeric_limits<double>::max();
+  size_t min_ind = 0;
+  for (auto i : choices)
+  {
+    std::vector<Geo::Point> pts;
+    pts.reserve(boundaries_[i].size());
+    for (auto& v : boundaries_[i])
+    {
+      pts.emplace_back();
+      v->geom(pts.back());
+    }
+    auto poly_t = Geo::IPolygonTriangulation::make();
+    poly_t->add(pts);
+    auto area = poly_t->area();
+    if (Utils::a_eq_b_if_a_lt_b(min_area, area))
+      min_ind = i;
+  }
+  return min_ind;
 }
 
 } // namespace Topo

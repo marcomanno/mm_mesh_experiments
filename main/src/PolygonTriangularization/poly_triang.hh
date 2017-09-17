@@ -2,6 +2,8 @@
 #include <memory>
 #include <vector>
 
+namespace Geo
+{
 // Given a set of polygons, computes a triangulation.
 // Polygons are supposed to be approximately on a plane
 // mot intersecting and one of them must include all
@@ -27,4 +29,6 @@ struct IPolygonTriangulation
   virtual const std::vector<Geo::Vector3>& polygon() = 0;
 
   static std::shared_ptr<IPolygonTriangulation> make();
-};//class IPolygonTriangulation
+}; // struct IPolygonTriangulation
+
+} // namespace Geo

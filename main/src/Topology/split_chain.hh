@@ -13,7 +13,7 @@ struct ISplitChain
                               bool _bidirectional = true) = 0;
   virtual void split() = 0;
   virtual const VertexChains& boundaries() const = 0;
-  virtual const VertexChains& boundary_islands(
+  virtual const VertexChains* boundary_islands(
     size_t _bondary_ind) const = 0;
   static std::shared_ptr<ISplitChain> make();
 };

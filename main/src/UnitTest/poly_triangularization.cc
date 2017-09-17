@@ -31,7 +31,7 @@ static void write_obj(const char* _flnm,
 #define TEST_NAME "poly_1"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 0, 0, 0 });
   plgn.push_back({ 0, 1, 0 });
@@ -49,7 +49,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_2"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 50,   0, 0 });
   plgn.push_back({ 25,  45, 0 });
@@ -71,7 +71,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_3"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 0,    0,  0 });
   plgn.push_back({ 1,    0,  0 });
@@ -92,7 +92,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_4"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 0,   1.5, 0 });
   plgn.push_back({ 1,   0,   0 });
@@ -113,7 +113,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_5"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 0,   0,   0 });
   plgn.push_back({ 2,   0,   0 });
@@ -138,7 +138,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_6"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn;
 
   plgn.push_back({ 0, 0, 0 });
@@ -168,7 +168,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_7"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
 
   std::vector<Geo::Vector3> plgn;
   plgn.push_back({ 0, 0, 0 });
@@ -194,7 +194,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_8"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   {
     std::vector<Geo::Vector3> plgn =
     {
@@ -246,7 +246,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_9"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   {
     std::vector<Geo::Vector3> plgn =
     {
@@ -270,7 +270,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_10"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn =
   {
     { 38.726774787455334, 0.56712230225691052, -0.144475349131792 },
@@ -293,7 +293,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_11"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn =
   {
     { 0.057061814887888161, -0.034494051724338268, 0.12295738396624364 },
@@ -314,7 +314,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_12"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn =
   {
     {-0.056809722145775982, -0.044396670069383221, -0.069267102372259484},
@@ -341,7 +341,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_13"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn =
   {
     {-0.015398045507488713,0.13453929220918848,0.010226638621282969 },
@@ -362,7 +362,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_14"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn =
   {
   {0.032126756174994733, 0.22023025214841976, -0.0084818488195413204 },
@@ -385,7 +385,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_15"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn =
   {
   //{0.032126756174994733,0.22023025214841976, -0.0084818488195413204 },
@@ -409,7 +409,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_16"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-	auto ptg = IPolygonTriangulation::make();
+	auto ptg = Geo::IPolygonTriangulation::make();
 	std::vector<Geo::Vector3> plgn =
 	{
 	{-0.012722799550000000, -0.0082849198949999994, -0.50010401010000005},
@@ -442,7 +442,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
 #define TEST_NAME "poly_17"
 TEST_CASE(TEST_NAME, "[PolyTriang]")
 {
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   std::vector<Geo::Vector3> plgn =
   {
     { -0.12209898230000001, 0.81369900699999997, -0.20586098729999999 },
@@ -469,7 +469,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   {-0.085066038225135698, 0.77129866920243884, -0.002415032881060594},
   { -0.084091998639999999, 0.76072597500000005, -0.0073459967970000003 }};
 
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   ptg->add(plgn);
 
   auto& tris = ptg->triangles();
@@ -493,7 +493,7 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   {-0.18554900590000001, 0.83334797620000001, -0.1065879986 }
   };
   write_obj("poly_19_in.obj", plgn);
-  auto ptg = IPolygonTriangulation::make();
+  auto ptg = Geo::IPolygonTriangulation::make();
   ptg->add(plgn);
 
   auto& tris = ptg->triangles();
