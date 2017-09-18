@@ -82,9 +82,10 @@ void SplitChain::compute()
 
   for (auto conn_it = connections_.begin(); conn_it != connections_.end(); )
   {
-    if (all_chain_vertices.find((*conn_it)[0]) == all_chain_vertices.end())
+    auto cur_conn_it = conn_it++;
+    if (all_chain_vertices.find((*cur_conn_it)[0]) == all_chain_vertices.end())
       continue;
-    VertexChain new_ch = follow_chain(*conn_it, all_chain_vertices);
+    VertexChain new_ch = follow_chain(*cur_conn_it, all_chain_vertices);
     if (new_ch.empty())
       continue;
     std::array<size_t, 2> ins;
@@ -119,9 +120,15 @@ void SplitChain::compute()
     ++conn_it;
     if (new_ch.empty())
       continue;
-    boundaries_.push_back(new_ch);
+
+    auto norm = Geo::vertex_polygon_normal(new_ch.begin(), new_ch.end());
+    VertexChains* loops[2] = { &boundaries_, &islands };
+    if (norm_ * norm < 0)
+      std::swap(loops[0], loops[1]);
+    loops[0]->push_back(new_ch);
     std::reverse(new_ch.begin(), new_ch.end());
-    islands.push_back(std::move(new_ch));
+    loops[1]->push_back(new_ch);
+
     remove_chain_from_connection(new_ch, &conn_it, false);
   }
   for (auto& ch : islands)
@@ -131,7 +138,8 @@ void SplitChain::compute()
   }
 }
 
-VertexChain SplitChain::find_chain(Connections::iterator _conns_it)
+VertexChain SplitChain::find_chain(
+  Connections::iterator _conns_it)
 {
   std::vector<Connections::iterator> edge_ch;
   std::vector<std::tuple<Connections::iterator, size_t>> branches;
@@ -147,10 +155,7 @@ VertexChain SplitChain::find_chain(Connections::iterator _conns_it)
     {
       for (auto& ed : edge_ch)
         result.push_back((*ed)[0]);
-      auto norm = Geo::vertex_polygon_normal(result.begin(), result.end());
-      if (norm_ * norm > 0)
-        break;
-      result.clear();
+      break;
     }
 
     auto& end_v = edge[1];
@@ -159,7 +164,7 @@ VertexChain SplitChain::find_chain(Connections::iterator _conns_it)
     double min_ang = std::numeric_limits<double>::max();
     std::vector<std::tuple<double, Connections::iterator>> choices;
     const double ANG_EPS = 1e-8;
-    for (; pos != connections_.end() && (*pos)[0] == end_v; )
+    for (; pos != connections_.end() && (*pos)[0] == end_v; ++pos)
     {
       auto ang = find_angle(edge[0], edge[1], (*pos)[1]);
       Utils::a_eq_b_if_a_gt_b(min_ang, ang);
@@ -171,7 +176,7 @@ VertexChain SplitChain::find_chain(Connections::iterator _conns_it)
     {
       if (std::get<double>(achoice) > min_ang + ANG_EPS)
         continue;
-      branches.emplace_back(std::get<Connections::iterator>(achoice), branches.size());
+      branches.emplace_back(std::get<Connections::iterator>(achoice), edge_ch.size());
     }
   }
   return result;
@@ -182,6 +187,8 @@ double SplitChain::find_angle(
   const Topo::Wrap<Topo::Type::VERTEX>& _b,
   const Topo::Wrap<Topo::Type::VERTEX>& _c)
 {
+  if (_a == _c)
+    return 2 * M_PI;
   Geo::Point pts[3];
   _a->geom(pts[0]);
   _b->geom(pts[1]);
@@ -190,7 +197,7 @@ double SplitChain::find_angle(
   auto v1 = pts[2] - pts[1];
   auto ang = Geo::signed_angle(v0, v1, norm_);
   if (ang < 0)
-    ang = 2 * M_PI + ang;
+    ang += 2 * M_PI;
   return ang;
 }
 
