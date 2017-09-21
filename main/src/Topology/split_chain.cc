@@ -197,7 +197,7 @@ double SplitChain::find_angle(
   _c->geom(pts[2]);
   auto v0 = pts[0] - pts[1];
   auto v1 = pts[2] - pts[1];
-  auto ang = Geo::signed_angle(v0, v1, norm_);
+  auto ang = Geo::signed_angle(v1, v0, norm_);
   if (ang < 0)
     ang += 2 * M_PI;
   return ang;
@@ -294,8 +294,8 @@ bool SplitChain::locate(
         if (ch[i][0] != sel_chain_ind)
           ch.erase(ch.begin() + i);
   }
-  // Select the insetion point.
-  Topo::Wrap<Topo::Type::VERTEX> vv[2] = { _ch[1], _ch[_ch.size() - 1] };
+  // Select the insertion point.
+  Topo::Wrap<Topo::Type::VERTEX> vv[2] = { _ch[1], _ch[_ch.size() - 2] };
   for (auto i : { 0, 1 })
   {
     auto& cur = choices[i];
