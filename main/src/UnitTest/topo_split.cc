@@ -49,3 +49,28 @@ TEST_CASE("box_in_box", "[SPLITCHAIN]")
   REQUIRE(spl_ch->boundaries()[0].size() == 4);
   REQUIRE(spl_ch->boundaries()[1].size() == 4);
 }
+
+/// <image url="$(SolutionDir)..\main\src\UnitTest\topo_split.cc.box_in_box2.jpg"/>
+
+
+TEST_CASE("box_in_box2", "[SPLITCHAIN]")
+{
+  Topo::VertexChain vs0 = make_vertices(
+  { { -2, -2, 0 },{ 2, 0, 0 },{ 2, 2, 0 },{ -2, 2, 0 } });
+  Topo::VertexChain vs1 = make_vertices(
+  { { -1, -1, 0 },{ 1, -1, 0 },{ 1, 1, 0 },{ -1, 1, 0 } });
+
+  auto spl_ch = Topo::ISplitChain::make();
+  spl_ch->add_chain(vs0);
+  spl_ch->add_connection(vs1[0], vs1[1]);
+  spl_ch->add_connection(vs1[1], vs1[2]);
+  spl_ch->add_connection(vs1[2], vs1[3]);
+  spl_ch->add_connection(vs1[3], vs1[0]);
+
+  spl_ch->add_connection(vs0[0], vs1[0]);
+  spl_ch->add_connection(vs0[1], vs1[1]);
+  spl_ch->add_connection(vs0[2], vs1[2]);
+  spl_ch->add_connection(vs0[3], vs1[3]);
+  spl_ch->compute();
+  REQUIRE(spl_ch->boundaries().size() == 5);
+}

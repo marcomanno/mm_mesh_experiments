@@ -103,11 +103,13 @@ void SplitChain::compute()
           split_chains[0].insert(split_chains[0].end(), new_ch.begin(), new_ch.end());
         else
           split_chains[1].insert(split_chains[1].end(), new_ch.rbegin(), new_ch.rend());
-        curr_chain = !curr_chain;
+        if (ins[0] != ins[1])
+          curr_chain = !curr_chain;
       }
     }
     boundaries_[chain_ind] = std::move(split_chains[0]);
-    boundaries_.push_back(std::move(split_chains[1]));
+    if (ins[0] != ins[1])
+      boundaries_.push_back(std::move(split_chains[1]));
     remove_chain_from_connection(new_ch, &conn_it, true);
     all_chain_vertices.insert(new_ch.begin(), new_ch.end());
   }
@@ -213,7 +215,7 @@ VertexChain SplitChain::follow_chain(
   {
     auto pos =
       connections_.lower_bound(Connection{ curr_conn[1], Topo::Wrap<Topo::Type::VERTEX>() });
-    if (pos == connections_.end())
+    if (pos == connections_.end() || (*pos)[0] != curr_conn[1])
       return VertexChain();
     curr_conn = *pos;
     v_ch.push_back(curr_conn[1]);
@@ -231,12 +233,10 @@ bool SplitChain::locate(
   {
     for (auto j = boundaries_[i].size(); j-- > 0;)
     {
-      size_t ins;
-      if (boundaries_[i][j] == _ch.front())     ins = 0;
-      else if (boundaries_[i][j] == _ch.back()) ins = 1;
-      else
-        continue;
-      choices[ins].push_back({ i, j });
+      if (boundaries_[i][j] == _ch.front())
+        choices[0].push_back({ i, j });
+      if (boundaries_[i][j] == _ch.back())
+        choices[1].push_back({ i, j });
     }
   }
   // Start and end points must be inside the same chain.
@@ -250,10 +250,13 @@ bool SplitChain::locate(
     {
       auto it_ch =
         std::lower_bound(choices[1 - i].begin(), choices[1 - i].end(),
-                         InsPoint({ choices[i][j][0], 0 }),
+                         InsPoint({ choices[i][j][0], std::numeric_limits<size_t>::max() }),
                          std::greater<InsPoint>());
       if (it_ch == choices[1 - i].end() || choices[i][j][0] != (*it_ch)[0])
+      {
+        THROW_IF(choices[i].size() <= 1, "No choices left");
         choices[i].erase(choices[i].begin() + j);
+      }
     }
   }
   // Select the chain
