@@ -207,17 +207,23 @@ VertexChain SplitChain::follow_chain(
   const Connection& _conn,
   std::set<Topo::Wrap<Topo::Type::VERTEX>>& _all_vert_ch)
 {
-  Connection curr_conn = _conn;
   VertexChain v_ch;
-  v_ch.push_back(curr_conn[0]);
-  v_ch.push_back(curr_conn[1]);
+  v_ch.push_back(_conn[0]);
+  v_ch.push_back(_conn[1]);
+  std::set<const Connection*> used_conn;
   while (_all_vert_ch.find(v_ch.back()) == _all_vert_ch.end())
   {
     auto pos =
-      connections_.lower_bound(Connection{ curr_conn[1], Topo::Wrap<Topo::Type::VERTEX>() });
-    if (pos == connections_.end() || (*pos)[0] != curr_conn[1])
-      return VertexChain();
-    curr_conn = *pos;
+      connections_.lower_bound(Connection{ v_ch.back(), Topo::Wrap<Topo::Type::VERTEX>() });
+    for (;; ++pos)
+    {
+      if (pos == connections_.end() || (*pos)[0] != v_ch.back())
+        return VertexChain();
+      if (used_conn.find(&(*pos)) == used_conn.end())
+        break;
+    }
+    const Connection& curr_conn = *pos;
+    used_conn.insert(&curr_conn);
     v_ch.push_back(curr_conn[1]);
   }
   return v_ch;

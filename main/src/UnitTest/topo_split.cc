@@ -98,3 +98,41 @@ TEST_CASE("same_loop", "[SPLITCHAIN]")
   REQUIRE(spl_ch->boundary_islands(1) == nullptr);
   REQUIRE(spl_ch->boundary_islands(2) == nullptr);
 }
+
+/// <image url="$(SolutionDir)..\main\src\UnitTest\topo_split.cc.loop3.jpg"/>
+
+TEST_CASE("loop3", "[SPLITCHAIN]")
+{
+  Topo::VertexChain vs0 = make_vertices(
+  { { 1, 1, 0 },{ -1, 1, 0 } });
+  Topo::VertexChain vs1 = make_vertices(
+  { { -5, 0, 0 },{ 5, 0, 0 },{ 0, 3, 0 } });
+
+  auto spl_ch = Topo::ISplitChain::make();
+  spl_ch->add_chain(vs1);
+  spl_ch->add_connection(vs0[0], vs0[1]);
+  spl_ch->add_connection(vs0[0], vs1[2]);
+  spl_ch->add_connection(vs0[1], vs1[2]);
+  spl_ch->compute();
+  REQUIRE(spl_ch->boundaries().size() == 2);
+  REQUIRE(spl_ch->boundary_islands(0) == nullptr);
+  REQUIRE(spl_ch->boundary_islands(1) == nullptr);
+}
+
+TEST_CASE("loop4", "[SPLITCHAIN]")
+{
+  Topo::VertexChain vs0 = make_vertices(
+  { { -1, 1, 0 },{ 1, 1, 0 } });
+  Topo::VertexChain vs1 = make_vertices(
+  { { -5, 0, 0 },{ 5, 0, 0 },{ 0, 3, 0 } });
+
+  auto spl_ch = Topo::ISplitChain::make();
+  spl_ch->add_chain(vs1);
+  spl_ch->add_connection(vs0[0], vs0[1]);
+  spl_ch->add_connection(vs0[0], vs1[2]);
+  spl_ch->add_connection(vs0[1], vs1[2]);
+  spl_ch->compute();
+  REQUIRE(spl_ch->boundaries().size() == 2);
+  REQUIRE(spl_ch->boundary_islands(0) == nullptr);
+  REQUIRE(spl_ch->boundary_islands(1) == nullptr);
+}
