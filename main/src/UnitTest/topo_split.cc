@@ -136,3 +136,26 @@ TEST_CASE("loop4", "[SPLITCHAIN]")
   REQUIRE(spl_ch->boundary_islands(0) == nullptr);
   REQUIRE(spl_ch->boundary_islands(1) == nullptr);
 }
+/// <image url="$(SolutionDir)..\main\src\UnitTest\topo_split.cc.loop5.jpg"/>
+
+TEST_CASE("loop5", "[SPLITCHAIN]")
+{
+  Topo::VertexChain vs0 = make_vertices(
+  { { -3, -3, 0 }, { 3, -3, 0 },{ 3, 3, 0 },{ -3, 3, 0 } });
+  Topo::VertexChain vs1 = make_vertices(
+  { { -2, -2, 0 },{ 2, -2, 0 },{ 2, 2, 0 },{ -2, 2, 0 } });
+  auto spl_ch = Topo::ISplitChain::make();
+  spl_ch->add_chain(vs0);
+
+  spl_ch->add_connection(vs1[0], vs1[1]);
+  spl_ch->add_connection(vs1[1], vs1[2]);
+  spl_ch->add_connection(vs1[2], vs1[3]);
+  spl_ch->add_connection(vs1[3], vs1[0]);
+  spl_ch->add_connection(vs1[0], vs1[2]);
+  spl_ch->compute();
+  REQUIRE(spl_ch->boundaries().size() == 3);
+  REQUIRE(spl_ch->boundary_islands(0)->size() == 1);
+  REQUIRE((*spl_ch->boundary_islands(0))[0].size() == 4);
+  REQUIRE(spl_ch->boundary_islands(1) == nullptr);
+  REQUIRE(spl_ch->boundary_islands(2) == nullptr);
+}

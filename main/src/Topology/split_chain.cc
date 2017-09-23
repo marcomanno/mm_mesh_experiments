@@ -111,6 +111,8 @@ void SplitChain::compute()
     if (ins[0] != ins[1])
       boundaries_.push_back(std::move(split_chains[1]));
     remove_chain_from_connection(new_ch, &conn_it, true);
+    std::reverse(new_ch.begin(), new_ch.end());
+    remove_chain_from_connection(new_ch, &conn_it, true);
     all_chain_vertices.insert(new_ch.begin(), new_ch.end());
   }
 
@@ -128,8 +130,6 @@ void SplitChain::compute()
     if (norm_ * norm < 0)
       std::swap(loops[0], loops[1]);
     loops[0]->push_back(new_ch);
-    std::reverse(new_ch.begin(), new_ch.end());
-    loops[1]->push_back(new_ch);
 
     remove_chain_from_connection(new_ch, &conn_it, false);
   }
@@ -353,7 +353,6 @@ void SplitChain::remove_chain_from_connection(
       }
     };
     remove_connection(*prev_vert_it, *vert_it);
-    remove_connection(*vert_it, *prev_vert_it);
   }
 }
 
