@@ -79,41 +79,47 @@ void SplitChain::compute()
   for (auto& ch : boundaries_)
     for (auto& v : ch)
       all_chain_vertices.insert(v);
-
-  for (auto conn_it = connections_.begin(); conn_it != connections_.end(); )
+  for (bool achange = true; achange;)
   {
-    auto cur_conn_it = conn_it++;
-    if (all_chain_vertices.find((*cur_conn_it)[0]) == all_chain_vertices.end())
-      continue;
-    VertexChain new_ch = follow_chain(*cur_conn_it, all_chain_vertices);
-    if (new_ch.empty())
-      continue;
-    std::array<size_t, 2> ins;
-    size_t chain_ind;
-    THROW_IF(!locate(new_ch, chain_ind, ins), "No attah chain");
-    VertexChain split_chains[2];
-    bool curr_chain = ins[0] > ins[1];
-    for (size_t i = 0; i < boundaries_[chain_ind].size(); ++i)
+    achange = false;
+    for (auto conn_it = connections_.begin(); conn_it != connections_.end(); )
     {
-      if (i != ins[0] && i != ins[1])
-        split_chains[curr_chain].push_back(boundaries_[chain_ind][i]);
-      else
+      auto cur_conn_it = conn_it++;
+      if (all_chain_vertices.find((*cur_conn_it)[0]) == all_chain_vertices.end())
+        continue;
+      VertexChain new_ch = follow_chain(*cur_conn_it, all_chain_vertices);
+      if (new_ch.empty())
+        continue;
+      achange = true;
+      std::array<size_t, 2> ins;
+      size_t chain_ind;
+      THROW_IF(!locate(new_ch, chain_ind, ins), "No attah chain");
+      VertexChain split_chains[2];
+      bool curr_chain = ins[0] > ins[1];
+      for (size_t i = 0; i < boundaries_[chain_ind].size(); ++i)
       {
-        if (i == ins[0])
-          split_chains[0].insert(split_chains[0].end(), new_ch.begin(), new_ch.end());
+        if (i != ins[0] && i != ins[1])
+          split_chains[curr_chain].push_back(boundaries_[chain_ind][i]);
         else
-          split_chains[1].insert(split_chains[1].end(), new_ch.rbegin(), new_ch.rend());
-        if (ins[0] != ins[1])
-          curr_chain = !curr_chain;
+        {
+          if (i == ins[0])
+            split_chains[0].insert(split_chains[0].end(), new_ch.begin(), new_ch.end());
+          else
+            split_chains[1].insert(split_chains[1].end(), new_ch.rbegin(), new_ch.rend());
+          if (ins[0] != ins[1])
+            curr_chain = !curr_chain;
+        }
       }
+      boundaries_[chain_ind] = std::move(split_chains[0]);
+      remove_chain_from_connection(new_ch, &conn_it, true);
+      if (ins[0] != ins[1])
+      {
+        boundaries_.push_back(std::move(split_chains[1]));
+        std::reverse(new_ch.begin(), new_ch.end());
+        remove_chain_from_connection(new_ch, &conn_it, true);
+      }
+      all_chain_vertices.insert(new_ch.begin(), new_ch.end());
     }
-    boundaries_[chain_ind] = std::move(split_chains[0]);
-    if (ins[0] != ins[1])
-      boundaries_.push_back(std::move(split_chains[1]));
-    remove_chain_from_connection(new_ch, &conn_it, true);
-    std::reverse(new_ch.begin(), new_ch.end());
-    remove_chain_from_connection(new_ch, &conn_it, true);
-    all_chain_vertices.insert(new_ch.begin(), new_ch.end());
   }
 
   VertexChains islands;

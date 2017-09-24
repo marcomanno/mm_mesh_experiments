@@ -136,6 +136,7 @@ TEST_CASE("loop4", "[SPLITCHAIN]")
   REQUIRE(spl_ch->boundary_islands(0) == nullptr);
   REQUIRE(spl_ch->boundary_islands(1) == nullptr);
 }
+
 /// <image url="$(SolutionDir)..\main\src\UnitTest\topo_split.cc.loop5.jpg"/>
 
 TEST_CASE("loop5", "[SPLITCHAIN]")
@@ -158,4 +159,73 @@ TEST_CASE("loop5", "[SPLITCHAIN]")
   REQUIRE((*spl_ch->boundary_islands(0))[0].size() == 4);
   REQUIRE(spl_ch->boundary_islands(1) == nullptr);
   REQUIRE(spl_ch->boundary_islands(2) == nullptr);
+}
+
+/// <image url="$(SolutionDir)..\main\src\UnitTest\topo_split.cc.loop6.jpg"/>
+
+TEST_CASE("loop6", "[SPLITCHAIN]")
+{
+  std::initializer_list<Geo::Point> pts =
+  { { 0, 0, 0 },{ 0, 4, 0 },
+    { -5, 2, 0 },{ -3, 2, 0 },{ -2, 2, 0 },{ -1, 2, 0 },
+    { 1, 2, 0 },{ 2, 2, 0 },{ 3, 2, 0 },{ 5, 2, 0 } };
+
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>> verts;
+  for (auto& pt : pts)
+  {
+    verts.emplace_back();
+    verts.back().make<Topo::EE<Topo::Type::VERTEX>>();
+    verts.back()->set_geom(pt);
+  }
+  Topo::VertexChain bndr;
+  for (auto i : {0,9,1,2})
+    bndr.push_back(verts[i]);
+
+  auto spl_ch = Topo::ISplitChain::make();
+  spl_ch->add_chain(bndr);
+
+  for (auto i : { 3,4,5,6,7,8 })
+    for (auto j : { 0,1 })
+      spl_ch->add_connection(verts[i], verts[j]);
+
+  spl_ch->add_connection(verts[0], verts[1]);
+
+  spl_ch->compute();
+  REQUIRE(spl_ch->boundaries().size() == 8);
+  for (auto i = spl_ch->boundaries().size(); i-- > 0;)
+    REQUIRE(spl_ch->boundary_islands(i) == nullptr);
+}
+
+/// <image url="$(SolutionDir)..\main\src\UnitTest\topo_split.cc.loop7.jpg"/>
+
+TEST_CASE("loop7", "[SPLITCHAIN]")
+{
+  std::initializer_list<Geo::Point> pts =
+  { { -3, 3, 0 },{ 3, 3, 0 },{ -3, -3, 0 },{ 3, -3, 0 },
+  { -1, 0, 0 },{ 0, 1, 0 },{ 1, 0, 0 },{ 0, -1, 0 },
+  { -2, 2, 0 },{ 0, 0, 0 } };
+
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>> verts;
+  for (auto& pt : pts)
+  {
+    verts.emplace_back();
+    verts.back().make<Topo::EE<Topo::Type::VERTEX>>();
+    verts.back()->set_geom(pt);
+  }
+  Topo::VertexChain bndr;
+  for (auto i : { 2,3,1,0,8,0 })
+    bndr.push_back(verts[i]);
+
+  auto spl_ch = Topo::ISplitChain::make();
+  spl_ch->add_chain(bndr);
+
+  std::initializer_list<std::pair<size_t, size_t>> conns =
+  { {8, 4},  {8, 5}, {4, 5}, {4,9}, {4,7}, {6,7}, {6,5} };
+  for (auto i : conns)
+    spl_ch->add_connection(verts[i.first], verts[i.second]);
+
+  spl_ch->compute();
+  REQUIRE(spl_ch->boundaries().size() == 3);
+  for (auto i = spl_ch->boundaries().size(); i-- > 0;)
+    REQUIRE(spl_ch->boundary_islands(i) == nullptr);
 }
