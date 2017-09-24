@@ -229,3 +229,94 @@ TEST_CASE("loop7", "[SPLITCHAIN]")
   for (auto i = spl_ch->boundaries().size(); i-- > 0;)
     REQUIRE(spl_ch->boundary_islands(i) == nullptr);
 }
+
+/// <image url="$(SolutionDir)..\main\src\UnitTest\topo_split.cc.loop8.jpg"/>
+
+TEST_CASE("loop8", "[SPLITCHAIN]")
+{
+  std::initializer_list<Geo::Point> pts =
+  { { -5, -5, 0 },{ 5, -5, 0 },{ 5, 5, 0 },{ -5, 5, 0 },
+  { -2, 3},
+  { -1, 4, 0 },{ -1, 3, 0 },{ -1, 2, 0 },{ -1, 1, 0 },{ -1, -1, 0 },{ -1, -2, 0 },
+  { -1, -4, 0 },{ -2, -4, 0 },{ -3, -4, 0 },{ -4, -4, 0 },
+  { 3, 4, 0}, {3,-4,0},{4,4,0}, {4, -4, 0},{4, 0,0} };
+
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>> verts;
+  for (auto& pt : pts)
+  {
+    verts.emplace_back();
+    verts.back().make<Topo::EE<Topo::Type::VERTEX>>();
+    verts.back()->set_geom(pt);
+  }
+  Topo::VertexChain bndr;
+  for (auto i : { 0, 1, 2,3 })
+    bndr.push_back(verts[i]);
+
+  auto spl_ch = Topo::ISplitChain::make();
+  spl_ch->add_chain(bndr);
+
+  std::initializer_list<std::pair<size_t, size_t>> conns =
+  {
+    { 3, 4 },
+    { 4, 5 },{ 4,6 },{ 4,7 },{ 4,8 },{ 4,9 },{ 4,10 },{ 4,11 },{ 4,12 },{ 4,13 },{ 4,14 },
+    {5,6}, {7,8}, {9,10},{11,12}, {13,14},
+    {19, 15},{ 19, 16 },{ 19, 17 },{ 19, 18 },
+    {15,17},{16,18},{5,15}, {11,16},
+    {19,2},{19,1}
+  };
+  for (auto i : conns)
+    spl_ch->add_connection(verts[i.first], verts[i.second]);
+
+  spl_ch->compute();
+  REQUIRE(spl_ch->boundaries().size() == 11);
+  for (auto i = spl_ch->boundaries().size(); i-- > 0;)
+    REQUIRE(spl_ch->boundary_islands(i) == nullptr);
+}
+
+/// <image url="$(SolutionDir)..\main\src\UnitTest\topo_split.cc.loop9.jpg"/>
+
+TEST_CASE("loop9", "[SPLITCHAIN]")
+{
+  std::initializer_list<Geo::Point> pts =
+  { { -5, 0, 0 },{ 5, 0, 0 },{ 5, 5, 0 },{ -5, 5, 0 },
+  { -4, 1, 0 },{ -1, 1, 0 }, {-1, 4, 0}, {-4, 4, 0},
+  { 0, 1, 0 },{ 4, 1, 0 },{ 4, 4, 0 },{ 0, 4, 0 },
+  { -3, 2, 0 },{ -2, 2, 0 },{ -3, 3, 0 },
+  { 1, 2, 0 },{ 2, 2, 0 },{ 3, 2, 0 }, { 1, 3, 0 },{ 3, 3, 0 } };
+
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>> verts;
+  for (auto& pt : pts)
+  {
+    verts.emplace_back();
+    verts.back().make<Topo::EE<Topo::Type::VERTEX>>();
+    verts.back()->set_geom(pt);
+  }
+  Topo::VertexChain bndr;
+  for (auto i : { 0, 1, 2, 3 })
+    bndr.push_back(verts[i]);
+
+  auto spl_ch = Topo::ISplitChain::make();
+  spl_ch->add_chain(bndr);
+
+  std::initializer_list<std::pair<size_t, size_t>> conns =
+  {
+    { 4, 5 },{ 5, 6 },{ 6, 7 },{ 4, 7 },
+    { 8, 9 },{ 9, 10},{ 10, 11 },{ 11, 8 },
+    {6,11},
+    {12,13},{13,14},{14,12},
+    { 15,16 },{ 16, 17 },{ 17,19 },{15,18}, {16,18 }, {16,19} };
+  for (auto i : conns)
+    spl_ch->add_connection(verts[i.first], verts[i.second]);
+
+  spl_ch->compute();
+  REQUIRE(spl_ch->boundaries().size() == 6);
+  size_t islands_nmbr[] = {1,1,1,0,0,0};
+  for (auto i = spl_ch->boundaries().size(); i-- > 0;)
+  {
+    auto islnd_i = spl_ch->boundary_islands(i);
+    if (islnd_i == nullptr)
+      REQUIRE(islands_nmbr[i] == 0);
+    else
+    REQUIRE(islnd_i->size() == islands_nmbr[i]);
+  }
+}

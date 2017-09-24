@@ -393,7 +393,7 @@ size_t SplitChain::find_boundary_index(const VertexChain& _ch) const
     auto poly_t = Geo::IPolygonTriangulation::make();
     poly_t->add(pts);
     auto area = poly_t->area();
-    if (Utils::a_eq_b_if_a_lt_b(min_area, area))
+    if (Utils::a_eq_b_if_a_gt_b(min_area, area))
       min_ind = i;
   }
   return min_ind;
