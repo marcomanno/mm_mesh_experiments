@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?> 
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010"> 
-<Type Name="Topo::IBase">
-     <DisplayString>Name: {id_}</DisplayString>
-     <Expand>
-       <Item Name="ref_">ref_</Item>
-     </Expand>
+<Type Name="Topo::Wrap&lt;*&gt;">  
+     <DisplayString> {{id_ = {ptr_->id_}}}</DisplayString>
+</Type>	 
 </AutoVisualizer>
