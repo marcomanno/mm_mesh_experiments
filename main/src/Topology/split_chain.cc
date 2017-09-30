@@ -57,7 +57,17 @@ private:
 
   VertexChain follow_chain(const Connection& _conn,
                            std::set<Topo::Wrap<Topo::Type::VERTEX>>& _all_vert_ch);
-  bool locate(const VertexChain& _ch, size_t& _loop_ind, std::array<size_t, 2>& _pos);
+  bool locate(const VertexChain& _ch, 
+              size_t _loop_inds[2],
+              std::array<size_t, 2>& _pos);
+
+  void split_boundary_chain(
+    size_t _chain_ind, std::array<size_t, 2>& _ins,
+    const VertexChain& _new_ch);
+
+  void merge_boundary_chains(
+    size_t _chain_inds[2], std::array<size_t, 2>& _ins,
+    const VertexChain& _new_ch);
 
   VertexChains boundaries_;
   std::map<size_t, VertexChains> islands_;
@@ -92,32 +102,19 @@ void SplitChain::compute()
         continue;
       achange = true;
       std::array<size_t, 2> ins;
-      size_t chain_ind;
-      THROW_IF(!locate(new_ch, chain_ind, ins), "No attah chain");
-      VertexChain split_chains[2];
-      bool curr_chain = ins[0] > ins[1];
-      for (size_t i = 0; i < boundaries_[chain_ind].size(); ++i)
-      {
-        if (i != ins[0] && i != ins[1])
-          split_chains[curr_chain].push_back(boundaries_[chain_ind][i]);
-        else
-        {
-          if (i == ins[0])
-            split_chains[0].insert(split_chains[0].end(), new_ch.begin(), new_ch.end());
-          else
-            split_chains[1].insert(split_chains[1].end(), new_ch.rbegin(), new_ch.rend());
-          if (ins[0] != ins[1])
-            curr_chain = !curr_chain;
-        }
-      }
-      boundaries_[chain_ind] = std::move(split_chains[0]);
+      size_t chain_inds[2];
+      THROW_IF(!locate(new_ch, chain_inds, ins), "No attah chain");
+      if (chain_inds[0] == chain_inds[1])
+        split_boundary_chain(chain_inds[0], ins, new_ch);
+      else
+        merge_boundary_chains(chain_inds, ins, new_ch);
       remove_chain_from_connection(new_ch, &conn_it, true);
-      if (ins[0] != ins[1])
+      if (chain_inds[0] != chain_inds[1] || ins[0] != ins[1])
       {
-        boundaries_.push_back(std::move(split_chains[1]));
         std::reverse(new_ch.begin(), new_ch.end());
         remove_chain_from_connection(new_ch, &conn_it, true);
       }
+
       all_chain_vertices.insert(new_ch.begin(), new_ch.end());
     }
   }
@@ -236,7 +233,8 @@ VertexChain SplitChain::follow_chain(
 }
 
 bool SplitChain::locate(
-  const VertexChain& _ch, size_t& _loop_ind,
+  const VertexChain& _ch,
+  size_t _loop_inds[2],
   std::array<size_t, 2>& _pos)
 {
   typedef std::array<size_t, 2> InsPoint;
@@ -331,10 +329,63 @@ bool SplitChain::locate(
   }
   if (choices[0].size() != 1 || choices[1].size() != 1)
     return false;
-  _loop_ind = choices[0].front()[0];
-  _pos[0] = choices[0].front()[1];
-  _pos[1] = choices[1].front()[1];
+  for (auto i : { 0, 1 })
+  {
+    _loop_inds[i] = choices[i].front()[0];
+    _pos[i] = choices[i].front()[1];
+  }
   return true;
+}
+
+void SplitChain::split_boundary_chain(
+  size_t _chain_ind, std::array<size_t, 2>& _ins,
+  const VertexChain& _new_ch)
+{
+  VertexChain split_chains[2];
+  bool curr_chain = _ins[0] > _ins[1];
+  for (size_t i = 0; i < boundaries_[_chain_ind].size(); ++i)
+  {
+    if (i != _ins[0] && i != _ins[1])
+      split_chains[curr_chain].push_back(boundaries_[_chain_ind][i]);
+    else
+    {
+      if (i == _ins[0])
+        split_chains[0].insert(split_chains[0].end(), _new_ch.begin(), _new_ch.end());
+      else
+        split_chains[1].insert(split_chains[1].end(), _new_ch.rbegin(), _new_ch.rend());
+      if (_ins[0] != _ins[1])
+        curr_chain = !curr_chain;
+    }
+  }
+  boundaries_[_chain_ind] = std::move(split_chains[0]);
+  if (_ins[0] != _ins[1])
+    boundaries_.push_back(std::move(split_chains[1]));
+}
+
+void SplitChain::merge_boundary_chains(
+  size_t _chain_inds[2], std::array<size_t, 2>& _ins,
+  const VertexChain& _new_ch)
+{
+  VertexChain merged_loop;
+  for (size_t i = 0; i < boundaries_[_chain_inds[0]].size(); ++i)
+  {
+    if (i != _ins[0])
+      merged_loop.push_back(boundaries_[_chain_inds[0]][i]);
+    else
+    {
+      merged_loop.insert(merged_loop.end(), _new_ch.begin(), _new_ch.end());
+      auto& bndr2 = boundaries_[_chain_inds[1]];
+      for (size_t j = Utils::increase(_ins[1], bndr2.size());
+           j != _ins[1]; j = Utils::increase(j, bndr2.size()))
+      {
+        merged_loop.push_back(bndr2[j]);
+      }
+      merged_loop.insert(merged_loop.end(), _new_ch.rbegin(), _new_ch.rend());
+    }
+  }
+  std::sort(_chain_inds, _chain_inds + 2);
+  boundaries_[_chain_inds[0]] = std::move(merged_loop);
+  boundaries_.erase(boundaries_.begin() + _chain_inds[1]);
 }
 
 void SplitChain::remove_chain_from_connection(

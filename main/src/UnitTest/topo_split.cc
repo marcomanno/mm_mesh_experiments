@@ -320,3 +320,19 @@ TEST_CASE("loop9", "[SPLITCHAIN]")
     REQUIRE(islnd_i->size() == islands_nmbr[i]);
   }
 }
+
+
+TEST_CASE("face_with_island", "[SPLITCHAIN]")
+{
+  auto bndr = make_vertices(
+  { {-2, -2, 0}, {2, -2, 0}, {2, 2, 0}, {-2, 2, 0} } );
+  auto isl = make_vertices(
+  { { -1, -1, 0 }, { -1, 1, 0 }, { 1, 1, 0 }, { 1, -1, 0 } });
+  auto spl_ch = Topo::ISplitChain::make();
+  spl_ch->add_chain(bndr);
+  spl_ch->add_chain(isl);
+  spl_ch->add_connection(bndr[0], isl[0]);
+  spl_ch->compute();
+  REQUIRE(spl_ch->boundaries().size() == 1);
+  REQUIRE(spl_ch->boundaries()[0].size() == 10);
+}
