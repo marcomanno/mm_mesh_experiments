@@ -39,12 +39,12 @@ template <> struct Split<Type::FACE>
 {
   Split(Wrap<Type::FACE>& _face) : face_(_face) {}
 
-  void add_boundary(VertexChain& _vert_chain)
+  void add_boundary(const VertexChain& _vert_chain)
   {
     boundary_chains_.emplace_back(std::move(_vert_chain));
   }
 
-  void add_island(VertexChain& _vert_chain)
+  void add_island(const VertexChain& _vert_chain)
   {
     island_chains_.emplace_back(std::move(_vert_chain));
   }

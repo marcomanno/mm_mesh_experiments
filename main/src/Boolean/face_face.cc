@@ -11,6 +11,7 @@
 #include "Topology/impl.hh"
 #include "Topology/shared.hh"
 #include "Topology/split.hh"
+#include <Topology/split_chain.hh>
 #include "Utils/error_handling.hh"
 #include "Utils/circular.hh"
 #include "Utils/graph.hh"
@@ -97,15 +98,21 @@ bool mid_point_in_face(Topo::Wrap<Topo::Type::VERTEX> _start_end[2],
 
 struct FaceEdgeMap
 {
-  typedef std::vector<Topo::Wrap<Topo::Type::VERTEX>> CommonVerticesBasic;
-  struct CommonVertices : public CommonVerticesBasic
+  struct CommonVertices : public Topo::VertexChain
   {
-    CommonVertices(const CommonVerticesBasic& _comm_vert, bool _doubious) :
-      CommonVerticesBasic(_comm_vert), doubious_(_doubious) {}
+    CommonVertices(const Topo::VertexChain& _comm_vert, bool _doubious) :
+      Topo::VertexChain(_comm_vert), doubious_(_doubious) {}
     bool doubious_ = false;
   };
   typedef std::vector<CommonVertices> NewVerts;
   typedef std::vector<Topo::Wrap<Topo::Type::FACE>> NewFaces;
+  struct FaceData
+  {
+    Geo::Vector3 norm_;
+    NewFaces new_faces_;
+    NewVerts new_verts_;
+  };
+  typedef std::map<Topo::Wrap<Topo::Type::FACE>, FaceData> FaceDataMap;
 
   bool add_face_edge(
     const Topo::Wrap<Topo::Type::FACE>& _face,
@@ -146,15 +153,7 @@ struct FaceEdgeMap
   void split(OverlapFces& _overlap_faces);
 
 private:
-  typedef Geo::Point Normal;
-  struct FaceData
-  {
-    Normal norm_;
-    NewFaces new_faces_;
-    NewVerts new_verts_;
-  };
-
-  std::map<Topo::Wrap<Topo::Type::FACE>, FaceData> map_[2];
+  FaceDataMap map_[2];
   void check_doubious_faces();
   void split_overlaps(OverlapFces&  _overlap_faces);
   bool split_on_boundary(
@@ -1401,12 +1400,143 @@ void FaceEdgeMap::split_with_chains()
     }
   }
 }
+#define NEW_SPLIT_FACE 1
+#if NEW_SPLIT_FACE
+namespace {
 
+void split_face(FaceEdgeMap::FaceDataMap::value_type& face_info,
+                OverlapFcesVectror& _overlap_faces)
+{
+  auto& edge_vec = face_info.second.new_verts_;
+  if (edge_vec.empty())
+    return;
+  typedef std::array<Topo::Wrap<Topo::Type::VERTEX>, 2> Connection;
+  auto make_connection = [](
+    Topo::Wrap<Topo::Type::VERTEX>& _a,
+    Topo::Wrap<Topo::Type::VERTEX>& _b)
+  {
+    Connection conn = { _a, _b };
+    std::sort(conn.begin(), conn.end());
+    return conn;
+  };
+  auto ch_spliter = Topo::ISplitChain::make();
+  auto face = face_info.first;
+  Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> fl_it(face);
+  std::set<Connection> existing_conn;
+  for (auto loop : fl_it)
+  {
+    Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv_it(loop);
+    auto prev_vert = *std::prev(lv_it.end());
+    Topo::VertexChain ch;
+    for (auto vert : lv_it)
+    {
+      existing_conn.insert(make_connection(prev_vert, vert));
+      ch.push_back(vert);
+      prev_vert = vert;
+    }
+    ch_spliter->add_chain(ch);
+  }
+  for (size_t i = 0; i < edge_vec.size(); ++i)
+  {
+    auto& vert_set = edge_vec[i];
+    std::sort(vert_set.begin(), vert_set.end());
+    auto last = std::prev(vert_set.end());
+    for (auto vert_set_it1 = vert_set.begin();
+         vert_set_it1 != last; ++vert_set_it1)
+    {
+      for (auto vert_set_it2 = vert_set_it1;
+           ++vert_set_it2 != vert_set.end();)
+      {
+        auto conn = make_connection(*vert_set_it1, *vert_set_it2);
+        if (existing_conn.find(conn) != existing_conn.end())
+          continue;
+        if (vert_set.size() == 2)
+        {
+          ch_spliter->add_connection(conn[0], conn[1]);
+          existing_conn.insert(conn);
+        }
+        else
+        {
+          auto edges =
+            Topo::shared_entities<Topo::Type::VERTEX, Topo::Type::EDGE>(conn[0], conn[1]);
+          if (!edges.empty())
+          {
+            ch_spliter->add_connection(conn[0], conn[1]);
+            existing_conn.insert(conn);
+          }
+        }
+      }
+    }
+  }
+  typedef std::map<Topo::Wrap<Topo::Type::VERTEX>, Base::BasicType<int>> VertUseMap;
+  std::vector<VertUseMap> vert_usage(edge_vec.size());
+  for (size_t i = 0; i < edge_vec.size(); ++i)
+  {
+    auto& vert_set = edge_vec[i];
+    if (vert_set.size() <= 2)
+      continue;
+    auto& vert_use_map = vert_usage[i];
+    auto last = std::prev(vert_set.end());
+    for (auto vert_set_it1 = vert_set.begin();
+         vert_set_it1 != last; ++vert_set_it1)
+    {
+      for (auto vert_set_it2 = vert_set_it1;
+           ++vert_set_it2 != vert_set.end();)
+      {
+        auto conn = make_connection(*vert_set_it1, *vert_set_it2);
+        if (existing_conn.find(conn) != existing_conn.end())
+          Geo::iterate_forw<2>::eval([&vert_use_map, &conn](size_t _j)
+        { ++vert_use_map[conn[_j]]; });
+        else
+        {
+          Geo::iterate_forw<2>::eval([&vert_use_map, &conn](size_t _j)
+          { vert_use_map.emplace(conn[_j], 0); });
+        }
+      }
+    }
+    for (auto& v : vert_use_map)
+      THROW_IF(v.second != 2, "Missing overlap chain");
+  }
+  ch_spliter->compute();
+  Topo::Split<Topo::Type::FACE> fsplit(face);
+  for (size_t i = 0; i < ch_spliter->boundaries().size(); ++i)
+  {
+    fsplit.add_boundary(ch_spliter->boundaries()[i]);
+    auto isles = ch_spliter->boundary_islands(i);
+    if (isles == nullptr)
+      continue;
+    for (const auto& isle : *isles)
+      fsplit.add_island(isle);
+  }
+  fsplit.compute();
+  const auto& newfaces = face_info.second.new_faces_ = fsplit.new_faces();
+  std::sort(edge_vec.begin(), edge_vec.end());
+  for (auto f : newfaces)
+  {
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fe(f);
+    Topo::VertexChain vc;
+    for (auto v : fe)
+      vc.push_back(v);
+    std::sort(vc.begin(), vc.end());
+    auto where = 
+      std::equal_range(edge_vec.begin(), edge_vec.end(), vc);
+    if (where.first != where.second)
+      _overlap_faces.push_back(f);
+  }
+}
+} // namespace
+#endif
 void FaceEdgeMap::split(OverlapFces& _overlap_faces)
 {
   check_doubious_faces();
+#if NEW_SPLIT_FACE
+  for (size_t i = 0; i < std::size(map_); ++i)
+    for (auto& face_info : map_[i])
+      split_face(face_info, _overlap_faces[i]);
+#else
   split_overlaps(_overlap_faces);
   split_with_chains();
+#endif
 }
 
 }//namespace

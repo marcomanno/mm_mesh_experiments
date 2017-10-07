@@ -110,6 +110,7 @@ TEST_CASE("4EEintersections", "[Bool]")
   Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> be_it(result);
   REQUIRE(be_it.size() == 18);
 }
+/// <image url="$(SolutionDir)..\main\src\UnitTest\bool4ff.jpg"/>
 
 TEST_CASE("3FFintersections", "[Bool]")
 {
