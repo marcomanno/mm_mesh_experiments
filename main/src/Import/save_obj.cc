@@ -13,8 +13,8 @@
 
 namespace IO {
 
-#define SPLIT
-bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
+bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body,
+              bool _split)
 {
   std::ofstream fstr(_flnm);
   THROW_IF(!fstr, "IO save error");
@@ -44,29 +44,54 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body)
   {
     auto f = face_it.get(i);
     Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> fl_it(f);
-    auto poly_t = Geo::IPolygonTriangulation::make();
-    for (const auto& loop : fl_it)
+    if (_split)
     {
-      std::vector<Geo::Vector3> plgn;
-      Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv_it(loop);
-      for (const auto& v : lv_it)
+      auto poly_t = Geo::IPolygonTriangulation::make();
+      for (const auto& loop : fl_it)
       {
-        plgn.emplace_back();
-        v->geom(plgn.back());
+        std::vector<Geo::Vector3> plgn;
+        Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv_it(loop);
+        for (const auto& v : lv_it)
+        {
+          plgn.emplace_back();
+          v->geom(plgn.back());
+        }
+        poly_t->add(plgn);
       }
-      poly_t->add(plgn);
+      for (const auto& tri : poly_t->triangles())
+      {
+        fstr << "f";
+        for (auto ind : tri)
+        {
+          const auto& pt = poly_t->polygon()[ind];
+          const auto idx = std::lower_bound(all_pts.begin(),
+                                            all_pts.end(), pt) - all_pts.begin() + 1;
+          fstr << " " << idx;
+        }
+        fstr << "\n";
+      }
     }
-    for (const auto& tri : poly_t->triangles())
+    else
     {
-      fstr << "f";
-      for (auto ind : tri)
+      bool isle = false;
+      for (const auto& loop : fl_it)
       {
-        const auto& pt = poly_t->polygon()[ind];
-        const auto idx = std::lower_bound(all_pts.begin(),
-          all_pts.end(), pt) - all_pts.begin() + 1;
-        fstr << " " << idx;
+        Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv_it(loop);
+        fstr << "f";
+        if (isle)
+          fstr << "  ";
+
+        for (const auto& v : lv_it)
+        {
+          Geo::Point pt;
+          v->geom(pt);
+          const auto idx = std::lower_bound(
+            all_pts.begin(), all_pts.end(), pt) - all_pts.begin() + 1;
+          fstr << " " << idx;
+        }
+        fstr << "\n";
+        isle = true;
       }
-      fstr << "\n";
     }
   }
   return fstr.good();

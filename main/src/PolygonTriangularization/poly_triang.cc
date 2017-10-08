@@ -280,7 +280,7 @@ void PolygonTriangulation::Solution::compute(
     {
       inds[2] = _indcs[i];
       vects[1] = _pts[inds[2]] - _pts[inds[1]];
-      if (valid_triangle(i, proj_poly, norm, tol))
+      if (inds[0] != inds[2] && valid_triangle(i, proj_poly, norm, tol))
         angles.push_back(Geo::angle(vects[0], vects[1]));
       else
         angles.push_back(invalid_double);

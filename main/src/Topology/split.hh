@@ -49,7 +49,7 @@ template <> struct Split<Type::FACE>
     island_chains_.emplace_back(std::move(_vert_chain));
   }
 
-  void add_original_island(VertexChain& _vert_chain)
+  void add_original_island(const VertexChain& _vert_chain)
   {
     original_island_chains_.emplace_back(std::move(_vert_chain));
   }

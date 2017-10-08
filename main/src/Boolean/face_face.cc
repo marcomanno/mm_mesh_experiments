@@ -1412,8 +1412,8 @@ void split_face(FaceEdgeMap::FaceDataMap::value_type& face_info,
     return;
   typedef std::array<Topo::Wrap<Topo::Type::VERTEX>, 2> Connection;
   auto make_connection = [](
-    Topo::Wrap<Topo::Type::VERTEX>& _a,
-    Topo::Wrap<Topo::Type::VERTEX>& _b)
+    const Topo::Wrap<Topo::Type::VERTEX>& _a,
+    const Topo::Wrap<Topo::Type::VERTEX>& _b)
   {
     Connection conn = { _a, _b };
     std::sort(conn.begin(), conn.end());
@@ -1468,34 +1468,42 @@ void split_face(FaceEdgeMap::FaceDataMap::value_type& face_info,
       }
     }
   }
-  typedef std::map<Topo::Wrap<Topo::Type::VERTEX>, Base::BasicType<int>> VertUseMap;
-  std::vector<VertUseMap> vert_usage(edge_vec.size());
-  for (size_t i = 0; i < edge_vec.size(); ++i)
+  for (auto& vert_set : edge_vec)
   {
-    auto& vert_set = edge_vec[i];
     if (vert_set.size() <= 2)
       continue;
-    auto& vert_use_map = vert_usage[i];
-    auto last = std::prev(vert_set.end());
-    for (auto vert_set_it1 = vert_set.begin();
-         vert_set_it1 != last; ++vert_set_it1)
+    auto vert_set_cpy(vert_set);
+    std::vector<std::vector<Topo::Wrap<Topo::Type::VERTEX>>> grp_grp_vert;
+    while (!vert_set_cpy.empty())
     {
-      for (auto vert_set_it2 = vert_set_it1;
-           ++vert_set_it2 != vert_set.end();)
+      grp_grp_vert.emplace_back();
+      auto& curr = grp_grp_vert.back();
+      auto move_vertex = [&curr, &vert_set_cpy](decltype(vert_set_cpy)::iterator _it)
       {
-        auto conn = make_connection(*vert_set_it1, *vert_set_it2);
-        if (existing_conn.find(conn) != existing_conn.end())
-          Geo::iterate_forw<2>::eval([&vert_use_map, &conn](size_t _j)
-        { ++vert_use_map[conn[_j]]; });
-        else
+        curr.push_back(*_it);
+        vert_set_cpy.erase(_it);
+      };
+      move_vertex(vert_set_cpy.begin());
+      for (size_t i = 0; i < curr.size(); ++i)
+      {
+        for (size_t j = 0; j < vert_set_cpy.size();)
         {
-          Geo::iterate_forw<2>::eval([&vert_use_map, &conn](size_t _j)
-          { vert_use_map.emplace(conn[_j], 0); });
+          auto& elem = curr[i];
+          auto conn = make_connection(elem, vert_set_cpy[j]);
+          if (existing_conn.find(conn) != existing_conn.end())
+            move_vertex(vert_set_cpy.begin() + j);
+          else
+            ++j;
         }
       }
     }
-    for (auto& v : vert_use_map)
-      THROW_IF(v.second != 2, "Missing overlap chain");
+    if (grp_grp_vert.size() < 2)
+      continue;
+    const auto& v0 = grp_grp_vert.front().front();
+    const auto& v1 = grp_grp_vert.back().front();
+    auto conn = make_connection(v0, v1);
+    ch_spliter->add_connection(conn[0], conn[1]);
+    existing_conn.insert(conn);
   }
   ch_spliter->compute();
   Topo::Split<Topo::Type::FACE> fsplit(face);
@@ -1506,7 +1514,7 @@ void split_face(FaceEdgeMap::FaceDataMap::value_type& face_info,
     if (isles == nullptr)
       continue;
     for (const auto& isle : *isles)
-      fsplit.add_island(isle);
+      fsplit.add_original_island(isle);
   }
   fsplit.compute();
   const auto& newfaces = face_info.second.new_faces_ = fsplit.new_faces();
