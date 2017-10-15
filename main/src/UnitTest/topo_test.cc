@@ -950,7 +950,7 @@ TEST_CASE("bambolina_14", "[Bool]")
 
 TEST_CASE("bambolina_15", "[Bool]")
 {
-  auto b0 = IO::load_obj(MESH_FOLDER"bambolina_a_15.obj");
+  auto b0 = IO::load_obj(MESH_FOLDER"bambolina_a_15_R.obj");
   auto b1 = IO::load_obj(MESH_FOLDER"bambolina_b_15.obj");
   auto bool_solver = Boolean::ISolver::make();
   bool_solver->init(b0, b1);
