@@ -625,7 +625,7 @@ TEST_CASE("buddha_09", "[Bool]")
 
 TEST_CASE("buddha_10", "[Bool]")
 {
-  budda_test("10", 1803158, 913418);
+  budda_test("10", 1803157, 913418);
 }
 
 TEST_CASE("buddha_13", "[Bool]")
