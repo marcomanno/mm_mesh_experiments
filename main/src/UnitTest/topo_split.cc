@@ -336,3 +336,40 @@ TEST_CASE("face_with_island", "[SPLITCHAIN]")
   REQUIRE(spl_ch->boundaries().size() == 1);
   REQUIRE(spl_ch->boundaries()[0].size() == 10);
 }
+
+
+TEST_CASE("split_chain_bug_00", "[SPLITCHAIN]")
+{
+  int indeces[] = { 9, 4, 1, 5, 2, 3, 6, 7, 0, 10, 8 };
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>> vvs(std::size(indeces));
+  for (auto i : indeces)
+    vvs[i].make<Topo::EE<Topo::Type::VERTEX>>();
+
+  Geo::Point pts[] = {
+    { 0.13212922914098529, 0.88317105433318699, -0.0047252294015959666 },
+    { 0.14328539192534029, 0.88480892597998251, -0.016969278134127776 },
+    { 0.14328600470000000, 0.88480901720000005, -0.016969976950000000 },
+    { 0.13522943943115151, 0.87078071968850335, -0.0074214916210336886 },
+    { 0.13522916573103783, 0.87078026098021999, -0.0074211900466691176 },
+    { 0.13522900639999999, 0.87077999110000004, -0.0074210101739999998 },
+    { 0.13522882403910802, 0.87078069475080844, -0.0074208654984565855 },
+    { 0.13522876428273789, 0.87078094821520313, -0.0074208051851865795 },
+    { 0.13522869843705265, 0.87078121692922950, -0.0074207449840044517 },
+    { 0.13522864822691258, 0.87078141762363725, -0.0074207013176136281 },
+    { 0.13212899859999999, 0.88317102189999996, -0.0047250059430000001 } };
+  for (int i = 0; i < vvs.size(); ++i)
+  {
+    vvs[i]->set_geom(pts[i]);
+  }
+  auto spl_ch = Topo::ISplitChain::make();
+  spl_ch->add_chain(vvs);
+  Topo::Wrap<Topo::Type::VERTEX> vert;
+  vert.make<Topo::EE<Topo::Type::VERTEX>>();
+  vert->set_geom({ 0.13212927453559242, 0.88317087288674823, -0.0047252688801808270 });
+  spl_ch->add_connection(vvs[6], vvs[4]);
+  spl_ch->add_connection(vvs[8], vvs[0]);
+  spl_ch->add_connection(vvs[0], vert);
+  spl_ch->compute();
+  REQUIRE(spl_ch->boundaries().size() == 3);
+
+};

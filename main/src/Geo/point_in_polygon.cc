@@ -15,7 +15,7 @@ Classification classify(
   const Geo::Vector3& _pt,
   const Geo::Vector3* _norm)
 {
-  return classify(_poly, _pt, Geo::epsilon(_pt) * 1.e-4, _norm);
+  return classify(_poly, _pt, Geo::epsilon(_pt) * 1.e-8, _norm);
 }
 
 Classification classify(
