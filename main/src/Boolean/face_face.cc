@@ -81,7 +81,7 @@ bool boundary_chain(
     return true;
 }
 
-bool mid_point_in_face(Topo::Wrap<Topo::Type::VERTEX> _start_end[2],
+bool mid_point_in_face(const Topo::Wrap<Topo::Type::VERTEX> _start_end[2],
                        const Topo::Wrap<Topo::Type::FACE>& _face)
 {
   Geo::Vector3 mid_pt = { 0 };
@@ -1499,9 +1499,15 @@ void split_face(FaceEdgeMap::FaceDataMap::value_type& face_info,
     }
     if (grp_grp_vert.size() < 2)
       continue;
-    const auto& v0 = grp_grp_vert.front().front();
-    const auto& v1 = grp_grp_vert.back().front();
-    auto conn = make_connection(v0, v1);
+    if (grp_grp_vert.size() > 2)
+      std::cout << "grp_grp_vert.size() > 2 in face split";
+    const Topo::Wrap<Topo::Type::VERTEX> vv[2] =
+    {
+      grp_grp_vert.front().front(), grp_grp_vert.back().front()
+    };
+    if (!mid_point_in_face(vv, face))
+      continue;
+    auto conn = make_connection(vv[0], vv[1]);
     ch_spliter->add_connection(conn[0], conn[1]);
     existing_conn.insert(conn);
   }
