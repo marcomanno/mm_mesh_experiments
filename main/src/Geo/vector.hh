@@ -132,7 +132,7 @@ ValT angle(const std::array<ValT, N>& _a, const std::array<ValT, N>& _b)
 
 template <typename ValT, size_t N>
 ValT signed_angle(const std::array<ValT, N>& _a, const std::array<ValT, N>& _b, 
-  std::array<ValT, N>& _norm)
+  const std::array<ValT, N>& _norm)
 {
   auto cross_vect = _a % _b;
   auto sin_ang = length(cross_vect);

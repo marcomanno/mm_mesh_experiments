@@ -281,20 +281,24 @@ void PolygonTriangulation::Solution::compute(
       inds[2] = _indcs[i];
       vects[1] = _pts[inds[2]] - _pts[inds[1]];
       if (inds[0] != inds[2] && valid_triangle(i, proj_poly, norm, tol))
-        angles.push_back(Geo::angle(vects[0], vects[1]));
+        angles.push_back(Geo::signed_angle(vects[1], vects[0], norm));
       else
         angles.push_back(invalid_double);
       inds[0] = inds[1];
       inds[1] = inds[2];
       vects[0] = -vects[1];
     }
+    for (auto& ang : angles)
+      if (ang < 0)
+        ang += M_PI;
     std::vector<double> scores(angles);
     for (size_t i = 0; i < scores.size(); ++i)
     {
-      if (angles[i] < M_PI_2 - 0.1)
-        continue;
-      scores[Utils::decrease(i, scores.size())] -= M_PI;
-      scores[Utils::increase(i, scores.size())] -= M_PI;
+      if (angles[i] == invalid_double)
+      {
+        scores[Utils::decrease(i, scores.size())] -= M_PI;
+        scores[Utils::increase(i, scores.size())] -= M_PI;
+      }
     }
     Utils::StatisticsT<double> min_ang;
     for (size_t i = 0; i < scores.size(); ++i)

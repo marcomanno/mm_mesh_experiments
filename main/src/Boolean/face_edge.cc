@@ -138,6 +138,20 @@ bool FaceVersus::edge_intersect(
     const auto& face = kdfaces[pair[0]];
     auto& face_info = face_geom(face);
     auto edge = kdedges[pair[1]];
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> fvit(face);
+    Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> fedit(edge);
+    bool overlap = true;
+    for (auto& v : fedit)
+      if (std::find(fvit.begin(), fvit.end(), v) == fvit.end() &&
+          std::find(face_info.new_vert_list_.begin(), face_info.new_vert_list_.end(), v) ==
+          face_info.new_vert_list_.end())
+      {
+        overlap = false;
+        break;
+      }
+    if (overlap)
+      continue;
+
     Geo::Segment seg;
     edge->geom(seg);
     Geo::Point clsst_pt;
