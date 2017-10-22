@@ -1,10 +1,12 @@
 //#pragma optimize ("", off)
+#include "geom.hh"
 #include "impl.hh"
 #include "shared.hh"
 #include "split.hh"
 #include "Geo/plane_fitting.hh"
 #include "Geo/point_in_polygon.hh"
 #include "Utils/circular.hh"
+#include "Utils/continement_tree.hh"
 #include "Utils/error_handling.hh"
 
 #include <algorithm>
@@ -76,7 +78,7 @@ bool Split<Type::EDGE>::operator()() const
   return true;
 }
 
-void Split<Type::FACE>::use_face_loops()
+void Split<Type::FACE>::use_face_loops(const LoopFilter& _loop_filter)
 {
   Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> fl_it(face_);
   if (fl_it.size() == 0)
@@ -90,12 +92,18 @@ void Split<Type::FACE>::use_face_loops()
   };
   auto loop_it = fl_it.begin();
   VertexChain vert_chain;
-  make_chain(*loop_it, vert_chain);
-  add_boundary(vert_chain);
-  while (++loop_it != fl_it.end())
+  if (_loop_filter(*loop_it))
   {
     make_chain(*loop_it, vert_chain);
-    add_original_island(vert_chain);
+    add_boundary(vert_chain);
+  }
+  while (++loop_it != fl_it.end())
+  {
+    if (_loop_filter(*loop_it))
+    {
+      make_chain(*loop_it, vert_chain);
+      add_original_island(vert_chain);
+    }
   }
 }
 
@@ -206,24 +214,117 @@ bool Split<Type::FACE>::compute()
   return true;
 }
 
+namespace
+{
+void loop_split(Wrap<Type::FACE>& _face, 
+                Iterator<Type::FACE, Type::LOOP>& _loop_it,
+                const Wrap<Type::VERTEX>& _ins_vert)
+{
+  auto loop = *(_loop_it.begin());
+  std::vector<size_t> ins_pos;
+  for (auto pos = SIZE_MAX;;)
+  {
+    pos = loop->find_child(_ins_vert.get(), pos);
+    if (pos == SIZE_MAX)
+      break;
+    ins_pos.push_back(pos);
+  }
+  if (ins_pos.size() < 2)
+    return;
+  std::vector<VertexChain> chains;
+  size_t last_ind = loop->size(Direction::Down) - 1;
+  for (auto pos : ins_pos)
+  {
+    chains.emplace_back();
+    for (size_t i = pos; i <= last_ind; ++i)
+    {
+      auto v = loop->get(Direction::Down, i);
+      chains.back().emplace_back(static_cast<E<Type::VERTEX> *>(v));
+    }
+    last_ind = pos;
+  }
+  if (ins_pos.back() == 0)
+    chains.front().push_back(_ins_vert);
+  else if (ins_pos.back() == loop->size(Direction::Down) - 1)
+    chains.back().insert(chains.front().begin(), _ins_vert);
+  else
+  {
+    auto& first = chains.front();
+    auto& last = chains.back();
+    first.insert(first.begin(), last.begin(), last.end());
+    chains.pop_back();
+  }
+  auto compare_chains = [](const VertexChain* _a, const VertexChain* _b)
+  {
+    int result = 0;
+    auto inside = [&result](const VertexChain* _a, const VertexChain* _b, int _out)
+    {
+      Geo::Point pt;
+      (*_a)[1]->geom(pt);
+      if (PointInFace::classify((*_b), pt) != Geo::PointInPolygon::Inside)
+        return false;
+      result = _out;
+      return true;
+    };
+    inside(_a, _b, -1) || inside(_b, _a, 1);
+    return result;
+  };
+  Utils::ContainementTree<VertexChain*> cont_tree(compare_chains);
+  for (auto& ch : chains)
+    cont_tree.add(&ch);
+  auto root = cont_tree.root();
+  if (!root->next())
+    return;
+  Split<Type::FACE> face_splitter(_face);
+  struct SelectIsles : public Split<Type::FACE>::LoopFilter
+  {
+    SelectIsles(const Wrap<Type::LOOP>& _loop) : loop_(_loop) {}
+    bool operator()(const Topo::Wrap<Topo::Type::LOOP>& _loop) const
+    {
+      return loop_ != _loop;
+    }
+    Wrap<Type::LOOP> loop_;
+  } sel_isles(loop);
+  face_splitter.use_face_loops(sel_isles);
+  for (; root != nullptr; root = root->next())
+  {
+    auto vc = root->data();
+    for (auto conn = root->child(); conn != nullptr; conn = conn->next())
+      vc->insert(vc->end(), conn->data()->begin(), conn->data()->end());
+    face_splitter.add_boundary(*vc);
+  }
+  face_splitter.compute();
+}
+
+}
+
 bool split(const Wrap<Type::VERTEX>& _ed_start,
   const Wrap<Type::VERTEX>& _ed_end, Wrap<Type::VERTEX>& _ins_vert)
 {
-  auto faces = shared_entities<Type::VERTEX, Type::FACE>(_ed_start, _ed_end);
-  for (auto& f : faces)
+  auto loops = shared_entities<Type::VERTEX, Type::LOOP>(_ed_start, _ed_end);
+  for (auto& loop : loops)
   {
     for (auto pos = SIZE_MAX;;)
     {
-      pos = f->find_child(_ed_start.get(), pos);
+      pos = loop->find_child(_ed_start.get(), pos);
       if (pos == SIZE_MAX)
         break;
-      auto oth = Utils::increase(pos, f->size(Direction::Down));
-      if (f->get(Direction::Down, oth) == _ed_end.get())
-        f->insert_child(_ins_vert.get(), pos + 1);
-      oth = Utils::decrease(pos, f->size(Direction::Down));
-      if (f->get(Direction::Down, oth) == _ed_end.get())
-        f->insert_child(_ins_vert.get(), pos);
+      auto oth = Utils::increase(pos, loop->size(Direction::Down));
+      if (loop->get(Direction::Down, oth) == _ed_end.get())
+        loop->insert_child(_ins_vert.get(), pos + 1);
+      oth = Utils::decrease(pos, loop->size(Direction::Down));
+      if (loop->get(Direction::Down, oth) == _ed_end.get())
+        loop->insert_child(_ins_vert.get(), pos);
     }
+    // CHeck that theloop is aface boundary
+    Iterator<Type::LOOP, Type::FACE> faces(loop);
+    if (faces.size() != 1)
+      continue;
+    auto face = *faces.begin();
+    Iterator<Type::FACE, Type::LOOP> face_loops(face);
+    if (*face_loops.begin() != loop)
+      continue;
+    loop_split(face, face_loops, _ins_vert);
   }
   return true;
 }

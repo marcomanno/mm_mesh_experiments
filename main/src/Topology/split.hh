@@ -54,7 +54,12 @@ template <> struct Split<Type::FACE>
     original_island_chains_.emplace_back(std::move(_vert_chain));
   }
 
-  void use_face_loops();
+  // Add the current face loops as boundary or isles.
+  struct LoopFilter
+  {
+    virtual bool operator()(const Topo::Wrap<Topo::Type::LOOP>&) const { return true; }
+  };
+  void use_face_loops(const LoopFilter& _loop_filter = LoopFilter());
 
   bool compute();
 

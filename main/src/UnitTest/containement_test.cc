@@ -35,7 +35,7 @@ TEST_CASE("containement_basic_001", "[Containement]")
   auto el = root->child();
   for (int n = 3; --n >= 0; el = el->next())
   {
-    if (static_cast<const Interval>(*el) == Interval({ 1., 5. }))
+    if (el->data() == Interval({ 1., 5. }))
       REQUIRE(el->child()->child()->child() == 0);
     else
       REQUIRE(el->child() == 0);

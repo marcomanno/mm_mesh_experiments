@@ -17,7 +17,8 @@ struct ContainementTree
     Element(const ElemT& _elem) : elem_(_elem) { }
     const Element* next() const { return next_.get(); }
     const Element* child() const { return child_.get(); }
-    operator const ElemT()  const { return elem_; }
+    const ElemT& data() const { return elem_; }
+    operator const ElemT&() const { return elem_; }
   private:
     ElemT elem_;
     std::unique_ptr<Element> next_;

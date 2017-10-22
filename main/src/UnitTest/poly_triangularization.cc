@@ -520,3 +520,4 @@ TEST_CASE(TEST_NAME, "[PolyTriang]")
   REQUIRE(tris.size() == plgn.size() - 2);
   REQUIRE(ptg->area() == Approx(0.0001235328).epsilon(1.e-8));
 }
+
