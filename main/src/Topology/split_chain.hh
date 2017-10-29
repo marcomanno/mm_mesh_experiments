@@ -11,6 +11,9 @@ struct ISplitChain
   virtual void add_connection(const Topo::Wrap<Topo::Type::VERTEX>& _v0,
                               const Topo::Wrap<Topo::Type::VERTEX>& _v1,
                               bool _bidirectional = true) = 0;
+  virtual bool valid_new_connection(
+    const Topo::Wrap<Topo::Type::VERTEX>& _v0,
+    const Topo::Wrap<Topo::Type::VERTEX>& _v1) = 0;
   virtual void compute() = 0;
   virtual const VertexChains& boundaries() const = 0;
   virtual const VertexChains* boundary_islands(

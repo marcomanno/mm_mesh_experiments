@@ -975,3 +975,17 @@ TEST_CASE("bambolina_16", "[Bool]")
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(b0);
   REQUIRE(bf_it.size() == 18);
 }
+
+TEST_CASE("bambolina_17", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"bambolina_17_a.obj");
+  auto b1 = IO::load_obj(MESH_FOLDER"bambolina_17_b.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(b0, b1);
+  b0 = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj("result_bambolina_17.obj", b0);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(b0);
+  REQUIRE(bv_it.size() == 40157);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(b0);
+  REQUIRE(bf_it.size() == 76815);
+}

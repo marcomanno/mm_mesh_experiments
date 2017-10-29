@@ -37,10 +37,12 @@ std::set<Topo::Wrap<Topo::Type::VERTEX>> face_vertices(
   return vert_set;
 }
 
+using Connection = std::array<Topo::Wrap<Topo::Type::VERTEX>, 2>;
+
 bool boundary_chain(
   const Topo::Wrap<Topo::Type::FACE>& _face,
   const std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _v_inters,
-  Topo::Wrap<Topo::Type::VERTEX> _start_end[2])
+  Connection& _start_end)
 {
   _start_end[0].reset(nullptr);
   _start_end[1].reset(nullptr);
@@ -81,7 +83,7 @@ bool boundary_chain(
     return true;
 }
 
-bool mid_point_in_face(const Topo::Wrap<Topo::Type::VERTEX> _start_end[2],
+bool mid_point_in_face(const Connection& _start_end,
                        const Topo::Wrap<Topo::Type::FACE>& _face)
 {
   Geo::Vector3 mid_pt = { 0 };
@@ -321,7 +323,7 @@ bool FaceVersus::face_intersect(
     if (v_inters.size() < 2)
       continue;
 
-    Topo::Wrap<Topo::Type::VERTEX> start_end_a[2], start_end_b[2];
+    Connection start_end_a, start_end_b;
     auto add_a = !boundary_chain(face_a, v_inters, start_end_a);
     auto add_b = !boundary_chain(face_b, v_inters, start_end_b);
     if (v_inters.size() > 2 && add_a != add_b)
@@ -1410,7 +1412,6 @@ void split_face(FaceEdgeMap::FaceDataMap::value_type& face_info,
   auto& edge_vec = face_info.second.new_verts_;
   if (edge_vec.empty())
     return;
-  typedef std::array<Topo::Wrap<Topo::Type::VERTEX>, 2> Connection;
   auto make_connection = [](
     const Topo::Wrap<Topo::Type::VERTEX>& _a,
     const Topo::Wrap<Topo::Type::VERTEX>& _b)
@@ -1501,15 +1502,18 @@ void split_face(FaceEdgeMap::FaceDataMap::value_type& face_info,
       continue;
     if (grp_grp_vert.size() > 2)
       std::cout << "grp_grp_vert.size() > 2 in face split";
-    const Topo::Wrap<Topo::Type::VERTEX> vv[2] =
-    {
-      grp_grp_vert.front().front(), grp_grp_vert.back().front()
-    };
-    if (!mid_point_in_face(vv, face))
-      continue;
-    auto conn = make_connection(vv[0], vv[1]);
-    ch_spliter->add_connection(conn[0], conn[1]);
-    existing_conn.insert(conn);
+    for(const auto& vv0 : grp_grp_vert[0])
+      for (const auto& vv1 : grp_grp_vert[1])
+      {
+        auto conn = make_connection(vv0, vv1);
+        if (!mid_point_in_face(conn, face))
+          continue;
+        if (!ch_spliter->valid_new_connection(conn[0], conn[1]))
+          continue;
+        ch_spliter->add_connection(conn[0], conn[1]);
+        existing_conn.insert(conn);
+        break;
+      }
   }
   ch_spliter->compute();
   Topo::Split<Topo::Type::FACE> fsplit(face);

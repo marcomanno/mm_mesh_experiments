@@ -22,15 +22,19 @@ struct SplitChain : public ISplitChain
   }
   virtual void add_connection(const Topo::Wrap<Topo::Type::VERTEX>& _v0,
                               const Topo::Wrap<Topo::Type::VERTEX>& _v1,
-                              bool _bidirectional = true)
+                              bool _bidirectional = true) override
   {
     connections_.emplace(Connection({ _v0, _v1 }));
     if (_bidirectional)
       connections_.emplace(Connection({ _v1, _v0 }));
   }
+  bool valid_new_connection(
+    const Topo::Wrap<Topo::Type::VERTEX>& _v0,
+    const Topo::Wrap<Topo::Type::VERTEX>& _v1) override;
+
   void compute();
-  const VertexChains& boundaries() const { return boundaries_; }
-  const VertexChains* boundary_islands(size_t _bondary_ind) const
+  const VertexChains& boundaries() const override { return boundaries_; }
+  const VertexChains* boundary_islands(size_t _bondary_ind) const override
   {
     auto isl_it = islands_.find(_bondary_ind);
     if (isl_it == islands_.end())
@@ -78,6 +82,24 @@ private:
 std::shared_ptr<ISplitChain> ISplitChain::make()
 {
   return std::make_shared<SplitChain>();
+}
+
+bool SplitChain::valid_new_connection(
+  const Topo::Wrap<Topo::Type::VERTEX>& _v0,
+  const Topo::Wrap<Topo::Type::VERTEX>& _v1)
+{
+  Geo::Segment seg_new;
+  _v0->geom(seg_new[0]);
+  _v1->geom(seg_new[1]);
+  for (const auto& conn : connections_)
+  {
+    Geo::Segment seg;
+    conn[0]->geom(seg[0]);
+    conn[1]->geom(seg[1]);
+    if (Geo::closest_point(seg, seg_new))
+      return false;
+  }
+  return true;
 }
 
 void SplitChain::compute()
