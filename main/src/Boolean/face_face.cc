@@ -1502,18 +1502,30 @@ void split_face(FaceEdgeMap::FaceDataMap::value_type& face_info,
       continue;
     if (grp_grp_vert.size() > 2)
       std::cout << "grp_grp_vert.size() > 2 in face split";
-    for(const auto& vv0 : grp_grp_vert[0])
-      for (const auto& vv1 : grp_grp_vert[1])
+    [&] // This is a function used to return directly inside a double loop
+    {
+      std::vector<Connection> valid_conn;
+      for (const auto& vv0 : grp_grp_vert[0])
+        for (const auto& vv1 : grp_grp_vert[1])
+        {
+          auto conn = make_connection(vv0, vv1);
+          if (!mid_point_in_face(conn, face))
+            continue;
+          auto res = ch_spliter->check_new_connection(conn[0], conn[1]);
+          if (res == Topo::ISplitChain::ConnectionCheck::EXISTING)
+            return;
+          if (res == Topo::ISplitChain::ConnectionCheck::INVALID)
+            continue;
+          if (res == Topo::ISplitChain::ConnectionCheck::OK)
+            valid_conn.push_back(conn);
+        }
+      if (!valid_conn.empty())
       {
-        auto conn = make_connection(vv0, vv1);
-        if (!mid_point_in_face(conn, face))
-          continue;
-        if (!ch_spliter->valid_new_connection(conn[0], conn[1]))
-          continue;
+        auto& conn = valid_conn[0];
         ch_spliter->add_connection(conn[0], conn[1]);
         existing_conn.insert(conn);
-        break;
       }
+    }();
   }
   ch_spliter->compute();
   Topo::Split<Topo::Type::FACE> fsplit(face);

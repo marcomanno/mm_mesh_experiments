@@ -1,3 +1,4 @@
+//#pragma optimize ("", off)
 #include "split_chain.hh"
 #include "geom.hh"
 
@@ -14,6 +15,12 @@
 
 namespace Topo {
 
+namespace
+{
+using Connection = std::array<Topo::Wrap<Topo::Type::VERTEX>, 2>;
+using Connections = std::set<Connection>;
+} // namespace
+
 struct SplitChain : public ISplitChain
 {
   virtual void add_chain(const VertexChain _chain)
@@ -28,9 +35,9 @@ struct SplitChain : public ISplitChain
     if (_bidirectional)
       connections_.emplace(Connection({ _v1, _v0 }));
   }
-  bool valid_new_connection(
+  ConnectionCheck check_new_connection(
     const Topo::Wrap<Topo::Type::VERTEX>& _v0,
-    const Topo::Wrap<Topo::Type::VERTEX>& _v1) override;
+    const Topo::Wrap<Topo::Type::VERTEX>& _v1) const override;
 
   void compute();
   const VertexChains& boundaries() const override { return boundaries_; }
@@ -44,9 +51,6 @@ struct SplitChain : public ISplitChain
   }
 
 private:
-  typedef std::array<Topo::Wrap<Topo::Type::VERTEX>, 2> Connection;
-  typedef std::set<Connection> Connections;
-
   VertexChain find_chain(Connections::iterator _conns_it);
   double find_angle(const Topo::Wrap<Topo::Type::VERTEX>& _a,
                     const Topo::Wrap<Topo::Type::VERTEX>& _b,
@@ -84,22 +88,40 @@ std::shared_ptr<ISplitChain> ISplitChain::make()
   return std::make_shared<SplitChain>();
 }
 
-bool SplitChain::valid_new_connection(
+ISplitChain::ConnectionCheck SplitChain::check_new_connection(
   const Topo::Wrap<Topo::Type::VERTEX>& _v0,
-  const Topo::Wrap<Topo::Type::VERTEX>& _v1)
+  const Topo::Wrap<Topo::Type::VERTEX>& _v1) const
 {
   Geo::Segment seg_new;
   _v0->geom(seg_new[0]);
   _v1->geom(seg_new[1]);
+  Geo::Segment seg;
   for (const auto& conn : connections_)
   {
-    Geo::Segment seg;
+    if (_v0 == conn[0] || _v1 == conn[0] || 
+        _v0 == conn[1] || _v1 == conn[1])
+      continue;
     conn[0]->geom(seg[0]);
     conn[1]->geom(seg[1]);
     if (Geo::closest_point(seg, seg_new))
-      return false;
+      return ConnectionCheck::INVALID;
   }
-  return true;
+  for (const auto& chain : boundaries_)
+  {
+    auto vp = chain.back();
+    for (const auto& v : chain)
+    {
+      if (_v0 != vp && _v1 != vp && _v0 != v && _v1 != v)
+      {
+        vp->geom(seg[0]);
+        v->geom(seg[1]);
+        if (Geo::closest_point(seg, seg_new))
+          return ConnectionCheck::INVALID;
+      }
+      vp = v;
+    }
+  }   
+  return ConnectionCheck::OK;
 }
 
 void SplitChain::compute()
