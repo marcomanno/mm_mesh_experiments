@@ -195,6 +195,16 @@ void Selection::select_faces(
 
 //#ifdef DEB_ON
   static int nnnn = 0;
+  auto saver = IO::ISaver::make();
+
+  for (auto& face : faces_to_remove_)
+    saver->add_face(face);
+  for (auto& edge : common_edges_)
+    saver->add_edge(edge);
+  saver->compute((std::string("deb_cmm_verts_") + std::to_string(nnnn++) + ".obj").c_str());
+
+#if 0
+
   std::ofstream deb_cmm_verts(std::string("deb_cmm_verts_") + std::to_string(nnnn++) + ".obj");
   for (auto& edge : common_edges_)
   {
@@ -212,6 +222,7 @@ void Selection::select_faces(
     auto v1 = 3 * i;
     deb_cmm_verts << "f " << v1 << " " << v1 - 1 << " " << v1 - 2 << std::endl;
   }
+#endif
 
 #ifdef DEB_ON
 

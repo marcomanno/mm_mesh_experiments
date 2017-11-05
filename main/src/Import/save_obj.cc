@@ -1,3 +1,4 @@
+//#pragma optimize ("", off)
 #include <import.hh>
 
 #include <Geo/vector.hh>
@@ -9,6 +10,8 @@
 
 #include <fstream>
 #include <iomanip>
+#include <map>
+#include <set>
 #include <sstream>
 
 namespace IO {
@@ -193,5 +196,122 @@ void save_obj(const char* _flnm,
   }
   save_obj(_flnm, plgn);
 }
+
+struct Saver : public ISaver
+{
+  void add_face(const Topo::Wrap<Topo::Type::FACE>& _f) override { faces_.insert(_f); }
+  void add_edge(const Topo::Wrap<Topo::Type::EDGE>& _e) override { edges_.insert(_e); }
+  bool compute(const char* _flnm) override;
+  std::set<Topo::Wrap<Topo::Type::FACE>> faces_;
+  std::set<Topo::Wrap<Topo::Type::EDGE>> edges_;
+};
+
+std::shared_ptr<ISaver> ISaver::make()
+{
+  return std::make_shared<Saver>();
+}
+
+bool Saver::compute(const char* _flnm)
+{
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>> vertices;
+  for (const auto& f : faces_)
+  {
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> vert_it(f);
+    for (auto& vert : vert_it)
+      vertices.push_back(vert);
+  }
+  for (const auto& e : edges_)
+  {
+    Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ed_it(e);
+    for (auto& vert : ed_it)
+      vertices.push_back(vert);
+  }
+  std::sort(vertices.begin(), vertices.end());
+  auto new_end = std::unique(vertices.begin(), vertices.end());
+  vertices.erase(new_end, vertices.end());
+  std::ofstream fstr(_flnm);
+  fstr << std::setprecision(17);
+  auto save_vertices = [&fstr](std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _vv)
+  {
+    for (auto& v : _vv)
+    {
+      Geo::Point pt;
+      v->geom(pt);
+      fstr << "v " << pt << "\n";
+    }
+  };
+  auto vertex_position = [&vertices](const Topo::Wrap<Topo::Type::VERTEX>& _v)
+  {
+    auto range = std::equal_range(vertices.begin(), vertices.end(), _v);
+    if (range.first == range.second)
+      return ptrdiff_t(-1);
+    return std::distance(vertices.begin(), range.first);
+  };
+  std::vector<std::array<size_t, 3>> inters;
+  std::vector<size_t> extra_ind(vertices.size(), 0);
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>> extra_vertices;
+  for (const auto& e : edges_)
+  {
+    Topo::Iterator<Topo::Type::EDGE, Topo::Type::FACE> ef(e);
+    bool skip = false;
+    for (auto& f : ef)
+      skip |= faces_.find(f) != faces_.end();
+    if (!skip)
+    {
+      Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ev(e);
+      auto it = ev.begin();
+      auto v_ind0 = vertex_position(*it);
+      auto v_ind1 = vertex_position(*++it);
+      auto& v_ind2 = extra_ind[v_ind0];
+      if (v_ind2 == 0)
+      {
+        v_ind2 = extra_vertices.size();
+        extra_vertices.push_back(vertices[v_ind0]);
+      }
+      inters.push_back({ size_t(v_ind0) , size_t(v_ind1), v_ind2 });
+    }
+  }
+  save_vertices(vertices);
+  save_vertices(extra_vertices);
+
+  for (const auto& f : faces_)
+  {
+    Topo::Iterator<Topo::Type::FACE, Topo::Type::LOOP> fel(f);
+    auto polyt = Geo::IPolygonTriangulation::make();
+    std::map<Geo::Point, Topo::Wrap<Topo::Type::VERTEX>> pos_vert_map;
+    for (const auto& loop : fel)
+    {
+      Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv(loop);
+      std::vector<Geo::Point> plygon;
+      for (const auto& v : lv)
+      {
+        Geo::Point pt;
+        v->geom(pt);
+        plygon.push_back(pt);
+        pos_vert_map.emplace(pt, v);
+      }
+      polyt->add(plygon);
+    }
+    const auto& tris = polyt->triangles();
+    const auto& pos = polyt->polygon();
+    for (auto& tri : tris)
+    {
+      fstr << "f";
+      for (int i = 0; i < 3; ++i)
+      {
+        const auto& v = pos_vert_map[pos[tri[i]]];
+        auto v_ind = vertex_position(v);
+        fstr << " " << v_ind + 1;
+      }
+      fstr << "\n";
+    }
+  }
+
+  for (auto& tri : inters)
+    fstr << "f " << tri[0] + 1 << " " << tri[1] + 1 << " " << tri[2] + vertices.size() + 1 << "\n";
+
+  return true;
+}
+
 
 }//namespace Import
