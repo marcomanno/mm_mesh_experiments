@@ -316,7 +316,7 @@ bool split(const Wrap<Type::VERTEX>& _ed_start,
       if (loop->get(Direction::Down, oth) == _ed_end.get())
         loop->insert_child(_ins_vert.get(), pos);
     }
-    // CHeck that theloop is aface boundary
+    // CHeck that the loop is aface boundary
     Iterator<Type::LOOP, Type::FACE> faces(loop);
     if (faces.size() != 1)
       continue;
