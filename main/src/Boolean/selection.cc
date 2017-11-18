@@ -30,7 +30,7 @@ struct Selection : public ISelection
 
 private:
   void propagate(const Choice _choice, Topo::Wrap<Topo::Type::FACE> _face);
-  void apply_selection();
+  void apply_selection(std::array<Topo::Wrap<Topo::Type::BODY>, 2>& _bodies);
 
   std::set<Topo::Wrap<Topo::Type::FACE>> proc_faces_;
   std::set<Topo::Wrap<Topo::Type::FACE>> faces_to_remove_;
@@ -50,7 +50,13 @@ const Choice selection_table[2][Operation::ENUM_SIZE][FaceClassification::ENUM_S
     { REMV, KEEP, REMV, KEEP }, // Difference
     { KEEP, KEEP, KEEP, KEEP }, // Split
     { KEEP, KEEP, KEEP, KEEP }, // SplitA
-    { REMV, REMV, REMV, REMV }  // SplitB
+    { REMV, REMV, REMV, REMV }, // SplitB
+    { KEEP, REMV, REMV, REMV }, // A_IN_B
+    { REMV, REMV, REMV, REMV }, // B_IN_A
+    { REMV, KEEP, REMV, REMV }, // A_OUT_B
+    { REMV, REMV, REMV, REMV }, // B_OUT_A
+    { REMV, REMV, KEEP, KEEP }, // A_OVERLAP
+    { REMV, REMV, REMV, REMV }  // B_OVERLAP
   },
   // Selection second solid
   {// In    Out   Ovrl  AntiOvrlp
@@ -59,7 +65,13 @@ const Choice selection_table[2][Operation::ENUM_SIZE][FaceClassification::ENUM_S
     { INVR, REMV, REMV, REMV }, // Difference
     { KEEP, KEEP, REMV, REMV }, // Split
     { REMV, REMV, REMV, REMV }, // SplitA
-    { KEEP, KEEP, KEEP, KEEP }  // SplitB
+    { KEEP, KEEP, KEEP, KEEP },  // SplitB
+    { REMV, REMV, REMV, REMV }, // A_IN_B
+    { REMV, KEEP, REMV, REMV }, // B_IN_A
+    { REMV, REMV, REMV, REMV }, // A_OUT_B
+    { REMV, KEEP, REMV, REMV }, // B_OUT_A
+    { REMV, REMV, REMV, REMV }, // A_OVERLAP
+    { REMV, REMV, KEEP, KEEP }  // B_OVERLAP
   }
 };
 
@@ -183,6 +195,7 @@ void Selection::select_faces(
   Topo::Wrap<Topo::Type::BODY>& _body_a,
   Topo::Wrap<Topo::Type::BODY>& _body_b)
 {
+  std::array<Topo::Wrap<Topo::Type::BODY>, 2> bodies = { _body_a , _body_b };
   Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> edges_a(_body_a);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::EDGE> edges_b(_body_b);
   std::set<Topo::Wrap<Topo::Type::EDGE>> edge_sets[2];
@@ -193,7 +206,7 @@ void Selection::select_faces(
     edge_sets[1].begin(), edge_sets[1].end(),
     std::inserter(common_edges_, common_edges_.end()));
 
-//#ifdef DEB_ON
+
   static int nnnn = 0;
   auto saver = IO::ISaver::make();
 
@@ -204,7 +217,6 @@ void Selection::select_faces(
   saver->compute((std::string("deb_cmm_verts_") + std::to_string(nnnn++) + ".obj").c_str());
 
 #if 0
-
   std::ofstream deb_cmm_verts(std::string("deb_cmm_verts_") + std::to_string(nnnn++) + ".obj");
   for (auto& edge : common_edges_)
   {
@@ -224,6 +236,7 @@ void Selection::select_faces(
   }
 #endif
 
+//#define DEB_ON
 #ifdef DEB_ON
 
   // finds a gap in the edges between two bodies. A gap may cause an
@@ -327,11 +340,8 @@ void Selection::select_faces(
       THROW_IF(face->size(Topo::Direction::Up) != 1, "Face not in a body?");
 
       size_t body_idx = 0;
-      if (_body_a.get() == face->get(Topo::Direction::Up, 0))
-        body_idx = 0;
-      else if (_body_b.get() == face->get(Topo::Direction::Up, 0))
-        body_idx = 1;
-      else
+      auto face_body = face->get(Topo::Direction::Up, 0);
+      if (bodies[body_idx].get() != face_body && bodies[++body_idx].get() != face_body)
         THROW("Face body not present");
 
       coe_vects[body_idx].emplace_back();
@@ -453,13 +463,23 @@ void Selection::select_faces(
       }
     }
   }
-  std::vector<Topo::IBase*> tmp_face_to_remove;
-  for (auto f : faces_to_remove_)
-    tmp_face_to_remove.push_back(f.get());
 
-  _body_a->remove_children(tmp_face_to_remove);
-  _body_b->remove_children(tmp_face_to_remove);
-  apply_selection();
+  auto remove_not_processed_faces = [this](Topo::Wrap<Topo::Type::BODY>& _body)
+  {
+    Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> f_it(_body);
+    for (auto f : f_it)
+      if (proc_faces_.find(f) == proc_faces_.end())
+        faces_to_remove_.insert(f);
+  };
+  for (auto i : { 0,1 })
+  {
+    auto rem_in = selection_table[i][size_t(bool_op_)][size_t(FaceClassification::IN)];
+    auto rem_out = selection_table[i][size_t(bool_op_)][size_t(FaceClassification::OUT)];
+    if (rem_in == REMV && rem_out == REMV)
+      remove_not_processed_faces(bodies[i]);
+  }
+
+  apply_selection(bodies);
 }
 
 void Selection::propagate(const Choice _choice, Topo::Wrap<Topo::Type::FACE> _face)
@@ -467,6 +487,9 @@ void Selection::propagate(const Choice _choice, Topo::Wrap<Topo::Type::FACE> _fa
   std::list<Topo::Wrap<Topo::Type::FACE>> face_list;
   face_list.push_back(_face);
   proc_faces_.insert(_face);
+
+  auto body = _face->get(Topo::Direction::Up, 0);
+
   while (!face_list.empty())
   {
     auto face = face_list.front();
@@ -481,19 +504,34 @@ void Selection::propagate(const Choice _choice, Topo::Wrap<Topo::Type::FACE> _fa
       if (common_edges_.find(edge) != common_edges_.end())
         continue;
       Topo::Iterator<Topo::Type::EDGE, Topo::Type::FACE> ef_it(edge);
-      for (auto face_new : ef_it)
+      for (auto new_face : ef_it)
       {
-        if (proc_faces_.find(face_new) != proc_faces_.end())
+        if (proc_faces_.find(new_face) != proc_faces_.end())
           continue;
-        proc_faces_.insert(face_new);
-        face_list.push_front(face_new);
+        auto body_f_new = new_face->get(Topo::Direction::Up, 0);
+        if (body_f_new != body)
+        {
+          static int n;
+          IO::save_face(new_face.get(), 
+            (std::to_string(n++) + "_not_split_face").c_str(), true);
+          continue;
+        }
+        proc_faces_.insert(new_face);
+        face_list.push_front(new_face);
       }
     }
   }
 }
 
-void Selection::apply_selection()
+void Selection::apply_selection(std::array<Topo::Wrap<Topo::Type::BODY>, 2>& _bodies)
 {
+  std::vector<Topo::IBase*> tmp_face_to_remove;
+  for (auto f : faces_to_remove_)
+    tmp_face_to_remove.push_back(f.get());
+
+  _bodies[0]->remove_children(tmp_face_to_remove);
+  _bodies[1]->remove_children(tmp_face_to_remove);
+
   for (auto face : faces_to_remove_)
   {
      THROW_IF(!face->remove(), "Aldready removedface!");

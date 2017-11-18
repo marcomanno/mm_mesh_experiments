@@ -7,7 +7,16 @@
 
 namespace Boolean {
 
-MAKE_ENUM(Operation, UNION, INTERSECTION, DIFFERENCE, SPLIT, SPLITA, SPLITB)
+MAKE_ENUM(Operation, 
+          UNION, 
+          INTERSECTION, 
+          DIFFERENCE, 
+          SPLIT, 
+          SPLITA,  SPLITB,
+          A_IN_B,  B_IN_A,
+          A_OUT_B, B_OUT_A,
+          A_OVERLAP, B_OVERLAP,
+          INTERSECTION_GRAPH)
 
 struct ISolver
 {

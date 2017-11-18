@@ -394,7 +394,9 @@ static void split_face(
           if (res == Topo::ISplitChain::ConnectionCheck::OK)
             valid_conn.push_back(conn);
         }
-      if (!valid_conn.empty())
+      if (valid_conn.empty())
+        std::cout << "Not good";
+      else
       {
         auto& conn = valid_conn[0];
         ch_spliter->add_connection(conn[0], conn[1]);

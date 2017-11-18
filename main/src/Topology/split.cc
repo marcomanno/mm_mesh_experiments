@@ -245,14 +245,14 @@ void loop_split(Wrap<Type::FACE>& _face,
   }
   if (ins_pos.back() == 0)
     chains.front().push_back(_ins_vert);
-  else if (ins_pos.back() == loop->size(Direction::Down) - 1)
-    chains.back().insert(chains.front().begin(), _ins_vert);
   else
   {
-    auto& first = chains.front();
-    auto& last = chains.back();
-    first.insert(first.begin(), last.begin(), last.end());
-    chains.pop_back();
+    auto& extend_chain = chains.front();
+    for (size_t i = 0; i <= ins_pos.back(); ++i)
+    {
+      auto v = loop->get(Direction::Down, i);
+      extend_chain.emplace_back(static_cast<E<Type::VERTEX> *>(v));
+    }
   }
   auto compare_chains = [](const VertexChain* _a, const VertexChain* _b)
   {

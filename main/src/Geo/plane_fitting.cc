@@ -1,6 +1,3 @@
-
-#pragma once
-
 #include "plane_fitting.hh"
 #include "iterate.hh"
 #include <Utils/error_handling.hh>
@@ -21,7 +18,7 @@ struct PlaneFit : public IPlaneFit
     Vector3& _normal,
     const bool _orient = false) override;
 
-  Eigen::MatrixXd matr_;
+  Eigen::Matrix<double, 3, Eigen::Dynamic> matr_;
   int ind_ = 0;
 };
 
@@ -49,8 +46,7 @@ bool PlaneFit::compute(
   if (ind_ < matr_.cols())
     matr_.conservativeResize(Eigen::NoChange, ind_);
 
-  Eigen::MatrixXd mid_pt(3, 1);
-  mid_pt(0, 0) = mid_pt(1, 0) = mid_pt(2, 0) = 0;
+  Eigen::Vector3d mid_pt(0, 0, 0);
 
   for (int i = 0; i < matr_.cols(); ++i)
     mid_pt += matr_.col(i);
