@@ -999,7 +999,7 @@ TEST_CASE("bambolina_17_in", "[Bool]")
   b0 = bool_solver->compute(Boolean::Operation::A_IN_B);
   IO::save_obj("result_bambolina_17_in.obj", b0);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(b0);
-  REQUIRE(bv_it.size() == 6135);
+  REQUIRE(bv_it.size() == 5183);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(b0);
-  REQUIRE(bf_it.size() == 4876);
+  REQUIRE(bf_it.size() == 2808);
 }
