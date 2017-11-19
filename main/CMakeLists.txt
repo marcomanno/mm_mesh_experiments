@@ -24,16 +24,8 @@ include (ACGOutput)
 # ========================================================================
 
 if (WIN32)
-  add_definitions(
-      -D_USE_MATH_DEFINES -DNOMINMAX
-      -D_CRT_SECURE_NO_WARNINGS
-  )
+  add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX)
 endif ()
-
-set(NO_DECREMENT_DEPRECATED_WARNINGS OFF CACHE BOOL "Disables all deprecated warnings warning about decrement operations on normal circulators.")
-if(NO_DECREMENT_DEPRECATED_WARNINGS)
-  add_definitions( -DNO_DECREMENT_DEPRECATED_WARNINGS )
-endif()
 
 # ========================================================================
 # Warnings
@@ -69,5 +61,6 @@ add_subdirectory (src/PolygonTriangularization)
 add_subdirectory (src/Topology)
 add_subdirectory (src/UnitTest)
 add_subdirectory (src/Utils)
+add_subdirectory( src/MeshBooleanApp)
 
 # ========================================================================
