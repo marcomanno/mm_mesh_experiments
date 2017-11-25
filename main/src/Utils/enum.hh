@@ -21,15 +21,26 @@ struct EnumStrings
 
 } // namespace Utils
 
-
 #define MAKE_ENUM(EnumClass, ...)                               \
-enum class EnumClass : unsigned int { __VA_ARGS__, ENUM_SIZE }; \
-struct EnumClass##_to_string                                    \
+enum class EnumClass : EnumIntType { __VA_ARGS__, ENUM_SIZE };  \
+struct EnumClass##Helper                                        \
 {                                                               \
-  static const char* get(const EnumClass _e)                    \
+  static const char* to_string(const EnumClass _e)              \
+  { return strings()[static_cast<EnumIntType>(_e)].c_str(); }   \
+  static EnumClass to_enum(const char* _str)                    \
+  {                                                             \
+    for (size_t i = 0;                                          \
+         i < static_cast<size_t>(EnumClass::ENUM_SIZE); ++i)    \
+      if (strings()[i] == _str)                                 \
+        return static_cast<EnumClass>(i);                       \
+    return EnumClass::ENUM_SIZE;                                \
+  }                                                             \
+private:                                                        \
+  static const std::string* strings()                           \
   {                                                             \
   static Utils::EnumStrings<EnumIntType(EnumClass::ENUM_SIZE)>  \
      strings(#__VA_ARGS__);                                     \
-  return strings.vals_[EnumIntType(_e)].c_str();                \
+  return strings.vals_;                                         \
   }                                                             \
 };
+
