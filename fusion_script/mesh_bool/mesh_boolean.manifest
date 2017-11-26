@@ -1,0 +1,10 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"script",
+	"author":	"Marco Amagliani",
+	"description":	{
+		"":	""
+	},
+	"supportedOS":	"windows",
+	"editEnabled":	true
+}
