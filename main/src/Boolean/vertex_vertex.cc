@@ -11,31 +11,6 @@
 
 namespace Boolean {
 
-namespace {
-
-typedef std::set<Topo::Wrap<Topo::Type::VERTEX>> MergeSet;
-typedef std::set<MergeSet> MergeSets;
-
-MergeSets::iterator find(MergeSets& mrg_sets, Topo::Wrap<Topo::Type::VERTEX> _vert)
-{
-  MergeSet mrg_set;
-  mrg_set.insert(_vert);
-  auto it = mrg_sets.lower_bound(mrg_set);
-  if (it != mrg_sets.end())
-    ++it;
-  while (it != mrg_sets.begin())
-  {
-    --it;
-    if (it->find(_vert) != it->end())
-      return it;
-    if (*(it->rbegin()) < _vert)
-      break;
-  }
-  return mrg_sets.end();
-}
-
-}
-
 bool vertices_versus_vertices(
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX>& _vert_it_a,
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX>& _vert_it_b)
