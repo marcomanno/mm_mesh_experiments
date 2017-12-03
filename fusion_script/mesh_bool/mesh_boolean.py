@@ -26,21 +26,32 @@ class MeshBooleanCommandExecuteHandler(adsk.core.CommandEventHandler):
 
             tmpdir = "c:/t" ## tempfile.mkdtemp()
             files = []
+            #occ_numbr = app.activeProduct.rootComponent.allOccurrences.count
+            #occ = app.activeProduct.rootComponent.allOccurrences.item(1)
             for i in [0,1]:
-                mesh = inputs[i].selection(0).entity.mesh;
+                mesh_body = inputs[i].selection(0).entity
+                #mesh_body = mesh_body.createForAssemblyContext(occ)
+                mesh = mesh_body.displayMesh;
                 filename = os.path.join(tmpdir, str(i) + '.obj')
                 files += [filename]
                 f = open(filename, 'w')
                 for pt in mesh.nodeCoordinates:
                     f.write("v {0} {1} {2}\n".format(pt.x, pt.y, pt.z))
                 j = 3
-                for ind in mesh.triangleNodeIndices:
+                for ind in mesh.nodeIndices:
                   if j == 3:
                       f.write("\nf")
                       j = 0
                   f.write(" {0}".format(ind + 1))
                   j += 1
 
+                #j = 4
+                #for ind in mesh.quadNodeIndices:
+                #  if j == 4:
+                #      f.write("\nf")
+                #      j = 0
+                #  f.write(" {0}".format(ind + 1))
+                #  j += 1
                 f.close()
 
             exe = "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/out/MeshBooleanApp/Release/MeshBooleanApp.exe"
@@ -50,8 +61,8 @@ class MeshBooleanCommandExecuteHandler(adsk.core.CommandEventHandler):
             curent_dir = os.getcwd()
             os.chdir(tmpdir)
             ##msdev = "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/Common7/IDE/devenv.exe"
-            ##subprocess.check_call([msdev, exe, files[0], files[1], operation])
-            subprocess.check_call([exed, files[0], files[1], operation])
+            #subprocess.check_call([msdev, exe, files[0], files[1], operation])
+            subprocess.check_call([exe, files[0], files[1], operation])
             activeDoc = adsk.core.Application.get().activeDocument
             design = activeDoc.design
             rootComp = design.rootComponent 
