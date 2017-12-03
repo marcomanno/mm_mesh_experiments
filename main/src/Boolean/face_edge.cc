@@ -81,24 +81,26 @@ void FaceEdgeInfo::split_edges()
 {
   for (auto& edge_info : e_v_refs_)
   {
+    for (const auto& split_idx : edge_info.second)
+    {
+      auto& split_vert = vertices_refs_[std::get<Utils::Index>(split_idx)];
+      if (!split_vert.vert_ && split_vert.equiv_idx_ == Utils::INVALID_INDEX)
+      {
+        split_vert.vert_.make<Topo::EE<Topo::Type::VERTEX>>();
+        split_vert.vert_->set_geom(split_vert.pt_);
+        split_vert.vert_->set_tolerance(split_vert.tol_);
+      }
+    }
+  }
+  for (auto& edge_info : e_v_refs_)
+  {
     auto edge = edge_info.first;
     Topo::Split<Topo::Type::EDGE> splitter(edge);
-    for (auto split_idx : edge_info.second)
+    for (const auto& split_idx : edge_info.second)
     {
       auto& split_vert = vertices_refs_[std::get<Utils::Index>(split_idx)];
       if (!split_vert.vert_)
-      {
-        if (split_vert.equiv_idx_ == Utils::INVALID_INDEX)
-        {
-          split_vert.vert_.make<Topo::EE<Topo::Type::VERTEX>>();
-          split_vert.vert_->set_geom(split_vert.pt_);
-          split_vert.vert_->set_tolerance(split_vert.tol_);
-        }
-        else
-        {
-          split_vert.vert_ = vertices_refs_[split_vert.equiv_idx_].vert_;
-        }
-      }
+        split_vert.vert_ = vertices_refs_[split_vert.equiv_idx_].vert_;
       Topo::Split<Topo::Type::EDGE>::Info splt_pt_info;
       splt_pt_info.vert_ = split_vert.vert_;
       splt_pt_info.t_ = std::get<Parameter>(split_idx);

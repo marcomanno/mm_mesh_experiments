@@ -15,7 +15,7 @@ struct MinSphereT
   double radius_ = -1.;
   bool contains(const Point& _pt) const
   {
-    return radius_ >= 0 && length_square(_pt - centre_) <= (1 + Geo::sq(radius_)) * 1e-8;
+    return radius_ >= 0 && length_square(_pt - centre_) <= (1 + Geo::sq(radius_)) * 1e-15;
   }
 };
 

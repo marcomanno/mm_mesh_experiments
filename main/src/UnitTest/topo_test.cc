@@ -1017,3 +1017,31 @@ TEST_CASE("blixter_00", "[Bool]")
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(b0);
   REQUIRE(bf_it.size() == 2808);
 }
+
+TEST_CASE("spheres", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"sphere0.obj");
+  auto b1 = IO::load_obj(MESH_FOLDER"sphere1.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(b0, b1);
+  b0 = bool_solver->compute(Boolean::Operation::UNION);
+  IO::save_obj("result_spheres.obj", b0);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(b0);
+  REQUIRE(bv_it.size() == 7684);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(b0);
+  REQUIRE(bf_it.size() == 14916);
+}
+
+TEST_CASE("spheres_0", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"sphere0_a.obj");
+  auto b1 = IO::load_obj(MESH_FOLDER"sphere0_b.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(b0, b1);
+  b0 = bool_solver->compute(Boolean::Operation::SPLIT);
+  IO::save_obj("result_spheres_0.obj", b0);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(b0);
+  REQUIRE(bv_it.size() == 26);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(b0);
+  REQUIRE(bf_it.size() == 27);
+}
