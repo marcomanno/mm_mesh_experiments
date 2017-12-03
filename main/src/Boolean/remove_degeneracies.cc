@@ -328,7 +328,7 @@ bool remove_degeneracies(
     remove_degenerate_edges(body);
 
   bool achange = false;
-  size_t iter = 30;
+  size_t iter = 10;
   for(; iter > 0; --iter)
   {
     DegenerateTriangleCLean dtc;

@@ -1,9 +1,9 @@
-
 #include "priv.hh"
 
 #include "Geo/kdtree.hh"
 #include "Geo/minsphere.hh"
 #include "Geo/vector.hh"
+#include "Utils/equivalence_relation.hh"
 #include "Utils/statistics.hh"
 
 #include <set>
@@ -49,7 +49,7 @@ bool vertices_versus_vertices(
   std::vector<std::array<size_t, 2>> vert_couples =
     Geo::find_kdtree_couples<Topo::Wrap<Topo::Type::VERTEX>>(kdtree[0], kdtree[1]);
 
-  MergeSets mrg_sets;
+  Utils::EquivalenceRelations<Topo::Wrap<Topo::Type::VERTEX>> equiv_set;
   for (const auto& couple : vert_couples)
   {
     Topo::Wrap<Topo::Type::VERTEX> va = kdtree[0][couple[0]];
@@ -60,45 +60,10 @@ bool vertices_versus_vertices(
     auto tol = std::max(va->tolerance(), vb->tolerance());
     if (!Geo::same(pt_a, pt_b, tol))
       continue;
-
-    auto it_a = find(mrg_sets, va);
-    auto it_b = find(mrg_sets, vb);
-    bool found_a = it_a != mrg_sets.end();
-    bool found_b = it_b != mrg_sets.end();
-    if (found_a != found_b)
-    {
-      if (found_b)
-      {
-        it_a = it_b;
-        vb = va;
-      }
-      MergeSet tmp(*it_a);
-      tmp.insert(vb);
-      mrg_sets.erase(it_a);
-      mrg_sets.insert(tmp);
-    }
-    else if (found_a)
-    {
-      if (it_a != it_b)
-      {
-        MergeSet mrg_set(*it_a);
-        mrg_set.insert(it_b->begin(), it_b->end());
-        mrg_sets.erase(it_b);
-        mrg_sets.erase(it_a);
-        mrg_sets.insert(mrg_set);
-      }
-    }
-    else
-    {
-      MergeSet mrg_set;
-      mrg_set.insert(va);
-      mrg_set.insert(vb);
-      mrg_sets.insert(mrg_set);
-    }
+    equiv_set.add_relation(va, vb);
   }
-  if (mrg_sets.empty())
-    return false;
-  for (const auto& mrg_set : mrg_sets)
+  std::vector<Topo::Wrap<Topo::Type::VERTEX>> mrg_set;
+  while (!(mrg_set = equiv_set.extract_equivalence_set()).empty())
   {
     std::vector<Geo::Point> pt_to_mrg;
     for (const auto& vert : mrg_set)

@@ -1003,3 +1003,17 @@ TEST_CASE("bambolina_17_in", "[Bool]")
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(b0);
   REQUIRE(bf_it.size() == 2808);
 }
+
+TEST_CASE("blixter_00", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"blixter_00.obj");
+  auto b1 = IO::load_obj(MESH_FOLDER"blixter_01.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(b0, b1);
+  b0 = bool_solver->compute(Boolean::Operation::UNION);
+  IO::save_obj("result_blixter_00.obj", b0);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(b0);
+  REQUIRE(bv_it.size() == 5183);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(b0);
+  REQUIRE(bf_it.size() == 2808);
+}

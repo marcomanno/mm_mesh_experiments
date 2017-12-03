@@ -81,7 +81,8 @@ Topo::Wrap<Topo::Type::BODY> Solver::compute(const Operation _op)
     //IO::save_obj("pre_0.obj", bodies_[0].body_);
     //IO::save_obj("pre_1.obj", bodies_[1].body_);
 #endif
-    while (remove_degeneracies(bodies_[0].body_, bodies_[1].body_));
+    size_t max_iter = 10;
+    while (remove_degeneracies(bodies_[0].body_, bodies_[1].body_) && --max_iter > 0);
     bodies_[0].clear();
     bodies_[1].clear();
 #ifdef DEB_ON
