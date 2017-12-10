@@ -957,7 +957,7 @@ TEST_CASE("bambolina_15", "[Bool]")
   auto result = bool_solver->compute(Boolean::Operation::UNION);
   IO::save_obj("result_bambolina_15.obj", result);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
-  REQUIRE(bv_it.size() == 6891);
+  REQUIRE(bv_it.size() == 6892);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
   REQUIRE(bf_it.size() == 7380);
 }
@@ -1044,4 +1044,18 @@ TEST_CASE("spheres_0", "[Bool]")
   REQUIRE(bv_it.size() == 26);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(b0);
   REQUIRE(bf_it.size() == 27);
+}
+
+TEST_CASE("open_attach", "[Bool]")
+{
+  auto b0 = IO::load_obj(MESH_FOLDER"open_attach_a.obj");
+  auto b1 = IO::load_obj(MESH_FOLDER"open_attach_b.obj");
+  auto bool_solver = Boolean::ISolver::make();
+  bool_solver->init(b0, b1);
+  b0 = bool_solver->compute(Boolean::Operation::UNION);
+  IO::save_obj("result_open_attach.obj", b0);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(b0);
+  REQUIRE(bv_it.size() == 345);
+  Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(b0);
+  REQUIRE(bf_it.size() == 616);
 }

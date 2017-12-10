@@ -407,7 +407,24 @@ void Selection::select_faces(
 #endif
     if (coe_vects[0].empty() && coe_vects[1].empty())
       continue;
-    if (coe_vects[0].size() != 2 || coe_vects[1].size() != 2)
+    auto process_face = [this, &coe_vects](
+      FaceClassification _fc, Topo::Wrap<Topo::Type::FACE>& _face, size_t _i_solid)
+    {
+      if (proc_faces_.find(_face) != proc_faces_.end())
+        return;
+      Choice choice = selection_table[_i_solid][size_t(bool_op_)][size_t(_fc)];
+      propagate(choice, _face);
+    };
+
+    if (coe_vects[0].size() == 1 && coe_vects[1].size() == 1)
+    {
+      FaceClassification fc = coe_vects[0][0].coe_dir_ * coe_vects[0][1].coe_dir_ < 0 ?
+        FaceClassification::IN : FaceClassification::OUT;
+      process_face(fc, coe_vects[0][0].face_, 0);
+      process_face(fc, coe_vects[1][0].face_, 1);
+      continue;
+    }
+    if (coe_vects[0].size() > 2 || coe_vects[1].size() > 2)
     {
       static std::string err_mess_root("Not supporing open bodies - common edges must have 2 faces per body.");
       auto err_mess = err_mess_root + std::to_string(coe_vects[0].size()) + " " +
@@ -428,11 +445,27 @@ void Selection::select_faces(
     }
     for (int i = 0; i < 2; ++i)
     {
-      for (int j = 0; j < 2; ++j)
+      if (coe_vects[i].size() == 1)
       {
-        // mark vcts[i][j].face_ using vcts[1-i][0] and vcts[1-i][1]
-        if (proc_faces_.find(coe_vects[i][j].face_) != proc_faces_.end())
+        double angs[2];
+        Geo::iterate_forw<2>::eval([&angs, &coe_vects, i](size_t _j)
+        {
+          angs[_j] = Geo::signed_angle(coe_vects[i][0].face_inside_dir_, 
+                                       coe_vects[1 - i][_j].face_inside_dir_,
+                                       coe_vects[i][0].coe_dir_);
+          if (angs[_j] < 0) angs[_j] += 2 * M_PI;
+        });
+        FaceClassification fc[2] = { FaceClassification::OUT , FaceClassification::IN };
+        if (angs[0] > angs[1])
+          std::swap(fc[0], fc[1]);
+        for (int j = 0; j < 2; ++j)
+          process_face(fc[j], coe_vects[1 - i][j].face_, 1 - i);
+      }
+      for (int j = 0; j < coe_vects[i].size(); ++j)
+      {
+        if (coe_vects[1 - i].size() != 2)
           continue;
+        // mark vcts[i][j].face_ using vcts[1-i][0] and vcts[1-i][1]
         FaceClassification fc;
         auto sin_outside_angle = coe_vects[1 - i][0].face_norm_ * coe_vects[1 - i][1].face_inside_dir_;
         if (std::fabs(sin_outside_angle) < 1e-10)
@@ -441,7 +474,7 @@ void Selection::select_faces(
           THROW_IF(coe_vects[1 - i][0].face_norm_ * coe_vects[1 - i][0].face_norm_ < 0, "Antiparallel faces");
           if (coe_vects[i][j].face_inside_dir_ * coe_vects[1 - i][j].face_norm_ < 0)
             fc = FaceClassification::IN;
-          else 
+          else
             fc = FaceClassification::OUT;
         }
         else
@@ -457,9 +490,7 @@ void Selection::select_faces(
           bool out_face = (u > 0 && v > 0) ^ (sin_outside_angle < 0);
           fc = out_face ? FaceClassification::OUT : FaceClassification::IN;
         }
-        Choice choice;
-        choice = selection_table[i][size_t(bool_op_)][size_t(fc)];
-        propagate(choice, coe_vects[i][j].face_);
+        process_face(fc, coe_vects[i][j].face_, i);
       }
     }
   }
