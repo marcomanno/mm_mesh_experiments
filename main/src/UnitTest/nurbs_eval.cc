@@ -4,6 +4,7 @@
 #include "boost/math/tools/polynomial.hpp"
 
 #include "Geo/evalnurbs.hh"
+#include "Geo/geo_function.hh"
 
 #include <iostream>
 #include <vector>
@@ -54,4 +55,36 @@ TEST_CASE("Evaluate nurbs", "[NURBS]" )
   
   // Derivative is polynomial 1
   REQUIRE( result[1][0] == 1 );
+}
+
+TEST_CASE("Curve00", "[NURBS]")
+{
+  using MyPt = Geo::Vector<double, 2>;
+  std::vector<MyPt> pts = { {0,0}, {1,2} };
+  std::vector<double> knots = { 0, 1 };
+
+  auto crv = Geo::make_nurbs_curve<2>(pts, knots);
+  MyPt pt;
+  crv->evaluate({ 0 }, pt);
+  REQUIRE((pt[0] == 0 && pt[1] == 0));
+  std::vector<Geo::Curve<2>::Derivative> ders(2);
+  ders[0].der_order_[0] = 1;
+  ders[1].der_order_[0] = 3;
+  crv->evaluate({ 0.5 }, pt, &ders);
+  REQUIRE((pt[0] == 0.5 && pt[1] == 1));
+  REQUIRE((ders[0].val_[0] == 1 && ders[0].val_[1] == 2));
+  REQUIRE((ders[1].val_[0] == 0 && ders[1].val_[1] == 0));
+  crv->evaluate({ 1 }, pt);
+  REQUIRE((pt[0] == 1 && pt[1] == 2));
+
+  using MyPt3 = Geo::Vector<double, 3>;
+  std::vector<MyPt3> pts3 = { { 0,0,0 },{ 1,2,3},{ 2,0,0 } };
+  std::vector<double> knots3 = { 0, 1, 2 };
+  auto crv3 = Geo::make_nurbs_curve<3>(pts3, knots3);
+  MyPt3 pt3;
+  std::vector<Geo::Curve<3>::Derivative> ders3(1);
+  crv3->evaluate({ 1 }, pt3, &ders3);
+  REQUIRE((ders3[0].val_ == MyPt3{1, 2, 3}));
+  crv3->evaluate({ 1 }, pt3, &ders3, true);
+  REQUIRE((ders3[0].val_ == MyPt3{ 1, -2, -3 }));
 }

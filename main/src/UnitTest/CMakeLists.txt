@@ -3,7 +3,7 @@ include (ACGCommon)
 include_directories (
   ..
   ${CMAKE_CURRENT_SOURCE_DIR}
-  C:/Users/marco/OneDrive/Documents/PROJECTS/ThirdParties/boost_1_61_0
+  C:/Users/marco/OneDrive/Documents/PROJECTS/ThirdParties/boost_1_65_1
 )
 
 # Create new target named unittests_hexmeshing
