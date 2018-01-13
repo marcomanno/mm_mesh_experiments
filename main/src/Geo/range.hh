@@ -26,7 +26,6 @@ struct Range
     return *this;
   }
 public:
-
   // Add point
   Range<DimT>& operator+=(const VectorD<DimT>& _pt)
   {
@@ -84,5 +83,16 @@ public:
   double diag_sq() const { return (extr_[0] - extr_[1]).len_sq(); }
   double diag() const { return std::sqrt(diag_sq()); }
 };
+
+template <size_t DimT, class Container>
+Range<DimT> make_range(const Container& _cont)
+{
+  Range<DimT> range;
+  for (auto it = _cont.begin(); it != _cont.end(); ++it)
+    range += Geo::Vector<double, DimT>{*it};
+  return range;
+}
+
+
 
 }// namespace

@@ -1,6 +1,9 @@
 #include "geo_function.hh"
 #include "evalnurbs.hh"
 
+#include <initializer_list>
+
+
 namespace Geo
 {
 
@@ -35,6 +38,18 @@ struct NubCurve : public Curve<DimValT>
       for (auto& der : *ders_)
         der.val_ = results[der.der_order_[0]];
   }
+  virtual void curvature(const Parameter& _par, Point& _val) override { _par; _val; }
+  virtual void torsion(const Parameter& _par, Point& _val) override { _par; _val; }
+  double max_derivative(int _order) override { _order;  return 0;  }
+  Geo::Range<1> range() override
+  {
+    return make_range<1, std::initializer_list<double>>({ knots_.front(), knots_.back() });
+  }
+  Geo::Range<DimValT> box() override
+  {
+    return make_range<DimValT, std::vector<Point>>(ctr_pts_);
+  }
+
 private:
   std::vector<Point>   ctr_pts_;
   std::vector<double>  knots_;
