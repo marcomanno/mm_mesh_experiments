@@ -80,8 +80,29 @@ public:
     return false;
   }
 
+  bool operator<(const Range<DimT>& _oth) const
+  {
+    auto i = extr_[0] == extr_[0] ? 1: 0;
+    return extr_[i] < extr_[i]
+  }
+
+  bool operator==(const Range<DimT>& _oth) const
+  {
+    return extr_[0] == extr_[0] && extr_[1] == extr_[1];
+  }
+
   double diag_sq() const { return (extr_[0] - extr_[1]).len_sq(); }
   double diag() const { return std::sqrt(diag_sq()); }
+
+  void set(bool _max, const VectorD<DimT>& _extr)
+  {
+    extr_[_max] = _extr;
+  }
+
+  const VectorD<DimT>& operator[](int _i) const
+  {
+    return extr_[_i];
+  }
 };
 
 template <size_t DimT, class Container>

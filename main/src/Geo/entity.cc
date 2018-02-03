@@ -37,43 +37,6 @@ Point evaluate(const Triangle& _tri, double _u, double _v)
   return (1 - _u - _v) * _tri[0] +_u * _tri[1] + _v * _tri[2];
 }
 
-bool closest_point(const Segment& _seg, const Point& _pt,
-  Point* _clsst_pt, double* _t, double * _dist_sq)
-{
-  Point pt_diff[2] = { _pt - _seg[0], _pt - _seg[1] };
-  double dists_sq[2] = { length_square(pt_diff[0]), length_square(pt_diff[1]) };
-  size_t orig = dists_sq[0] < dists_sq[1] ? 0 : 1;
-  auto p01 = (_seg[1 - orig] - _seg[orig]);
-  double par = pt_diff[orig] * p01;
-  if (par < 0) // Projection is outside the segment, closest point is the extreme.
-  {
-    if (_t != nullptr)
-      *_t = double(orig);
-    if (_dist_sq != nullptr)
-      *_dist_sq = dists_sq[orig];
-    if (_clsst_pt != nullptr)
-      *_clsst_pt = _seg[orig];
-  }
-  else
-  {
-    if (_clsst_pt != nullptr || _dist_sq != nullptr)
-    {
-      auto clsst_pt = _seg[orig] + (par / length_square(p01)) * p01;
-      if (_clsst_pt != nullptr)
-        *_clsst_pt = clsst_pt;
-      if (_dist_sq != nullptr)
-        *_dist_sq = length_square(_pt - clsst_pt);
-    }
-    if (_t != nullptr)
-    {
-      *_t = (par / length_square(p01));
-      if (orig > 0)
-        *_t = 1 - *_t;
-    }
-  }
-  return true;
-}
-
 bool closest_point(const Segment& _seg_a, const Segment& _seg_b,
   Point* _clsst_pt, double _t[2], double * _dist_sq)
 {
