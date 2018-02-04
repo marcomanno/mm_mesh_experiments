@@ -45,7 +45,9 @@ if(MSVC)
   if(NOT CMAKE_CXX_FLAGS MATCHES "/Zi")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
   endif()
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /std:c++latest")
   SET( CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} /DEBUG" )
+  add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
 endif()
 
 # ========================================================================
@@ -62,6 +64,7 @@ add_subdirectory (src/Topology)
 add_subdirectory (src/UnitTest)
 add_subdirectory (src/Utils)
 add_subdirectory (src/MeshFlatten)
+add_subdirectory (src/Offset)
 add_subdirectory( src/MeshBooleanApp)
 
 # ========================================================================

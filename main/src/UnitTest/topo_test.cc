@@ -959,7 +959,7 @@ TEST_CASE("bambolina_15", "[Bool]")
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(result);
   REQUIRE(bv_it.size() == 6892);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(result);
-  REQUIRE(bf_it.size() == 7380);
+  REQUIRE(bf_it.size() == 7374);
 }
 
 TEST_CASE("bambolina_16", "[Bool]")
@@ -1057,5 +1057,5 @@ TEST_CASE("open_attach", "[Bool]")
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(b0);
   REQUIRE(bv_it.size() == 345);
   Topo::Iterator<Topo::Type::BODY, Topo::Type::FACE> bf_it(b0);
-  REQUIRE(bf_it.size() == 616);
+  REQUIRE(bf_it.size() == 456);
 }

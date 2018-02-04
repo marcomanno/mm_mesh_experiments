@@ -9,7 +9,8 @@ namespace Gen {
 template <class TypeT, size_t DimT> using Segment = 
   std::array<Geo::Vector<TypeT, DimT>, 2>;
 
-template <class TypeT, size_t DimT> bool closest_point(
+template <class TypeT, size_t DimT, bool infT = false> 
+bool closest_point(
   const Segment<TypeT, DimT>& _seg, const Geo::Vector<TypeT, DimT>& _pt,
   Geo::Vector<TypeT, DimT>* _clsst_pt = nullptr,
   TypeT* _t = nullptr,
@@ -23,8 +24,11 @@ template <class TypeT, size_t DimT> bool closest_point(
   if (len_sq <= len_ref_sq)
     return false;
   auto t = (a * b) / len_sq;
-  if (t <= 0 || t >= 1)
-    return false;
+  if constexpr (!infT)
+  {
+    if (t <= 0 || t >= 1)
+      return false;
+  }
   if (_t != nullptr) *_t = t;
   if (_clsst_pt != nullptr) *_clsst_pt = _seg[1] * t + (1 - t) * _seg[0];
   if (_dist_sq != nullptr)
