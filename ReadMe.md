@@ -12,12 +12,18 @@ At the moment it is able to describe only geoemtric points (mesh).
 
 It is possible to use the class BooleanLLIsolver to make boolean operation between bodies.
 The above picture is the difference of two bodies.
-
 Some video explains the power of this tool:
+
 [Bool Video 1](doc/Bunnies_boolean.gif)
-[Bool Video 2](doc/Tower2.gif)
-[Bool Video 3](doc/Mesh_boolean.gif)
-[Bool Video 4](doc/Mesh_boolean_2.gif)
+
+[Tower1 - mp4 format](doc/Tower1.mp4)
+
+[Tower2](doc/Tower2.gif)
+
+[Bool Video 4](doc/Mesh_boolean.gif)
+
+[Bool Video 5](doc/Mesh_boolean_2.gif)
+
 
 # Find a triangulation for a 3d polygon
 
