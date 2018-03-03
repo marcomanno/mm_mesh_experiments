@@ -5,6 +5,124 @@
 
 namespace Geo {
 
+template <class TypeT>
+class Interval
+{
+  Vector<TypeT, 2> extr_;
+public:
+  Interval(const TypeT& _a = std::numeric_limits<TypeT>::max(),
+           const TypeT& _b = std::numeric_limits<TypeT>::lowest())
+    : extr_({_a, _b}) {}
+
+  Interval(const Interval<TypeT>& _int) : extr_(_int.extr_) {}
+
+  bool empty() const { return extr_[0] >= extr_[1]; }
+
+  void set_empty()
+  {
+    extr_[0] = std::numeric_limits<TypeT>::max();
+    extr_[1] = std::numeric_limits<TypeT>::min();
+  }
+
+  static TypeT max() { return std::numeric_limits<TypeT>::max(); }
+  static TypeT min() { return std::numeric_limits<TypeT>::min(); }
+
+  void set_whole()
+  {
+    set_empty();
+    std::swap(extr_[1], extr_[0]);
+  }
+
+  void set(bool _max, const TypeT& _val)
+  {
+    extr_[_max] = _val;
+  }
+
+  const TypeT& operator[](int _i) const
+  {
+    return extr_[_i];
+  }
+
+  bool contain_close(const TypeT& _val) const
+  {
+    return _val >= extr_[0] && _val <= extr_[1];
+  }
+
+  bool contain_close(const Interval<TypeT>& _oth) const
+  {
+    return extr_[0] >= _oth.extr_[0] && extr_[1] <= _oth.extr_[1];
+  }
+    
+  bool contain_open(const TypeT& _val) const
+  {
+    return _val > extr_[0] && _val < extr_[1];
+  }
+
+  bool contain_open(const Interval<TypeT>& _oth) const
+  {
+    return extr_[0] > _oth.extr_[0] && extr_[1] < _oth.extr_[1];
+  }
+
+  void add(const TypeT& _val)
+  {
+    if (extr_[0] > _val) extr_[0] = _val;
+    if (extr_[1] < _val) extr_[1] = _val;
+  }
+  void add(const Interval<TypeT>& _int)
+  {
+    add(_int.extr_[0]);
+    add(_int.extr_[1]);
+  }
+  bool split(const TypeT& _val, Interval<TypeT>& _oth)
+  {
+    if (!contain_open(_val))
+      return false;
+    _oth = Interval<TypeT>(_val, extr_[1]);
+    extr_[1] = _val;
+    return true;
+  }
+  Interval<TypeT>& operator*=(const Interval<TypeT>& _oth)
+  {
+    if (extr_[0] < _oth.extr_[0]) extr_[0] = _oth.extr_[0];
+    if (extr_[1] > _oth.extr_[1]) extr_[1] = _oth.extr_[1];
+    return *this;
+  }
+  Interval<TypeT>& operator*(const Interval<TypeT>& _oth) const
+  {
+    return (Interval<TypeT>(*this) *= _oth);
+  }
+  Interval<TypeT>& operator+=(const Interval<TypeT>& _oth)
+  {
+    if (extr_[0] > _oth.extr_[0]) extr_[0] = _oth.extr_[0];
+    if (extr_[1] < _oth.extr_[1]) extr_[1] = _oth.extr_[1];
+    return *this;
+  }
+  Interval<TypeT>& operator+(const Interval<TypeT>& _oth) const
+  {
+    return (Interval<TypeT>(*this) += _oth);
+  }
+
+  bool subtract(const Interval<TypeT>& _oth, Interval<TypeT>& _part2)
+  {
+    _part2.set_empty();
+    if (_oth.contain_close(*this))
+    {
+      set_empty();
+      return true;
+    }
+    if (contain_open(_oth))
+    {
+      split(_oth.extr_[1], _part2);
+      Interval<TypeT> part2;
+      split(_oth.extr_[0], part2);
+      return true;
+    }
+    *this *= _oth;
+    return empty();
+  }
+
+};
+
 template <size_t DimT>
 struct Range
 {
@@ -80,6 +198,11 @@ public:
     return false;
   }
 
+  void clear()
+  {
+    *this = Range();
+  }
+
   bool operator<(const Range<DimT>& _oth) const
   {
     auto i = extr_[0] == extr_[0] ? 1: 0;
@@ -88,7 +211,11 @@ public:
 
   bool operator==(const Range<DimT>& _oth) const
   {
-    return extr_[0] == extr_[0] && extr_[1] == extr_[1];
+    return extr_[0] == _oth.extr_[0] && extr_[1] == _oth.extr_[1];
+  }
+  bool operator!=(const Range<DimT>& _oth) const
+  {
+    return !(_oth == *this);
   }
 
   double diag_sq() const { return (extr_[0] - extr_[1]).len_sq(); }
@@ -103,6 +230,14 @@ public:
   {
     return extr_[_i];
   }
+
+  bool contain(const VectorD<DimT>& _pt) const
+  {
+    for (int i = 0; i < _pt.size(); ++i)
+      if (_pt[i] < extr_[0][i] || extr_[0][i] < _pt[i])
+        return false;
+    return true;
+  }
 };
 
 template <size_t DimT, class Container>
@@ -113,7 +248,5 @@ Range<DimT> make_range(const Container& _cont)
     range += Geo::Vector<double, DimT>{*it};
   return range;
 }
-
-
 
 }// namespace

@@ -16,16 +16,63 @@
 
 #include <vector>
 
-namespace Geo {
-
 namespace {
 bool check_par(double _t) { return _t >= 0 && _t <= 1; }
 bool check_par(double _u, double _v)
 {
   return _u >= 0 && _v >= 0 && (1 - _u - _v) >= 0;
 }
-
 }//namespace
+
+namespace Gen
+{
+template <class TypeT, size_t DimT, bool Inf1T, bool Inf2T>
+bool closest_point(const Segment<TypeT, DimT>& _seg_a, const Segment<TypeT, DimT>& _seg_b,
+                   Geo::Vector<TypeT, DimT>* _clsst_pt, double _t[2], double * _dist_sq)
+{
+  Geo::Vector<TypeT, DimT> a[2] = {
+    _seg_a[1] - _seg_a[0],
+    _seg_b[0] - _seg_b[1] };
+  Eigen::MatrixXd A(a[0].size(), std::size(a));
+  Eigen::VectorXd B(a[0].size());
+  for (int i = 0; i < a[0].size(); ++i)
+  {
+    B(i) = _seg_b[0][i] - _seg_a[0][i];
+    for (int j = 0; j < std::size(a); ++j)
+      A(i, j) = a[j][i];
+  }
+  Eigen::VectorXd  res = (A.transpose() * A).ldlt().solve(A.transpose() * B);
+  if ((constexpr(!Inf1T) && !check_par(res(0))) || 
+      (constexpr(!Inf2T) && !check_par(res(1))))
+    return false;
+  auto pt_a = evaluate(_seg_a, res(0));
+  auto pt_b = evaluate(_seg_b, res(1));
+  if (_clsst_pt != nullptr)
+    *_clsst_pt = (pt_a + pt_b) / 2.;
+  if (_dist_sq != nullptr)
+    *_dist_sq = Geo::length_square(pt_a - pt_b);
+  if (_t != nullptr)
+  {
+    _t[0] = res(0);
+    _t[1] = res(1);
+  }
+  return true;
+}
+
+#define INST_CLOSEST_POINT_SEG_SEG(TYPE, NUM, INF)                        \
+template bool closest_point<TYPE, NUM, INF>(                              \
+  const Segment<TYPE, NUM>& _seg_a, const Segment<TYPE, NUM>& _seg_b,\
+  Geo::Vector<TYPE, NUM>* _clsst_pt, double _t[2], double * _dist);
+
+INST_CLOSEST_POINT_SEG_SEG(double, 2, false)
+INST_CLOSEST_POINT_SEG_SEG(double, 2, true)
+
+INST_CLOSEST_POINT_SEG_SEG(double, 3, false)
+INST_CLOSEST_POINT_SEG_SEG(double, 3, true)
+
+} // namespace Gen
+
+namespace Geo {
 
 Point evaluate(const Segment& _seg, double _t)
 {
@@ -35,69 +82,6 @@ Point evaluate(const Segment& _seg, double _t)
 Point evaluate(const Triangle& _tri, double _u, double _v)
 {
   return (1 - _u - _v) * _tri[0] +_u * _tri[1] + _v * _tri[2];
-}
-
-bool closest_point(const Segment& _seg_a, const Segment& _seg_b,
-  Point* _clsst_pt, double _t[2], double * _dist_sq)
-{
-  double t[2];
-  static int eigen = 1;
-  if (eigen)
-  {
-    Vector3 a[2] = {
-      _seg_a[1] - _seg_a[0],
-      _seg_b[0] - _seg_b[1] };
-    Eigen::MatrixXd A(a[0].size(), std::size(a));
-    Eigen::VectorXd B(a[0].size());
-    for (int i = 0; i < a[0].size(); ++i)
-    {
-      B(i) = _seg_b[0][i] - _seg_a[0][i];
-      for (int j = 0; j < std::size(a); ++j)
-        A(i, j) = a[j][i];
-    }
-    Eigen::VectorXd  res;
-    if (eigen == 1)
-      res = (A.transpose() * A).ldlt().solve(A.transpose() * B);
-    else
-    {
-      const auto& jsvd =
-        A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
-      res = jsvd.solve(B);
-    }
-    t[0] = res(0);
-    t[1] = res(1);
-  }
-  else
-  {
-    auto A = _seg_a[0] - _seg_b[0];
-    auto b = _seg_a[1] - _seg_a[0];
-    auto c = _seg_b[1] - _seg_b[0];
-    auto discr = (b * b) * (c * c) - sq(b * c);
-    Utils::StatisticsT<double> len_stats;
-    len_stats.add(length_square(_seg_a[1]));
-    len_stats.add(length_square(_seg_a[1]));
-    len_stats.add(length_square(_seg_b[0]));
-    len_stats.add(length_square(_seg_b[1]));
-
-    if (zero_sq(discr, len_stats.max()))
-      return false;
-    t[0] = ((A * c) * (b * c) - (A * b) * (c * c)) / discr;
-    t[1] = ((A * c) * (b * b) - (A * b) * (b * c)) / discr;
-  }
-  if (!check_par(t[0]) || !check_par(t[1]))
-    return false;
-  auto pt_a = evaluate(_seg_a, t[0]);
-  auto pt_b = evaluate(_seg_b, t[1]);
-  if (_clsst_pt != nullptr)
-    *_clsst_pt = (pt_a + pt_b) / 2.;
-  if (_dist_sq != nullptr)
-    *_dist_sq = length_square(pt_a - pt_b);
-  if (_t != nullptr)
-  {
-    _t[0] = t[0];
-    _t[1] = t[1];
-  }
-  return true;
 }
 
 namespace {

@@ -9,6 +9,13 @@ namespace Gen {
 template <class TypeT, size_t DimT> using Segment = 
   std::array<Geo::Vector<TypeT, DimT>, 2>;
 
+template <class TypeT, size_t DimT>
+auto evaluate(const Segment<TypeT, DimT>& _seg, double _t)
+{
+  return (1 - _t) * _seg[0] + _t * _seg[1];
+}
+
+
 template <class TypeT, size_t DimT, bool infT = false> 
 bool closest_point(
   const Segment<TypeT, DimT>& _seg, const Geo::Vector<TypeT, DimT>& _pt,
@@ -35,6 +42,13 @@ bool closest_point(
     *_dist_sq = Geo::length_square(a - t * b);
   return true;
   }
+
+template <class TypeT, size_t DimT, bool Inf1 = false, bool Inf2 = false>
+bool closest_point(const Segment<TypeT, DimT>& _seg_a, const Segment<TypeT, DimT>& _seg_b,
+                   Geo::Vector<TypeT, DimT>* _clsst_pt = nullptr, 
+                   double _t[2] = nullptr, double * _dist = nullptr);
+
+
 } // namespace Gen
 
 namespace Geo {
@@ -79,8 +93,11 @@ closest_point(const Segment& _seg, const Point& _pt,
     if the minimum distance point between the two segment is on an end of 
     at least one the two segments.
 */
-bool closest_point(const Segment& _seg_a, const Segment& _seg_b,
-  Point* _clsst_pt = nullptr, double _t[2] = nullptr, double * _dist = nullptr);
+inline bool closest_point(const Segment& _seg_a, const Segment& _seg_b,
+                          Point* _clsst_pt = nullptr, double _t[2] = nullptr, double * _dist_sq = nullptr)
+{
+  return Gen::closest_point<double, 3>(_seg_a, _seg_b, _clsst_pt, _t, _dist_sq);
+}
 
 /*! Finds the internal point of a triangle closest to a point, ad its distance.
 The closest point is returned only if it is strictly inside the triangle.
