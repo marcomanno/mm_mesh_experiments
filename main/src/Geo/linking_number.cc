@@ -4,10 +4,10 @@
 namespace Geo
 {
 namespace {
-double contribution(const Geo::Vector3 _p[2][2])
+double contribution(const Geo::VectorD3 _p[2][2])
 {
-  Geo::Vector3 T[2];
-  Geo::Vector2 len;
+  Geo::VectorD3 T[2];
+  Geo::VectorD2 len;
   for (auto i = 0; i < 2; ++i)
   {
     T[i] = _p[i][1] - _p[i][0];
@@ -16,8 +16,8 @@ double contribution(const Geo::Vector3 _p[2][2])
   }
   auto dp = _p[0][0] - _p[1][0];
   const double SAMPLES = 8;
-  Geo::Vector2 dt = len / SAMPLES;
-  Geo::Vector2 u;
+  Geo::VectorD2 dt = len / SAMPLES;
+  Geo::VectorD2 u;
   //auto coeff = (T[0] % T[1]) * dp * dt[0] * dt[1];
   double integr_sum = 0;
   double coeff = (T[0] % T[1]) * dp * dt[0] * dt[1];
@@ -31,15 +31,15 @@ double contribution(const Geo::Vector3 _p[2][2])
   return integr_sum /* * coeff*/;
 }
 
-long double contribution1(const Geo::Vector3 _p[2][2])
+long double contribution1(const Geo::VectorD3 _p[2][2])
 {
-  Geo::Vector3 T[2];
+  Geo::VectorD3 T[2];
   for (auto i : { 0, 1 })
     T[i] = _p[i][1] - _p[i][0];
   auto dp = _p[0][0] - _p[1][0];
   const double SAMPLES = 4096;
   double dt = 1. / SAMPLES;
-  Geo::Vector2 u;
+  Geo::VectorD2 u;
   long double integr_sum = 0;
   double coeff = (T[0] % T[1]) * dp * dt * dt;
   for (u[0] = dt / 2.; u[0] < 1.; u[0] += dt)
@@ -58,13 +58,13 @@ long double contribution1(const Geo::Vector3 _p[2][2])
 
 
 int LinkingNumber::compute(
-  const std::vector<Geo::Vector3>& _loop0,
-  const std::vector<Geo::Vector3>& _loop1)
+  const std::vector<Geo::VectorD3>& _loop0,
+  const std::vector<Geo::VectorD3>& _loop1)
 {
   if (_loop0.size() < 3 || _loop1.size() < 3)
     return 0;
   long double link_numb = 0;
-  Geo::Vector3 p[2][2];
+  Geo::VectorD3 p[2][2];
   p[0][0] = _loop0.back();
   for (const auto& p1 : _loop0)
   {

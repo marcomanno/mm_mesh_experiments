@@ -109,23 +109,23 @@ void Split<Type::FACE>::use_face_loops(const LoopFilter& _loop_filter)
 
 namespace {
 
-std::vector<Geo::Vector3> vertex_chain_to_poly(VertexChain& _chain)
+std::vector<Geo::VectorD3> vertex_chain_to_poly(VertexChain& _chain)
 {
-  std::vector<Geo::Vector3> poly;
+  std::vector<Geo::VectorD3> poly;
   poly.reserve(_chain.size());
   for (auto& v : _chain)
   {
-    Geo::Vector3 pt;
+    Geo::VectorD3 pt;
     v->geom(pt);
     poly.push_back(pt);
   }
   return poly;
 }
 
-bool is_inside(const std::vector<Geo::Vector3>& _chain, 
-  VertexChain& _isle, const Geo::Vector3& _norm)
+bool is_inside(const std::vector<Geo::VectorD3>& _chain, 
+  VertexChain& _isle, const Geo::VectorD3& _norm)
 {
-  Geo::Vector3 pt_inside;
+  Geo::VectorD3 pt_inside;
   _isle[0]->geom(pt_inside);
   auto pt_clss = Geo::PointInPolygon::classify(_chain, pt_inside, &_norm);
   if (pt_clss != Geo::PointInPolygon::Inside)

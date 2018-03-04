@@ -80,7 +80,7 @@ private:
   VertexChains boundaries_;
   std::map<size_t, VertexChains> islands_;
   Connections connections_;
-  Geo::Vector3 norm_;
+  Geo::VectorD3 norm_;
 };
 
 std::shared_ptr<ISplitChain> ISplitChain::make()

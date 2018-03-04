@@ -80,7 +80,7 @@ template <class T> struct deleter
 };
 template<typename T> using VtkUniquePtr = std::unique_ptr<T, deleter<T>>;
 
-void render_actors(std::vector<vtkPolyData*>& _ply_dats, Geo::Vector3* _clrs = nullptr)
+void render_actors(std::vector<vtkPolyData*>& _ply_dats, Geo::VectorD3* _clrs = nullptr)
 {
   // Create the graphics structure. The renderer renders into the
   // render window. The render window interactor captures mouse events
@@ -214,8 +214,8 @@ EXAMPLE(0)
   int files_nmbr = 0;
   std::cin >> files_nmbr;
   std::vector<vtkPolyData*> poly_dats;
-  Geo::Vector3 rb[2] = { { 1, 0, 0 },{ 0,0,1 } };
-  std::vector<Geo::Vector3> cols;
+  Geo::VectorD3 rb[2] = { { 1, 0, 0 },{ 0,0,1 } };
+  std::vector<Geo::VectorD3> cols;
   for (int i = 0; i < files_nmbr; ++i)
   {
     auto body = IO::load_obj(open_file().c_str());
@@ -305,7 +305,7 @@ EXAMPLE(3)
   auto body1 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
-  const Geo::Vector3 oofs{ .1, .1, .1 };
+  const Geo::VectorD3 oofs{ .1, .1, .1 };
   for (size_t i = 0; i < vert_it.size(); ++i)
   {
     Geo::Point pt;
@@ -333,7 +333,7 @@ EXAMPLE(4)
   auto body1 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube.obj");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
-  const Geo::Vector3 oofs{ .5, .5, .5 };
+  const Geo::VectorD3 oofs{ .5, .5, .5 };
   for (size_t i = 0; i < vert_it.size(); ++i)
   {
     Geo::Point pt;
@@ -361,7 +361,7 @@ EXAMPLE(5)
   auto body1 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/cube_00.obj");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
-  const Geo::Vector3 oofs{ .5, .5, .5 };
+  const Geo::VectorD3 oofs{ .5, .5, .5 };
   for (size_t i = 0; i < vert_it.size(); ++i)
   {
     Geo::Point pt;
@@ -390,7 +390,7 @@ EXAMPLE(6)
   auto body1 = IO::load_obj(
     "C:/Users/marco/OneDrive/Documents/PROJECTS/polytriagnulation/mesh/TUNA.OBJ");
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> vert_it(body1);
-  const Geo::Vector3 oofs{ 0.01, 0.01, 0.01 };
+  const Geo::VectorD3 oofs{ 0.01, 0.01, 0.01 };
   for (size_t i = 0; i < vert_it.size(); ++i)
   {
     Geo::Point pt;
@@ -512,6 +512,6 @@ EXAMPLE(7)
     poly_dats[i]->SetPolys(newPolys[i]);
     newPolys[i]->Delete();
   }
-  Geo::Vector3 cols[2] = { { 1, 0, 0 },{ 0, 0, 1 } };
+  Geo::VectorD3 cols[2] = { { 1, 0, 0 },{ 0, 0, 1 } };
   render_actors(poly_dats, cols);
 }

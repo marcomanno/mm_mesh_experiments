@@ -53,7 +53,7 @@ bool closest_point(const Segment<TypeT, DimT>& _seg_a, const Segment<TypeT, DimT
 
 namespace Geo {
 
-typedef Vector3 Point;
+typedef VectorD3 Point;
 typedef std::array<Point, 2> Segment;
 typedef std::array<Point, 3> Triangle;
 

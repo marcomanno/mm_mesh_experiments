@@ -12,10 +12,10 @@ namespace {
 struct PlaneFit : public IPlaneFit
 {
   virtual void init(size_t _size) override;
-  virtual void add_point(const Vector3& _pt) override;
+  virtual void add_point(const VectorD3& _pt) override;
   virtual bool compute(
-    Vector3& _center, 
-    Vector3& _normal,
+    VectorD3& _center, 
+    VectorD3& _normal,
     const bool _orient = false) override;
 
   Eigen::Matrix<double, 3, Eigen::Dynamic> matr_;
@@ -28,7 +28,7 @@ void PlaneFit::init(size_t _size)
   ind_ = 0;
 }
 
-void PlaneFit::add_point(const Vector3& _pt)
+void PlaneFit::add_point(const VectorD3& _pt)
 {
   THROW_IF(ind_ > matr_.cols(), "Adding too many points");
   iterate_forw<3>::eval([this, &_pt](size_t _i) {matr_(_i, ind_) = _pt[_i]; });
@@ -39,7 +39,7 @@ void PlaneFit::add_point(const Vector3& _pt)
 // This is where I took the idea:
 // http://math.stackexchange.com/questions/99299/best-fitting-plane-given-a-set-of-points?answertab=votes#tab-top
 bool PlaneFit::compute(
-  Vector3& _center, Vector3& _normal, const bool _orient)
+  VectorD3& _center, VectorD3& _normal, const bool _orient)
 {
   if (ind_ == 0)
     return false;
@@ -67,12 +67,12 @@ bool PlaneFit::compute(
   { _normal[_i] = umatr(_i, cols - 1); });
   if (_orient) // Normal in ccw.
   {
-    Vector3 du, dv;
+    VectorD3 du, dv;
     normal_plane_default_directions(_normal, du, dv);
     auto proj_to_plane = [this, &du, &dv](size_t i)
     {
-      Vector3 p = { matr_(0, i), matr_(1, i), matr_(2, i) };
-      return Vector2{p * du, p * dv};
+      VectorD3 p = { matr_(0, i), matr_(1, i), matr_(2, i) };
+      return VectorD2{p * du, p * dv};
     };
     auto pt_ptrv = proj_to_plane(matr_.cols() - 1);
     double area = 0;

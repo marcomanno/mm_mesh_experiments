@@ -52,7 +52,7 @@ bool save_obj(const char* _flnm, const Topo::Wrap<Topo::Type::BODY> _body,
       auto poly_t = Geo::IPolygonTriangulation::make();
       for (const auto& loop : fl_it)
       {
-        std::vector<Geo::Vector3> plgn;
+        std::vector<Geo::VectorD3> plgn;
         Topo::Iterator<Topo::Type::LOOP, Topo::Type::VERTEX> lv_it(loop);
         for (const auto& v : lv_it)
         {
@@ -109,10 +109,10 @@ bool save_face(const Topo::E<Topo::Type::FACE>* _ptr, const char* _flnm,
   {
     Topo::Iterator<Topo::Type::FACE, Topo::Type::VERTEX> vert_it(
       const_cast<Topo::E<Topo::Type::FACE>*>(_ptr));
-    std::vector<Geo::Vector3> plgn;
+    std::vector<Geo::VectorD3> plgn;
     for (const auto& vert : vert_it)
     {
-      Geo::Vector3 pt;
+      Geo::VectorD3 pt;
       vert->geom(pt);
       plgn.emplace_back(pt);
     }
@@ -162,7 +162,7 @@ bool save_face(const Topo::E<Topo::Type::FACE>* _ptr, int _num,
 }
 
 void save_obj(const char* _flnm, 
-  const std::vector<Geo::Vector3>& _plgn,
+  const std::vector<Geo::VectorD3>& _plgn,
   const std::vector<size_t>* _inds)
 {
   std::string flnm;
@@ -188,7 +188,7 @@ void save_obj(const char* _flnm,
 void save_obj(const char* _flnm,
   const std::vector<Topo::Wrap<Topo::Type::VERTEX>>& _verts)
 {
-  std::vector<Geo::Vector3> plgn;
+  std::vector<Geo::VectorD3> plgn;
   for (auto vert : _verts)
   {
     plgn.emplace_back();

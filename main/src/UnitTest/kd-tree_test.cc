@@ -8,14 +8,14 @@ namespace {
 struct KdTreeElement
 {
   static const size_t DIM = 3;
-  Geo::Vector3 pt_ =
+  Geo::VectorD3 pt_ =
   {
     double(std::rand()) / RAND_MAX,
     double(std::rand()) / RAND_MAX,
     double(std::rand()) / RAND_MAX
   };
   Geo::Range<3> box_;
-  const Geo::Vector3& internal_point() const { return pt_; }
+  const Geo::VectorD3& internal_point() const { return pt_; }
   const KdTreeElement* operator->() const { return this; }
   const Geo::Range<3> box() const
   {

@@ -1,6 +1,5 @@
 #include "Geo/entity.hh"
 #include "Geo/polynomial_solver.hh"
-#include "Geo/vector.hh"
 #include "Topology/topology.hh"
 #include "Topology/impl.hh"
 #include "Topology/iterator.hh"
@@ -24,7 +23,7 @@ using EdgeAndDistance = EdgeDistances::value_type;
 
 struct EdgeDistance
 {
-  Geo::Vector3 ed_vec_;
+  Geo::VectorD3 ed_vec_;
   Topo::Wrap<Topo::Type::FACE> origin_face_; // Face used to get there
   double x_;
   double y_ed_[2];
@@ -46,12 +45,12 @@ struct EdgeDistance
   Geo::Interval<double> distance_range_;             // range of distances
   std::array<EdgeAndDistance*, 2> children_ = {nullptr};
   const EdgeAndDistance* parent_ = nullptr;
-  Geo::Vector3 get_distance_function()
+  Geo::VectorD3 get_distance_function()
   {
     // x_^2 + (y0 + t * (y1 - y0))^2 = 
     // = (x^2 + y0^2) + t * (2 * y0 * (y1 - y0)) + t^2 * (y1 - y0)^2
     auto dy = y_ed_[1] - y_ed_[0];
-    return Geo::Vector3{ { Geo::sq(x_) + Geo::sq(y_ed_[0]), 2 * y_ed_[0] * dy, Geo::sq(dy)} };
+    return Geo::VectorD3{ { Geo::sq(x_) + Geo::sq(y_ed_[0]), 2 * y_ed_[0] * dy, Geo::sq(dy)} };
   }
 };
 
@@ -130,7 +129,7 @@ bool GeodesicDistance::compute(Topo::Wrap<Topo::Type::VERTEX> _v)
     ed_vert.get(0)->geom(seg[0]);
     ed_vert.get(1)->geom(seg[1]);
     double dist_sq, t;
-    Geo::Vector3 proj;
+    Geo::VectorD3 proj;
     if (!Gen::closest_point<double, 3, true>(seg, origin_, &proj, &t, &dist_sq))
       return false;
 
@@ -162,15 +161,15 @@ void GeodesicDistance::advance(
 {
   Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> it_ev_pa(_ed_span->first);
   Topo::Wrap<Topo::Type::VERTEX> verts[2] = { it_ev_pa.get(0), it_ev_pa.get(1) };
-  Geo::Vector3 p_parent[2];
+  Geo::VectorD3 p_parent[2];
   Geo::iterate_forw<2>::eval([&verts, &p_parent](int _i) { verts[_i]->geom(p_parent[_i]); });
-  Geo::Vector3 v_parent = p_parent[1] - p_parent[0];
+  Geo::VectorD3 v_parent = p_parent[1] - p_parent[0];
   Topo::Iterator<Topo::Type::FACE, Topo::Type::EDGE> it_fe(_f);
   struct OtherEdge
   {
     Topo::Wrap<Topo::Type::EDGE> ed_;
     bool inv_;
-    Geo::Vector3 v_;
+    Geo::VectorD3 v_;
   };
   OtherEdge oth_eds[2];
   for (auto& fe : it_fe)
@@ -182,7 +181,7 @@ void GeodesicDistance::advance(
     auto inv = it_ev.get(0) == verts[idx];
     oth_eds[idx].ed_ = fe;
     oth_eds[idx].inv_ = inv;
-    Geo::Vector3 p[2];
+    Geo::VectorD3 p[2];
     Geo::iterate_forw<2>::eval([&it_ev, &p](int _i) { it_ev.get(_i)->geom(p[_i]); });
     oth_eds[idx].v_ = p[1] - p[0];
     auto v0 = v_parent;

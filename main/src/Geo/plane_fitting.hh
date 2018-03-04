@@ -19,14 +19,14 @@ struct IPlaneFit
 
   /*!Set a new point.
   */
-  virtual void add_point(const Vector3& _pt) = 0;
+  virtual void add_point(const VectorD3& _pt) = 0;
 
   /*!Computes the best plane as the plane passing for the _center
   with the given normal. The normal is a unit vector.
   */
   virtual bool compute(
-    Vector3& _center,
-    Vector3& _normal,
+    VectorD3& _center,
+    VectorD3& _normal,
     const bool _orient = false) = 0;
 
   /*! Factory */
@@ -38,31 +38,31 @@ struct IPlaneFit
     normal direction it runs in counterclockwise direction.
 */
 template <class VertexIteratorT>
-Geo::Vector3 vertex_polygon_normal(VertexIteratorT _beg, VertexIteratorT _end)
+Geo::VectorD3 vertex_polygon_normal(VertexIteratorT _beg, VertexIteratorT _end)
 {
   auto pl_fit = Geo::IPlaneFit::make();
   pl_fit->init(_end - _beg);
   for (auto vert_it = _beg; vert_it != _end; ++vert_it)
   {
-    Geo::Vector3 pt;
+    Geo::VectorD3 pt;
     (*vert_it)->geom(pt);
     pl_fit->add_point(pt);
   }
-  Geo::Vector3 c, n;
+  Geo::VectorD3 c, n;
   pl_fit->compute(c, n, true);
   return n;
 }
 
 template <class PointIteratorT>
-Geo::Vector3 point_polygon_normal(
+Geo::VectorD3 point_polygon_normal(
   PointIteratorT _beg, PointIteratorT _end, 
-  Geo::Vector3* _centr = nullptr)
+  Geo::VectorD3* _centr = nullptr)
 {
   auto pl_fit = Geo::IPlaneFit::make();
   pl_fit->init(_end - _beg);
   for (auto pt_it = _beg; pt_it != _end; ++pt_it)
     pl_fit->add_point(*pt_it);
-  Geo::Vector3 c, n;
+  Geo::VectorD3 c, n;
   pl_fit->compute(c, n, true);
   if (_centr != nullptr)
     *_centr = c;

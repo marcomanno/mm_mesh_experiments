@@ -15,7 +15,7 @@ struct IPolygonTriangulation
 {
   // Add a polygon. The set of added polygons must one boundary +
   // a set of islands.
-  virtual void add(const std::vector<Geo::Vector3>& _plgn) = 0;
+  virtual void add(const std::vector<Geo::VectorD3>& _plgn) = 0;
 
   // A list of triplets that are indeces of points in the vector 
   // returned by method polygon.
@@ -26,7 +26,7 @@ struct IPolygonTriangulation
 
   // The vector of points. If there was only one input polygon,
   // it is exactly it.
-  virtual const std::vector<Geo::Vector3>& polygon() = 0;
+  virtual const std::vector<Geo::VectorD3>& polygon() = 0;
 
   static std::shared_ptr<IPolygonTriangulation> make();
 }; // struct IPolygonTriangulation

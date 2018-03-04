@@ -11,18 +11,18 @@ namespace PointInPolygon
 {
 
 Classification classify(
-  const std::vector<Geo::Vector3>& _poly,
-  const Geo::Vector3& _pt,
-  const Geo::Vector3* _norm)
+  const std::vector<Geo::VectorD3>& _poly,
+  const Geo::VectorD3& _pt,
+  const Geo::VectorD3* _norm)
 {
   return classify(_poly, _pt, Geo::epsilon(_pt) * 1.e-8, _norm);
 }
 
 Classification classify(
-  const std::vector<Geo::Vector3>& _poly,
-  const Geo::Vector3& _pt,
+  const std::vector<Geo::VectorD3>& _poly,
+  const Geo::VectorD3& _pt,
   const double& _tol,
-  const Geo::Vector3* _norm)
+  const Geo::VectorD3* _norm)
 {
   const auto tol_sq = Geo::sq(_tol);
   for (const auto& poly_pt : _poly)
@@ -30,7 +30,7 @@ Classification classify(
     if (length_square(poly_pt - _pt) < tol_sq)
       return On;
   }
-  Vector3 norm;
+  VectorD3 norm;
   if (_norm != nullptr)
     norm = *_norm;
   else
@@ -39,7 +39,7 @@ Classification classify(
     pl_fit->init(_poly.size());
     for (const auto pt : _poly)
       pl_fit->add_point(pt);
-    Vector3 centr;
+    VectorD3 centr;
     pl_fit->compute(centr, norm);
   }
   auto v0 = _poly.back() - _pt;

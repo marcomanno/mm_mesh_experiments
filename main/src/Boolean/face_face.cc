@@ -87,7 +87,7 @@ static bool
 mid_point_in_face(const Connection& _start_end,
                   const Topo::Wrap<Topo::Type::FACE>& _face)
 {
-  Geo::Vector3 mid_pt = { 0 };
+  Geo::VectorD3 mid_pt = { 0 };
   for (int i = 0; i < 2; ++i)
   {
     Geo::Point pt;
@@ -111,7 +111,7 @@ struct FaceEdgeMap
   typedef std::vector<Topo::Wrap<Topo::Type::FACE>> NewFaces;
   struct FaceData
   {
-    Geo::Vector3 norm_;
+    Geo::VectorD3 norm_;
     NewFaces new_faces_;
     NewVerts new_verts_;
   };

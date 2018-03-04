@@ -701,7 +701,7 @@ TEST_CASE("buddha_100_0.01", "[Bool]")
 }
 
 namespace {
-void move_body(Topo::Wrap<Topo::Type::BODY> _body, const Geo::Vector3& _off)
+void move_body(Topo::Wrap<Topo::Type::BODY> _body, const Geo::VectorD3& _off)
 {
   Topo::Iterator<Topo::Type::BODY, Topo::Type::VERTEX> bv_it(_body);
   for (auto& x : bv_it)
@@ -717,8 +717,8 @@ void move_body(Topo::Wrap<Topo::Type::BODY> _body, const Geo::Vector3& _off)
 TEST_CASE("bambolina", "[Bool]")
 {
   auto b0 = IO::load_obj(MESH_FOLDER"bambolina.obj");
-  Geo::Vector3 off0{ 0.1, 0.1, 0.1 };
-  Geo::Vector3 off(off0);
+  Geo::VectorD3 off0{ 0.1, 0.1, 0.1 };
+  Geo::VectorD3 off(off0);
   for (int i = 0; i < 3; ++i)
   {
     auto b1 = IO::load_obj(MESH_FOLDER"bambolina.obj");

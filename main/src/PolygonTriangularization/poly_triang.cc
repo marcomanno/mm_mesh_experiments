@@ -18,14 +18,14 @@ namespace Geo
 
 struct PolygonTriangulation : public IPolygonTriangulation
 {
-  virtual void add(const std::vector<Geo::Vector3>& _plgn) override;
+  virtual void add(const std::vector<Geo::VectorD3>& _plgn) override;
   virtual const std::vector<std::array<size_t, 3>>& triangles() override
   {
     compute();
     return sol_.tris_;
   }
 
-  const std::vector<Geo::Vector3>& polygon() override
+  const std::vector<Geo::VectorD3>& polygon() override
   {
     compute();
     return loops_[0];
@@ -40,7 +40,7 @@ struct PolygonTriangulation : public IPolygonTriangulation
 private:
   struct Solution
   {
-    void compute(const std::vector<Geo::Vector3>& _pos,
+    void compute(const std::vector<Geo::VectorD3>& _pos,
                  std::vector<size_t>& _indcs,
                  const double _tols,
                  Geo::VectorD<3>& _norm);
@@ -49,10 +49,10 @@ private:
       return _i < concav_.size() && concav_[_i];
     }
 
-    bool contain_concave(size_t _inds[3], Geo::Vector3 _vects[2],
-                         const std::vector<Geo::Vector3>& _pts) const;
+    bool contain_concave(size_t _inds[3], Geo::VectorD3 _vects[2],
+                         const std::vector<Geo::VectorD3>& _pts) const;
 
-    bool find_concave(const std::vector<Geo::Vector3>& _pts,
+    bool find_concave(const std::vector<Geo::VectorD3>& _pts,
                       std::vector<bool>& _concav) const;
 
     std::vector<std::array<size_t, 3>> tris_;
@@ -62,7 +62,7 @@ private:
 
   void compute();
 
-  typedef std::vector<Geo::Vector3> Polygon;
+  typedef std::vector<Geo::VectorD3> Polygon;
   typedef std::vector<Polygon> PolygonVector;
   PolygonVector loops_;
   Solution sol_;
@@ -74,7 +74,7 @@ std::shared_ptr<IPolygonTriangulation> IPolygonTriangulation::make()
 }
 
 void PolygonTriangulation::add(
-  const std::vector<Geo::Vector3>& _plgn)
+  const std::vector<Geo::VectorD3>& _plgn)
 {
   loops_.push_back(_plgn);
   sol_.area_ = 0;
@@ -185,21 +185,21 @@ void PolygonTriangulation::compute()
 }
 
 void PolygonTriangulation::Solution::compute(
-  const std::vector<Geo::Vector3>& _pts,
+  const std::vector<Geo::VectorD3>& _pts,
   std::vector<size_t>& _indcs,
   const double,
   Geo::VectorD<3>&)
 {
   auto valid_triangle = [&_indcs, &_pts](const size_t _i,
-                                         const std::vector<Geo::Vector3>& proj_poly,
-                                         const Geo::Vector3& _norm,
+                                         const std::vector<Geo::VectorD3>& proj_poly,
+                                         const Geo::VectorD3& _norm,
                                          const double& _tol)
   {
     auto next = _i;
     auto idx = Utils::decrease(_i, _indcs.size());
     auto prev = Utils::decrease(idx, _indcs.size());
 
-    std::vector<Geo::Vector3> tmp_poly(3);
+    std::vector<Geo::VectorD3> tmp_poly(3);
     tmp_poly[0] = _pts[_indcs[prev]];
     tmp_poly[1] = _pts[_indcs[idx]];
     tmp_poly[2] = _pts[_indcs[next]];
@@ -258,12 +258,12 @@ void PolygonTriangulation::Solution::compute(
     IO::save_obj(flnm.c_str(), _pts, &_indcs);
 #endif
 
-    Geo::Vector3 vects[2], centre;
+    Geo::VectorD3 vects[2], centre;
     size_t inds[3] = { *(_indcs.end() - 2), _indcs.back(), 0 };
     vects[0] = _pts[inds[0]] - _pts[inds[1]];
     auto norm = Geo::point_polygon_normal(_pts.begin(), _pts.end(), &centre);
 
-    std::vector<Geo::Vector3> proj_poly;
+    std::vector<Geo::VectorD3> proj_poly;
     Utils::StatisticsT<double> tol_max;
     for (auto ii : _indcs)
     {
@@ -332,8 +332,8 @@ namespace {
 
 // return 0 - outside, 1 - on boundary, 2 - inside
 size_t inside_triangle(
-  const Geo::Vector3 _vert[2],
-  const Geo::Vector3& _test_pt)
+  const Geo::VectorD3 _vert[2],
+  const Geo::VectorD3& _test_pt)
 {
   double A[2][2], B[2], X[2];
   for (int i = 0; i < 2; ++i)
@@ -355,20 +355,20 @@ size_t inside_triangle(
   return result;
 }
 
-size_t inside_triangle(const Geo::Vector3& _pt,
-                       const Geo::Vector3& _vrt0,
-                       const Geo::Vector3& _vrt1,
-                       const Geo::Vector3& _vrt2
+size_t inside_triangle(const Geo::VectorD3& _pt,
+                       const Geo::VectorD3& _vrt0,
+                       const Geo::VectorD3& _vrt1,
+                       const Geo::VectorD3& _vrt2
 )
 {
-  const Geo::Vector3 verts[2] = { _vrt1 - _vrt0, _vrt2 - _vrt0 };
+  const Geo::VectorD3 verts[2] = { _vrt1 - _vrt0, _vrt2 - _vrt0 };
   return inside_triangle(verts, _pt - _vrt0);
 }
 
 }
 
 bool PolygonTriangulation::Solution::find_concave(
-  const std::vector<Geo::Vector3>& _pts,
+  const std::vector<Geo::VectorD3>& _pts,
   std::vector<bool>& _concav) const
 {
   bool achange = false;
@@ -395,8 +395,8 @@ bool PolygonTriangulation::Solution::find_concave(
 }
 
 bool PolygonTriangulation::Solution::contain_concave(
-  size_t _inds[3], Geo::Vector3 _vects[2],
-  const std::vector<Geo::Vector3>& _pts) const
+  size_t _inds[3], Geo::VectorD3 _vects[2],
+  const std::vector<Geo::VectorD3>& _pts) const
 {
   for (auto i = 0; i < concav_.size(); ++i)
   {
