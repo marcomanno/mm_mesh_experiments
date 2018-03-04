@@ -153,18 +153,32 @@ template <size_t dimT> using VectorD = Vector<double, dimT>;
 typedef VectorD<3> VectorD3;
 typedef VectorD<2> VectorD2;
 
+// [a, b, c] is perpendicular to
+// [b-c, c-a, a-b]
+// [b-c, -a-c, a+b]
+// [b+c, c-a, a+b]
+// [-b-c, a+c, a-b]
 inline void normal_plane_default_directions(
   const Geo::VectorD3& _norm,
   Geo::VectorD3& _du, Geo::VectorD3& _dv)
 {
-  size_t i_min = 0;
-  for (size_t i = 1; i < _norm.size(); ++i)
-    if (std::fabs(_norm[i]) < std::fabs(_norm[i_min]))
-      i_min = i;
-
-  _du = { 0 };
-  _du[i_min] = 1;
-  _du -= (_du * _norm) * _norm;
+  Geo::VectorD3 nv[] =
+  {
+    {_norm[1] - _norm[2], _norm[2] - _norm[0], _norm[0] - _norm[1]},
+    {_norm[1] - _norm[2], -_norm[2] - _norm[0], _norm[0] + _norm[1]},
+    {_norm[1] + _norm[2], _norm[2] - _norm[0], -_norm[0] - _norm[1]},
+    {-_norm[1] - _norm[2], _norm[2] + _norm[0], _norm[0] - _norm[1]}
+  };
+  double val = 0;
+  for (auto& du : nv)
+  {
+    auto val2 = Geo::length_square(du % _norm);
+    if (val2 > val)
+    {
+      val = val2;
+      _du = du;
+    }
+  }
   _dv = _norm % _du;
 }
 

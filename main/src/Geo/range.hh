@@ -87,7 +87,7 @@ public:
     if (extr_[1] > _oth.extr_[1]) extr_[1] = _oth.extr_[1];
     return *this;
   }
-  Interval<TypeT>& operator*(const Interval<TypeT>& _oth) const
+  Interval<TypeT> operator*(const Interval<TypeT>& _oth) const
   {
     return (Interval<TypeT>(*this) *= _oth);
   }
@@ -97,7 +97,7 @@ public:
     if (extr_[1] < _oth.extr_[1]) extr_[1] = _oth.extr_[1];
     return *this;
   }
-  Interval<TypeT>& operator+(const Interval<TypeT>& _oth) const
+  Interval<TypeT> operator+(const Interval<TypeT>& _oth) const
   {
     return (Interval<TypeT>(*this) += _oth);
   }
