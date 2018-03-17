@@ -1,3 +1,4 @@
+#include "geodesic.hh"
 #include "Geo/entity.hh"
 #include "Geo/polynomial_solver.hh"
 #include "Topology/topology.hh"
@@ -23,6 +24,12 @@ using EdgeAndDistance = EdgeDistances::value_type;
 
 struct EdgeDistance
 {
+  EdgeDistance()
+  {
+    static int id_seq = 0;
+    id_ = id_seq++;
+  }
+  int id_;
   Geo::VectorD3 ed_vec_;
   Topo::Wrap<Topo::Type::FACE> origin_face_; // Face used to get there
   double x_;
@@ -32,6 +39,12 @@ struct EdgeDistance
 
   void init()
   {
+    if (x_ < 0)
+    {
+      x_ *= -1;
+      y_ed_[0] *= -1;
+      y_ed_[1] *= -1;
+    }
     y_[0] = y_ed_[0] + (y_ed_[1] - y_ed_[0]) * param_range_[0];
     y_[1] = y_ed_[0] + (y_ed_[1] - y_ed_[0]) * param_range_[1];
     distance_range_.set_empty();
@@ -54,7 +67,7 @@ struct EdgeDistance
   }
 };
 
-struct GeodesicDistance
+struct GeodesicDistance: public IGeodesic
 {
   Geo::Point origin_;
   // First smaller distances. Priority queue process first big elements.
@@ -70,7 +83,13 @@ struct GeodesicDistance
   std::priority_queue<const EdgeAndDistance*, std::vector<const EdgeAndDistance*>,
     CompareEdgeDistancePtr> priority_queue_;
 
-  bool compute(Topo::Wrap<Topo::Type::VERTEX> _v);
+  bool compute(const Topo::Wrap<Topo::Type::VERTEX>& _v) override;
+
+  virtual bool find_points(
+    double _dist,
+    std::vector<std::vector<Geo::VectorD3>>& loops) override;
+
+
 private:
   void advance(const EdgeAndDistance* _ed_span, 
                const Topo::Wrap<Topo::Type::FACE>& _f);
@@ -85,7 +104,13 @@ private:
   }
 };
 
-bool GeodesicDistance::compute(Topo::Wrap<Topo::Type::VERTEX> _v)
+std::shared_ptr<IGeodesic> IGeodesic::make()
+{
+  return std::make_shared<GeodesicDistance>();
+}
+
+
+bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
 {
   _v->geom(origin_);
   Topo::Iterator<Topo::Type::VERTEX, Topo::Type::EDGE> vert_it(_v);
@@ -104,6 +129,7 @@ bool GeodesicDistance::compute(Topo::Wrap<Topo::Type::VERTEX> _v)
     ed_dist.y_ed_[1] = Geo::length(pt - origin_);
     ed_dist.param_range_ = { 0, 1 };
     ed_dist.init();
+    ed_dist.skip_ = true;
     insert_element(e, ed_dist);
   }
   Topo::Iterator<Topo::Type::VERTEX, Topo::Type::FACE> face_it(_v);
@@ -132,10 +158,11 @@ bool GeodesicDistance::compute(Topo::Wrap<Topo::Type::VERTEX> _v)
     Geo::VectorD3 proj;
     if (!Gen::closest_point<double, 3, true>(seg, origin_, &proj, &t, &dist_sq))
       return false;
-
     ed_dist.x_ = sqrt(dist_sq);
     ed_dist.y_ed_[0] = Geo::length(seg[0] - proj);
     ed_dist.y_ed_[1] = Geo::length(seg[1] - proj);
+    if (t < 1 && t > 0)
+      ed_dist.y_ed_[1] *= -1;
     ed_dist.param_range_ = { 0, 1 };
     ed_dist.init();
     insert_element(curr_ed, ed_dist);
@@ -143,9 +170,9 @@ bool GeodesicDistance::compute(Topo::Wrap<Topo::Type::VERTEX> _v)
   while (!priority_queue_.empty())
   {
     auto edge_span = priority_queue_.top();
+    priority_queue_.pop();
     if (edge_span->second.skip_)
       continue;
-    priority_queue_.pop();
     Topo::Iterator<Topo::Type::EDGE, Topo::Type::FACE> fe_it(edge_span->first);
     for (auto f : fe_it)
     {
@@ -171,14 +198,26 @@ void GeodesicDistance::advance(
     bool inv_;
     Geo::VectorD3 v_;
   };
+  Gen::Segment<double, 2> parent_seg{ {
+    { _ed_span->second.x_, _ed_span->second.y_[0] },
+  { _ed_span->second.x_, _ed_span->second.y_[1] } } };
+  Gen::Segment<double, 2> parent_trace_segs[2];
+  for (int i = 0; i < 2; ++i)
+  {
+    parent_trace_segs[i][0] = {};
+    parent_trace_segs[i][1] = 
+      Gen::evaluate(parent_seg, _ed_span->second.param_range_[i]);;
+  }
+
   OtherEdge oth_eds[2];
+  auto dy_par = _ed_span->second.y_ed_[1] - _ed_span->second.y_ed_[0];
   for (auto& fe : it_fe)
   {
     if (fe == _ed_span->first)
       continue;
     Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> it_ev(fe);
     bool idx = it_ev.get(1) == verts[1] || it_ev.get(0) == verts[1];
-    auto inv = it_ev.get(0) == verts[idx];
+    auto inv = it_ev.get(1) == verts[idx];
     oth_eds[idx].ed_ = fe;
     oth_eds[idx].inv_ = inv;
     Geo::VectorD3 p[2];
@@ -189,58 +228,58 @@ void GeodesicDistance::advance(
     v0 /= Geo::length(v0);
     auto v1 = oth_eds[idx].v_;
     if (inv) v1 *= -1.;
-    auto dx = v0 * v1;
-    auto dy = Geo::length(v0 % v1);
-    auto len = std::hypot(dx, dy);
-    auto sin_al = dy / len;
-    auto cos_al = dx / len;
+    auto dy = v0 * v1;
+    if (dy * dy_par < 0)
+      continue;
+    auto dx = Geo::length(v0 % v1);
     EdgeDistance new_edd;
     Gen::Segment<double, 2> v2 = { {
       { _ed_span->second.x_, _ed_span->second.y_ed_[idx] },
       { _ed_span->second.x_ + dx, _ed_span->second.y_ed_[idx] + dy } } };
     if (idx)
       std::swap(v2[0], v2[1]);
-    Gen::Segment<double, 2> seg0{ { { 0. }, v2[1] } };
-    Gen::Segment<double, 2> span_seg{ {
-      {_ed_span->second.x_, _ed_span->second.y_[0]},
-      {_ed_span->second.x_, _ed_span->second.y_[1] }} };
+    Geo::VectorD2 proj;
+    double dist_sq, par;
+    Gen::closest_point<double, 2, true>(v2, Geo::VectorD2{},
+                                        &proj, &par, &dist_sq);
+    new_edd.x_ = sqrt(dist_sq);
+    new_edd.y_ed_[0] = Geo::length(v2[0] - proj);
+    new_edd.y_ed_[1] = Geo::length(v2[1] - proj);
+    if (par > 0 && par < 1)
+      new_edd.y_ed_[0] *= -1;
+    THROW_IF((fabs(new_edd.y_ed_[1] - new_edd.y_ed_[0]) - Geo::length(p[0] - p[1])) > 1e-8,
+             "Wrong y reange");
 
-    double pars[2];
-    if (!Gen::closest_point<double, 2>(seg0, span_seg, nullptr, pars))
-      continue;
-    Gen::Segment<double, 2> w2;
-    for (int i = 0; i < 2; ++i)
-      w2[i] = { v2[i][0] * cos_al + v2[i][1] * sin_al, v2[i][1] * cos_al - v2[i][0] * sin_al };
-    new_edd.x_ = v2[0][0];
-    new_edd.y_ed_[0] = w2[0][1];
-    new_edd.y_ed_[1] = w2[1][1];
     Geo::Interval<double> tmp;
-    tmp.set(!idx, pars[1]);
-    tmp.set(idx, double(idx));
-    auto par_range = _ed_span->second.param_range_ * tmp;
-    if (par_range.empty())
-      continue;
-    Gen::Segment<double, 2> l0{ { { 0. },{} } };
-
-    for (auto b : { false, true })
+    for (int i = 0; i < 2; ++i)
     {
-      double par;
-      Geo::Vector<double, 2> pts[2];
-      if (par_range[b] == tmp[b])
+      int done = 0;
+      for (auto j : { 0, 1 })
       {
-        par = { static_cast<double>(b) };
-        pts[1] = v2[b];
+        double t;
+        Gen::closest_point<double, 2, true>(
+          parent_trace_segs[i], v2[j], nullptr, &t, &dist_sq);
+        if (dist_sq < Geo::epsilon_sq(v2[j]))
+        {
+          tmp.add(j);
+          ++done;
+        }
       }
-      else
-      {
-        auto pt = Gen::evaluate<double, 2>(span_seg, par_range[b]);
-        Gen::Segment<double, 2> proj{ { { 0. }, pt } };
-        double t[2];
-        Gen::closest_point<double, 2, true>(proj, v2, pts, t);
-        par = t[1];
-      }
-      new_edd.param_range_.set(b, par);
+      if (done == 2)
+        continue;
+
+      double pars[2];
+      Gen::closest_point<double, 2, true>(
+        parent_trace_segs[i], v2, nullptr, pars, &dist_sq);
+      auto val_sq = std::max(Geo::length_square(v2[0]), Geo::length_square(v2[1]));
+      if (pars[0] <= 0 || dist_sq < val_sq * std::numeric_limits<double>::epsilon() * 100)
+        pars[1] = 1.;
+      tmp.add(std::clamp(pars[1], 0., 1.));
     }
+
+    if (tmp.empty())
+      continue;
+    new_edd.param_range_ = tmp;
     new_edd.init();
     merge(fe, new_edd);
   }
@@ -254,8 +293,8 @@ static std::bitset<2> intersect(EdgeDistance& _a, EdgeDistance& _b)
     return 0;
   auto poly_a = _a.get_distance_function();
   auto poly_b = _b.get_distance_function();
-  THROW_IF(fabs(poly_a[2] - poly_b[2]) > 1e-8, "x^3 Coefficeient is notzero");
   auto poly = poly_a - poly_b;
+  THROW_IF(fabs(poly[2]) > 1e-8, "x^3 Coefficeient is notzero");
   if (poly[1] == 0)
   {
     if (poly[2] > 0)
@@ -287,7 +326,7 @@ void GeodesicDistance::merge(Topo::Wrap<Topo::Type::EDGE> _ed,
                              EdgeDistance& _ed_dist)
 {
   auto range = edge_distances_.equal_range(_ed);
-  for (auto it = range.first; it != range.second && !_ed_dist.param_range_.empty();)
+  for (auto it = range.first; it != range.second && !_ed_dist.param_range_.empty(); ++it)
   {
     if (it->second.skip_)
       continue;
@@ -299,9 +338,12 @@ void GeodesicDistance::merge(Topo::Wrap<Topo::Type::EDGE> _ed,
       std::function<void(EdgeAndDistance* _ed_dist)> skip_children =
       [&](EdgeAndDistance* _ed_dist)
       {
-        _ed_dist->second.skip_ = true;
-        for (auto child : _ed_dist->second.children_)
-          skip_children(child);
+        if (_ed_dist != nullptr)
+        {
+          _ed_dist->second.skip_ = true;
+          for (auto child : _ed_dist->second.children_)
+            skip_children(child);
+        }
       };
       skip_children(&*(it));
     }
@@ -315,8 +357,13 @@ void GeodesicDistance::merge(Topo::Wrap<Topo::Type::EDGE> _ed,
   }
 }
 
+bool GeodesicDistance::find_points(
+  double /*_dist*/,
+  std::vector<std::vector<Geo::VectorD3>>& /*_loops*/)
+{
+  return true;
+}
+
 } // namespace Offset
-
-
 
 #endif

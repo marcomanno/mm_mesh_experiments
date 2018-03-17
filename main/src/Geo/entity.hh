@@ -7,7 +7,7 @@
 
 namespace Gen {
 template <class TypeT, size_t DimT> using Segment = 
-  std::array<Geo::Vector<TypeT, DimT>, 2>;
+  Geo::Vector<Geo::Vector<TypeT, DimT>, 2>;
 
 template <class TypeT, size_t DimT>
 auto evaluate(const Segment<TypeT, DimT>& _seg, double _t)
