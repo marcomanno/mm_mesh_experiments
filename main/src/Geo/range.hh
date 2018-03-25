@@ -21,11 +21,11 @@ public:
   void set_empty()
   {
     extr_[0] = std::numeric_limits<TypeT>::max();
-    extr_[1] = std::numeric_limits<TypeT>::min();
+    extr_[1] = std::numeric_limits<TypeT>::lowest();
   }
 
   static TypeT max() { return std::numeric_limits<TypeT>::max(); }
-  static TypeT min() { return std::numeric_limits<TypeT>::min(); }
+  static TypeT min() { return std::numeric_limits<TypeT>::lowest(); }
 
   void set_whole()
   {
@@ -50,7 +50,7 @@ public:
 
   bool contain_close(const Interval<TypeT>& _oth) const
   {
-    return extr_[0] >= _oth.extr_[0] && extr_[1] <= _oth.extr_[1];
+    return extr_[0] <= _oth.extr_[0] && extr_[1] >= _oth.extr_[1];
   }
     
   bool contain_open(const TypeT& _val) const
@@ -60,7 +60,7 @@ public:
 
   bool contain_open(const Interval<TypeT>& _oth) const
   {
-    return extr_[0] > _oth.extr_[0] && extr_[1] < _oth.extr_[1];
+    return extr_[0] < _oth.extr_[0] && extr_[1] > _oth.extr_[1];
   }
 
   void add(const TypeT& _val)
@@ -117,8 +117,11 @@ public:
       split(_oth.extr_[0], part2);
       return true;
     }
-    *this *= _oth;
-    return empty();
+    if (contain_open(_oth.extr_[1]))
+      extr_[0] = _oth.extr_[1];
+    else if (contain_open(_oth.extr_[0]))
+      extr_[1] = _oth.extr_[0];
+    return true;
   }
 
 };

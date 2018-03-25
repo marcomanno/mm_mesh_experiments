@@ -8,6 +8,8 @@
 
 #include <bitset>
 #include <functional>
+#include <fstream>
+
 
 #if 1
 
@@ -37,7 +39,7 @@ struct EdgeDistance
   Geo::Interval<double> param_range_;  // Portion of edges
   bool skip_ = false;
 
-  void init()
+  void init(const Topo::Wrap<Topo::Type::FACE>& _f)
   {
     if (x_ < 0)
     {
@@ -52,6 +54,7 @@ struct EdgeDistance
     distance_range_.add(sqrt(Geo::sq(x_) + Geo::sq(y_[1])));
     if ((y_[0] > 0) != (y_[1] > 0))
       distance_range_.add(x_);
+    origin_face_ = _f;
   }
 
   double y_[2];
@@ -128,7 +131,7 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
     ed_dist.y_ed_[0] = 0;
     ed_dist.y_ed_[1] = Geo::length(pt - origin_);
     ed_dist.param_range_ = { 0, 1 };
-    ed_dist.init();
+    ed_dist.init(Topo::Wrap<Topo::Type::FACE>());
     ed_dist.skip_ = true;
     insert_element(e, ed_dist);
   }
@@ -149,7 +152,6 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
     if (curr_ed.get() == nullptr)
       continue;
     EdgeDistance ed_dist;
-    ed_dist.origin_face_ = f;
     Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ed_vert(curr_ed);
     Geo::Segment seg;
     ed_vert.get(0)->geom(seg[0]);
@@ -164,7 +166,7 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
     if (t < 1 && t > 0)
       ed_dist.y_ed_[1] *= -1;
     ed_dist.param_range_ = { 0, 1 };
-    ed_dist.init();
+    ed_dist.init(f);
     insert_element(curr_ed, ed_dist);
   }
   while (!priority_queue_.empty())
@@ -179,6 +181,19 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
       if (f != edge_span->second.origin_face_)
         advance(edge_span, f);
     }
+  }
+  std::ofstream outf("c:/t/out.txt");
+  outf << "Id Px Py Pz Qx Qy Qz x y0 y1 interval0 interval1 distance0  distance1 \n";
+  for (auto& es : edge_distances_)
+  {
+    Geo::Segment seg;
+    es.first->geom(seg);
+    outf << es.second.id_ << " " << seg[0] << " " << seg[1] << " ";
+    outf << es.second.x_ << " ";
+    outf << es.second.y_ed_[0] << " " << es.second.y_ed_[1] << " ";
+    outf << es.second.param_range_[0] << " " << es.second.param_range_[1] << " ";
+    outf << es.second.distance_range_[0] << " " << es.second.distance_range_[1] << " ";
+    outf << std::endl;
   }
   return true;
 }
@@ -236,7 +251,7 @@ void GeodesicDistance::advance(
     Gen::Segment<double, 2> v2 = { {
       { _ed_span->second.x_, _ed_span->second.y_ed_[idx] },
       { _ed_span->second.x_ + dx, _ed_span->second.y_ed_[idx] + dy } } };
-    if (idx)
+    if (inv)
       std::swap(v2[0], v2[1]);
     Geo::VectorD2 proj;
     double dist_sq, par;
@@ -280,7 +295,7 @@ void GeodesicDistance::advance(
     if (tmp.empty())
       continue;
     new_edd.param_range_ = tmp;
-    new_edd.init();
+    new_edd.init(_f);
     merge(fe, new_edd);
   }
   THROW_IF(!oth_eds[0].ed_.get() || !oth_eds[1].ed_.get(), "");
@@ -311,7 +326,7 @@ static std::bitset<2> intersect(EdgeDistance& _a, EdgeDistance& _b)
   // 
   auto root = -poly[0] / poly[1];
   Geo::Interval<double> near_a(Geo::Interval<double>::min(), root);
-  Geo::Interval<double> near_b(root, Geo::Interval<double>::min());
+  Geo::Interval<double> near_b(root, Geo::Interval<double>::max());
   if (poly[1] < 0)
     std::swap(near_a, near_b);
 
@@ -351,10 +366,7 @@ void GeodesicDistance::merge(Topo::Wrap<Topo::Type::EDGE> _ed,
       break;
   }
   if (!_ed_dist.param_range_.empty())
-  {
-    _ed_dist.init();
     insert_element(_ed, _ed_dist);
-  }
 }
 
 bool GeodesicDistance::find_points(

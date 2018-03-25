@@ -56,7 +56,7 @@ protected:
 template <typename NumericT>
 struct FindMax : public Amount<NumericT>
 {
-  static constexpr  NumericT default_value() { return std::numeric_limits<NumericT>::min(); }
+  static constexpr  NumericT default_value() { return std::numeric_limits<NumericT>::lowest(); }
 
   FindMax(const std::initializer_list<NumericT>& _l) : Amount(default_value())
   {
