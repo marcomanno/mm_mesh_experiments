@@ -182,6 +182,13 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
         advance(edge_span, f);
     }
   }
+  for (auto it = edge_distances_.begin(); it != edge_distances_.end();)
+  {
+    if (it->second.skip_)
+      it = edge_distances_.erase(it);
+    else
+      ++it;
+  }
   std::ofstream outf("c:/t/out.txt");
   outf << "Id Px Py Pz Qx Qy Qz x y0 y1 interval0 interval1 distance0  distance1 \n";
   for (auto& es : edge_distances_)
@@ -195,6 +202,7 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
     outf << es.second.distance_range_[0] << " " << es.second.distance_range_[1] << " ";
     outf << std::endl;
   }
+  outf << "SIZE = " << edge_distances_.size() << "\n";
   return true;
 }
 
@@ -230,6 +238,7 @@ void GeodesicDistance::advance(
   {
     if (fe == _ed_span->first)
       continue;
+    EdgeDistance new_edd;
     Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> it_ev(fe);
     bool idx = it_ev.get(1) == verts[1] || it_ev.get(0) == verts[1];
     auto inv = it_ev.get(1) == verts[idx];
@@ -239,15 +248,14 @@ void GeodesicDistance::advance(
     Geo::iterate_forw<2>::eval([&it_ev, &p](int _i) { it_ev.get(_i)->geom(p[_i]); });
     oth_eds[idx].v_ = p[1] - p[0];
     auto v0 = v_parent;
-    if (idx) v0 *= -1.;
+    if (dy_par < 0) v0 *= -1.;
     v0 /= Geo::length(v0);
     auto v1 = oth_eds[idx].v_;
     if (inv) v1 *= -1.;
     auto dy = v0 * v1;
-    if (dy * dy_par < 0)
-      continue;
+    //if (dy * dy_par < 0)
+    //  continue;
     auto dx = Geo::length(v0 % v1);
-    EdgeDistance new_edd;
     Gen::Segment<double, 2> v2 = { {
       { _ed_span->second.x_, _ed_span->second.y_ed_[idx] },
       { _ed_span->second.x_ + dx, _ed_span->second.y_ed_[idx] + dy } } };
