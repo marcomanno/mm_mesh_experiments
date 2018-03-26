@@ -31,15 +31,9 @@ struct EdgeDistance
     static int id_seq = 0;
     id_ = id_seq++;
   }
-  int id_;
-  Geo::VectorD3 ed_vec_;
-  Topo::Wrap<Topo::Type::FACE> origin_face_; // Face used to get there
-  double x_;
-  double y_ed_[2];
-  Geo::Interval<double> param_range_;  // Portion of edges
-  bool skip_ = false;
 
-  void init(const Topo::Wrap<Topo::Type::FACE>& _f)
+  void init(const Topo::Wrap<Topo::Type::FACE>& _f,
+            const EdgeAndDistance* _parent)
   {
     if (x_ < 0)
     {
@@ -55,19 +49,30 @@ struct EdgeDistance
     if ((y_[0] > 0) != (y_[1] > 0))
       distance_range_.add(x_);
     origin_face_ = _f;
+    parent_ = _parent;
   }
 
-  double y_[2];
-  Geo::Interval<double> distance_range_;             // range of distances
-  std::array<EdgeAndDistance*, 2> children_ = {nullptr};
-  const EdgeAndDistance* parent_ = nullptr;
   Geo::VectorD3 get_distance_function()
   {
     // x_^2 + (y0 + t * (y1 - y0))^2 = 
     // = (x^2 + y0^2) + t * (2 * y0 * (y1 - y0)) + t^2 * (y1 - y0)^2
     auto dy = y_ed_[1] - y_ed_[0];
-    return Geo::VectorD3{ { Geo::sq(x_) + Geo::sq(y_ed_[0]), 2 * y_ed_[0] * dy, Geo::sq(dy)} };
+    return Geo::VectorD3{ { Geo::sq(x_) + Geo::sq(y_ed_[0]), 2 * y_ed_[0] * dy, Geo::sq(dy) } };
   }
+
+  enum class Status { Keep = 0, Skip = 1, Remove = 2 };
+
+  int id_;
+  Geo::VectorD3 ed_vec_;
+  Topo::Wrap<Topo::Type::FACE> origin_face_; // Face used to get there
+  double x_;
+  double y_ed_[2];
+  Geo::Interval<double> param_range_;  // Portion of edges
+  Status status_ = Status::Keep;
+  double y_[2];
+  Geo::Interval<double> distance_range_;             // range of distances
+  std::array<EdgeAndDistance*, 2> children_ = {nullptr};
+  const EdgeAndDistance* parent_ = nullptr;
 };
 
 struct GeodesicDistance: public IGeodesic
@@ -131,8 +136,8 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
     ed_dist.y_ed_[0] = 0;
     ed_dist.y_ed_[1] = Geo::length(pt - origin_);
     ed_dist.param_range_ = { 0, 1 };
-    ed_dist.init(Topo::Wrap<Topo::Type::FACE>());
-    ed_dist.skip_ = true;
+    ed_dist.init(Topo::Wrap<Topo::Type::FACE>(), nullptr);
+    ed_dist.status_ = EdgeDistance::Status::Skip;
     insert_element(e, ed_dist);
   }
   Topo::Iterator<Topo::Type::VERTEX, Topo::Type::FACE> face_it(_v);
@@ -166,14 +171,14 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
     if (t < 1 && t > 0)
       ed_dist.y_ed_[1] *= -1;
     ed_dist.param_range_ = { 0, 1 };
-    ed_dist.init(f);
+    ed_dist.init(f, nullptr);
     insert_element(curr_ed, ed_dist);
   }
   while (!priority_queue_.empty())
   {
     auto edge_span = priority_queue_.top();
     priority_queue_.pop();
-    if (edge_span->second.skip_)
+    if (edge_span->second.status_ != EdgeDistance::Status::Keep)
       continue;
     Topo::Iterator<Topo::Type::EDGE, Topo::Type::FACE> fe_it(edge_span->first);
     for (auto f : fe_it)
@@ -184,7 +189,7 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
   }
   for (auto it = edge_distances_.begin(); it != edge_distances_.end();)
   {
-    if (it->second.skip_)
+    if (it->second.status_ == EdgeDistance::Status::Remove)
       it = edge_distances_.erase(it);
     else
       ++it;
@@ -207,9 +212,9 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
 }
 
 void GeodesicDistance::advance(
-  const EdgeAndDistance* _ed_span, const Topo::Wrap<Topo::Type::FACE>& _f)
+  const EdgeAndDistance* _parent, const Topo::Wrap<Topo::Type::FACE>& _f)
 {
-  Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> it_ev_pa(_ed_span->first);
+  Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> it_ev_pa(_parent->first);
   Topo::Wrap<Topo::Type::VERTEX> verts[2] = { it_ev_pa.get(0), it_ev_pa.get(1) };
   Geo::VectorD3 p_parent[2];
   Geo::iterate_forw<2>::eval([&verts, &p_parent](int _i) { verts[_i]->geom(p_parent[_i]); });
@@ -222,21 +227,21 @@ void GeodesicDistance::advance(
     Geo::VectorD3 v_;
   };
   Gen::Segment<double, 2> parent_seg{ {
-    { _ed_span->second.x_, _ed_span->second.y_[0] },
-  { _ed_span->second.x_, _ed_span->second.y_[1] } } };
+    { _parent->second.x_, _parent->second.y_[0] },
+  { _parent->second.x_, _parent->second.y_[1] } } };
   Gen::Segment<double, 2> parent_trace_segs[2];
   for (int i = 0; i < 2; ++i)
   {
     parent_trace_segs[i][0] = {};
     parent_trace_segs[i][1] = 
-      Gen::evaluate(parent_seg, _ed_span->second.param_range_[i]);;
+      Gen::evaluate(parent_seg, _parent->second.param_range_[i]);;
   }
 
   OtherEdge oth_eds[2];
-  auto dy_par = _ed_span->second.y_ed_[1] - _ed_span->second.y_ed_[0];
+  auto dy_par = _parent->second.y_ed_[1] - _parent->second.y_ed_[0];
   for (auto& fe : it_fe)
   {
-    if (fe == _ed_span->first)
+    if (fe == _parent->first)
       continue;
     EdgeDistance new_edd;
     Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> it_ev(fe);
@@ -257,8 +262,8 @@ void GeodesicDistance::advance(
     //  continue;
     auto dx = Geo::length(v0 % v1);
     Gen::Segment<double, 2> v2 = { {
-      { _ed_span->second.x_, _ed_span->second.y_ed_[idx] },
-      { _ed_span->second.x_ + dx, _ed_span->second.y_ed_[idx] + dy } } };
+      { _parent->second.x_, _parent->second.y_ed_[idx] },
+      { _parent->second.x_ + dx, _parent->second.y_ed_[idx] + dy } } };
     if (inv)
       std::swap(v2[0], v2[1]);
     Geo::VectorD2 proj;
@@ -303,7 +308,7 @@ void GeodesicDistance::advance(
     if (tmp.empty())
       continue;
     new_edd.param_range_ = tmp;
-    new_edd.init(_f);
+    new_edd.init(_f, _parent);
     merge(fe, new_edd);
   }
   THROW_IF(!oth_eds[0].ed_.get() || !oth_eds[1].ed_.get(), "");
@@ -333,6 +338,17 @@ static std::bitset<2> intersect(EdgeDistance& _a, EdgeDistance& _b)
   }
   // 
   auto root = -poly[0] / poly[1];
+  auto snap_to_boundary = [](double& _root, const Geo::Interval<double>& _interv)
+  {
+    for (int i = 0; i < 2; ++i)
+      if (fabs(_root - _interv[i]) < 1e-12)
+      {
+        _root = _interv[i];
+        return true;
+      }
+    return false;
+  };
+  snap_to_boundary(root, _a.param_range_) || snap_to_boundary(root, _b.param_range_);
   Geo::Interval<double> near_a(Geo::Interval<double>::min(), root);
   Geo::Interval<double> near_b(root, Geo::Interval<double>::max());
   if (poly[1] < 0)
@@ -351,7 +367,7 @@ void GeodesicDistance::merge(Topo::Wrap<Topo::Type::EDGE> _ed,
   auto range = edge_distances_.equal_range(_ed);
   for (auto it = range.first; it != range.second && !_ed_dist.param_range_.empty(); ++it)
   {
-    if (it->second.skip_)
+    if (it->second.status_ != EdgeDistance::Status::Keep)
       continue;
     auto int_res = intersect(_ed_dist, it->second);
     if (!int_res.any())
@@ -363,7 +379,7 @@ void GeodesicDistance::merge(Topo::Wrap<Topo::Type::EDGE> _ed,
       {
         if (_ed_dist != nullptr)
         {
-          _ed_dist->second.skip_ = true;
+          _ed_dist->second.status_ = EdgeDistance::Status::Remove;
           for (auto child : _ed_dist->second.children_)
             skip_children(child);
         }
