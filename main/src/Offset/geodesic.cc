@@ -60,6 +60,23 @@ struct EdgeDistance
     return Geo::VectorD3{ { Geo::sq(x_) + Geo::sq(y_ed_[0]), 2 * y_ed_[0] * dy, Geo::sq(dy) } };
   }
 
+  size_t parameters(const double _dist, std::array<double, 2>& _pars)
+  {
+    if (!distance_range_.contain_close(_dist))
+      return 0;
+    auto y = std::sqrt(Geo::sq(_dist) - Geo::sq(x_));
+    size_t sol_nmbr = 0;
+    auto get_solution = [this, &sol_nmbr, &_pars](double _y)
+    {
+      _pars[sol_nmbr] = (_y - y_ed_[0]) / (y_ed_[1] - y_ed_[0]);
+      if (_pars[sol_nmbr] >= 0 && _pars[sol_nmbr] < 1)
+        ++sol_nmbr;
+    };
+    get_solution(y);
+    get_solution(-y);
+    return sol_nmbr;
+  }
+
   enum class Status { Keep = 0, Skip = 1, Remove = 2 };
 
   int id_;
@@ -93,10 +110,10 @@ struct GeodesicDistance: public IGeodesic
 
   bool compute(const Topo::Wrap<Topo::Type::VERTEX>& _v) override;
 
-  virtual bool find_points(
+  bool find_graph(
     double _dist,
-    std::vector<std::vector<Geo::VectorD3>>& loops) override;
-
+    std::vector<Geo::VectorD3>& _pts,
+    std::vector<std::array<size_t, 2>>& _inds) override;
 
 private:
   void advance(const EdgeAndDistance* _ed_span, 
@@ -393,10 +410,38 @@ void GeodesicDistance::merge(Topo::Wrap<Topo::Type::EDGE> _ed,
     insert_element(_ed, _ed_dist);
 }
 
-bool GeodesicDistance::find_points(
-  double /*_dist*/,
-  std::vector<std::vector<Geo::VectorD3>>& /*_loops*/)
+bool GeodesicDistance::find_graph(
+  double _dist,
+  std::vector<Geo::VectorD3>& _pts,
+  std::vector<std::array<size_t, 2>>& _inds)
 {
+  using FacePointMap = std::map<Topo::Wrap<Topo::Type::FACE>, std::vector<size_t>>;
+  FacePointMap fp_map;
+  for (auto& ed_dist : edge_distances_)
+  {
+    std::array<double, 2> pars;
+    auto sol_num = ed_dist.second.parameters(_dist, pars);
+    if (sol_num == 0)
+      continue;
+    Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> vert_it(ed_dist.first);
+    Geo::Segment seg;
+    vert_it.get(0)->geom(seg[0]);
+    vert_it.get(1)->geom(seg[1]);
+    Topo::Iterator<Topo::Type::EDGE, Topo::Type::FACE> face_it(ed_dist.first);
+    for (int i = 0; i < sol_num; ++i)
+    {
+      auto pt = Geo::evaluate(seg, pars[i]);
+      for (auto f : face_it)
+        fp_map[f].push_back(_pts.size());
+      _pts.push_back(pt);
+    }
+  }
+  for (auto& fp : fp_map)
+  {
+    for (auto it = fp.second.begin(); it != fp.second.end(); ++it)
+      for (auto it1 = it; ++it1 != fp.second.end(); )
+        _inds.push_back({ *it, *it1 });
+  }
   return true;
 }
 
