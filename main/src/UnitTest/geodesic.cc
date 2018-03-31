@@ -49,3 +49,8 @@ TEST_CASE("ciminiera", "[Geodesic]")
   geodesic_test("ciminiera", { 0.3, 0.8 });
 }
 
+TEST_CASE("ciminiera_01", "[Geodesic]")
+{
+  geodesic_test("ciminiera_01", { 0.3, 0.8, 2.2, 5.5 });
+}
+

@@ -80,7 +80,6 @@ struct EdgeDistance
   enum class Status { Keep = 0, Skip = 1, Remove = 2 };
 
   int id_;
-  Geo::VectorD3 ed_vec_;
   Topo::Wrap<Topo::Type::FACE> origin_face_; // Face used to get there
   double x_;
   double y_ed_[2];
@@ -143,15 +142,17 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
   {
     EdgeDistance ed_dist;
     Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ed_vert_it(e);
-    auto v0 = ed_vert_it.get(0), v1 = ed_vert_it.get(1);
-    if (v1 == _v)
-      std::swap(v0, v1);
+    auto v1 = ed_vert_it.get(1);
+    auto inv = v1 == _v;
+    if (inv)
+      v1 = ed_vert_it.get(0);
     Geo::Point pt;
     v1->geom(pt);
-    ed_dist.ed_vec_ = pt - origin_;
     ed_dist.x_ = 0;
     ed_dist.y_ed_[0] = 0;
     ed_dist.y_ed_[1] = Geo::length(pt - origin_);
+    if (inv)
+      std::swap(ed_dist.y_ed_[0], ed_dist.y_ed_[1]);
     ed_dist.param_range_ = { 0, 1 };
     ed_dist.init(Topo::Wrap<Topo::Type::FACE>(), nullptr);
     ed_dist.status_ = EdgeDistance::Status::Skip;
