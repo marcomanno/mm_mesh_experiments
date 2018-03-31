@@ -315,11 +315,18 @@ void GeodesicDistance::advance(
         continue;
 
       double pars[2];
-      Gen::closest_point<double, 2, true>(
+      Gen::closest_point<double, 2, true, true>(
         parent_trace_segs[i], v2, nullptr, pars, &dist_sq);
-      auto val_sq = std::max(Geo::length_square(v2[0]), Geo::length_square(v2[1]));
-      if (pars[0] <= 0 || dist_sq < val_sq * std::numeric_limits<double>::epsilon() * 100)
-        pars[1] = 1.;
+      //auto val_sq = std::max(Geo::length_square(v2[0]), Geo::length_square(v2[1]));
+      if (pars[0] < 1)
+      {
+        if (pars[1] < 0)
+          pars[1] = 1;
+        else if (pars[1] > 1)
+          pars[1] = 0;
+        else
+          THROW("Parameter problems");
+      }
       tmp.add(std::clamp(pars[1], 0., 1.));
     }
 

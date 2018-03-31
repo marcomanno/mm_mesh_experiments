@@ -42,9 +42,16 @@ bool closest_point(const Segment<TypeT, DimT>& _seg_a, const Segment<TypeT, DimT
       A(i, j) = a[j][i];
   }
   Eigen::VectorXd  res = (A.transpose() * A).ldlt().solve(A.transpose() * B);
-  if ((constexpr(!Inf1T) && !check_par(res(0))) || 
-      (constexpr(!Inf2T) && !check_par(res(1))))
-    return false;
+  if (constexpr(!Inf1T))
+  {
+    if (!check_par(res(0)))
+      return false;
+  }
+  if (constexpr(!Inf2T))
+  {
+    if (!check_par(res(1)))
+      return false;
+  }
   auto pt_a = evaluate(_seg_a, res(0));
   auto pt_b = evaluate(_seg_b, res(1));
   if (_clsst_pt != nullptr)
@@ -60,7 +67,7 @@ bool closest_point(const Segment<TypeT, DimT>& _seg_a, const Segment<TypeT, DimT
 }
 
 #define INST_CLOSEST_POINT_SEG_SEG(TYPE, NUM, INF)                        \
-template bool closest_point<TYPE, NUM, INF>(                              \
+template bool closest_point<TYPE, NUM, INF, INF>(                              \
   const Segment<TYPE, NUM>& _seg_a, const Segment<TYPE, NUM>& _seg_b,\
   Geo::Vector<TYPE, NUM>* _clsst_pt, double _t[2], double * _dist);
 
