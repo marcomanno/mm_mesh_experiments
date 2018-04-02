@@ -44,20 +44,26 @@ struct EdgeDistance
     y_[0] = y_ed_[0] + (y_ed_[1] - y_ed_[0]) * param_range_[0];
     y_[1] = y_ed_[0] + (y_ed_[1] - y_ed_[0]) * param_range_[1];
     distance_range_.set_empty();
-    distance_range_.add(sqrt(Geo::sq(x_) + Geo::sq(y_[0])));
-    distance_range_.add(sqrt(Geo::sq(x_) + Geo::sq(y_[1])));
+    distance_range_.add(sqrt(Geo::sq(x_) + Geo::sq(y_[0])) + dist0_);
+    distance_range_.add(sqrt(Geo::sq(x_) + Geo::sq(y_[1])) + dist0_);
     if ((y_[0] > 0) != (y_[1] > 0))
       distance_range_.add(x_);
     origin_face_ = _f;
     parent_ = _parent;
   }
 
-  Geo::VectorD3 get_distance_function()
+  Geo::VectorD3 get_square_distance_function() const
   {
     // x_^2 + (y0 + t * (y1 - y0))^2 = 
     // = (x^2 + y0^2) + t * (2 * y0 * (y1 - y0)) + t^2 * (y1 - y0)^2
     auto dy = y_ed_[1] - y_ed_[0];
-    return Geo::VectorD3{ { Geo::sq(x_) + Geo::sq(y_ed_[0]), 2 * y_ed_[0] * dy, Geo::sq(dy) } };
+    return Geo::VectorD3{ { Geo::sq(x_) + Geo::sq(y_ed_[0]) + dist0_, 2 * y_ed_[0] * dy, Geo::sq(dy) } };
+  }
+
+  double get_distance(double _par) const
+  {
+    auto coe = get_square_distance_function();
+    return sqrt(coe[0] + _par * (coe[1] + _par * coe[2]));
   }
 
   size_t parameters(const double _dist, std::array<double, 2>& _pars)
@@ -83,6 +89,7 @@ struct EdgeDistance
   Topo::Wrap<Topo::Type::FACE> origin_face_; // Face used to get there
   double x_;
   double y_ed_[2];
+  double dist0_ = 0;
   Geo::Interval<double> param_range_;  // Portion of edges
   Status status_ = Status::Keep;
   double y_[2];
@@ -213,17 +220,24 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
       ++it;
   }
   std::ofstream outf("c:/t/out.txt");
-  outf << "Id Px Py Pz Qx Qy Qz x y0 y1 interval0 interval1 distance0  distance1 \n";
+  outf << "V0 V1 Id Px Py Pz Qx Qy Qz x y0 y1 interval0 interval1 distance0  distance1 dist0 par_id \n";
   for (auto& es : edge_distances_)
   {
     Geo::Segment seg;
     es.first->geom(seg);
+    Topo::Iterator<Topo::Type::EDGE, Topo::Type::VERTEX> ed_it(es.first);
+    outf << ed_it.get(0)->id() << " " << ed_it.get(1)->id() << " ";
     outf << es.second.id_ << " " << seg[0] << " " << seg[1] << " ";
     outf << es.second.x_ << " ";
     outf << es.second.y_ed_[0] << " " << es.second.y_ed_[1] << " ";
     outf << es.second.param_range_[0] << " " << es.second.param_range_[1] << " ";
     outf << es.second.distance_range_[0] << " " << es.second.distance_range_[1] << " ";
-    outf << std::endl;
+    outf << es.second.dist0_ << " ";
+    if (es.second.parent_ == nullptr)
+      outf << -1;
+    else
+      outf << es.second.parent_->second.id_;
+    outf  << std::endl;
   }
   outf << "SIZE = " << edge_distances_.size() << "\n";
   return true;
@@ -284,57 +298,93 @@ void GeodesicDistance::advance(
       { _parent->second.x_ + dx, _parent->second.y_ed_[idx] + dy } } };
     if (inv)
       std::swap(v2[0], v2[1]);
-    Geo::VectorD2 proj;
-    double dist_sq, par;
-    Gen::closest_point<double, 2, true>(v2, Geo::VectorD2{},
-                                        &proj, &par, &dist_sq);
-    new_edd.x_ = sqrt(dist_sq);
-    new_edd.y_ed_[0] = Geo::length(v2[0] - proj);
-    new_edd.y_ed_[1] = Geo::length(v2[1] - proj);
-    if (par > 0 && par < 1)
-      new_edd.y_ed_[0] *= -1;
-    THROW_IF((fabs(new_edd.y_ed_[1] - new_edd.y_ed_[0]) - Geo::length(p[0] - p[1])) > 1e-8,
-             "Wrong y reange");
+    auto dist_3d = Geo::length(p[0] - p[1]);
+
+    auto compute_x_y_ed = [dist_3d](const Gen::Segment<double, 2>& _v, EdgeDistance& _new_ed)
+    {
+      Geo::VectorD2 proj;
+      double dist_sq, par;
+      Gen::closest_point<double, 2, true>(_v, Geo::VectorD2{},
+                                          &proj, &par, &dist_sq);
+      _new_ed.x_ = sqrt(dist_sq);
+      _new_ed.y_ed_[0] = Geo::length(_v[0] - proj);
+      _new_ed.y_ed_[1] = Geo::length(_v[1] - proj);
+      if (par > 0 && par < 1)
+        _new_ed.y_ed_[0] *= -1;
+      THROW_IF((fabs(_new_ed.y_ed_[1] - _new_ed.y_ed_[0]) - dist_3d) > 1e-8,
+               "Wrong y reange");
+    };
+    compute_x_y_ed(v2, new_edd);
 
     Geo::Interval<double> tmp;
     for (int i = 0; i < 2; ++i)
     {
-      int done = 0;
-      for (auto j : { 0, 1 })
+      bool done = false;
+      for (int j = 0; j < 2; ++j)
       {
-        double t;
+        double t, dist_sq;
         Gen::closest_point<double, 2, true>(
           parent_trace_segs[i], v2[j], nullptr, &t, &dist_sq);
-        if (dist_sq < Geo::epsilon_sq(v2[j]))
+        done = dist_sq < Geo::epsilon_sq(v2[j]);
+        if (done)
         {
           tmp.add(j);
-          ++done;
+          break;
         }
       }
-      if (done == 2)
+      if (done)
         continue;
 
-      double pars[2];
+      double pars[2], dist_sq;
       Gen::closest_point<double, 2, true, true>(
         parent_trace_segs[i], v2, nullptr, pars, &dist_sq);
+      auto dir = v2[1] - v2[0];
+      double cr_pr = fabs(parent_trace_segs[i][1] % dir);
+      if (cr_pr < 1e-12)
+        pars[1] = Geo::length_square(v2[1]) > Geo::length_square(v2[0]) ? 1: 0;
       //auto val_sq = std::max(Geo::length_square(v2[0]), Geo::length_square(v2[1]));
-      if (pars[0] < 1)
+      else if (pars[0] <= 1e-12)
       {
-        if (pars[1] < 0)
-          pars[1] = 1;
-        else if (pars[1] > 1)
-          pars[1] = 0;
-        else
-          THROW("Parameter problems");
+        if (pars[1] < 0) pars[1] = 1;
+        else if (pars[1] > 1) pars[1] = 0;
+        else THROW("Bad par");
+        
       }
+      else if (pars[0] <= 1 - 1e-12)
+        continue;
       tmp.add(std::clamp(pars[1], 0., 1.));
     }
 
-    if (tmp.empty())
-      continue;
-    new_edd.param_range_ = tmp;
-    new_edd.init(_f, _parent);
-    merge(fe, new_edd);
+    if (!tmp.empty())
+    {
+      new_edd.param_range_ = tmp;
+      new_edd.dist0_ = _parent->second.dist0_;
+      new_edd.init(_f, _parent);
+      merge(fe, new_edd);
+    }
+
+#if 0
+    size_t bndr_to_fill = !inv;
+    size_t par_bndr_to_fill = !idx;
+    if ((tmp[bndr_to_fill] != bndr_to_fill) && 
+        (_parent->second.param_range_[par_bndr_to_fill] == par_bndr_to_fill))
+    {
+      EdgeDistance new_edd2;
+      new_edd2.dist0_ = _parent->second.get_distance(static_cast<double>(par_bndr_to_fill));
+      auto orig = Geo::VectorD2{ _parent->second.x_, _parent->second.y_ed_[!idx] };
+      Gen::Segment<double, 2> new_seg;
+      new_seg[0] = v2[!inv] - orig;
+      new_seg[1] = v2[inv] - orig;
+      compute_x_y_ed(new_seg, new_edd2);
+      if (inv)
+        new_edd2.param_range_ = Geo::Interval<double>(0, tmp[0]);
+      else
+        new_edd2.param_range_ = Geo::Interval<double>(tmp[1], 1);
+      new_edd2.init(_f, _parent);
+      merge(fe, new_edd2);
+    }
+#endif
+
   }
   THROW_IF(!oth_eds[0].ed_.get() || !oth_eds[1].ed_.get(), "");
 }
@@ -344,8 +394,8 @@ static std::bitset<2> intersect(EdgeDistance& _a, EdgeDistance& _b)
   auto inters_par_range = _a.param_range_ * _b.param_range_;
   if (inters_par_range.empty())
     return 0;
-  auto poly_a = _a.get_distance_function();
-  auto poly_b = _b.get_distance_function();
+  auto poly_a = _a.get_square_distance_function();
+  auto poly_b = _b.get_square_distance_function();
   auto poly = poly_a - poly_b;
   THROW_IF(fabs(poly[2]) > 1e-8, "x^3 Coefficeient is notzero");
   if (poly[1] == 0)
@@ -393,6 +443,7 @@ void GeodesicDistance::merge(Topo::Wrap<Topo::Type::EDGE> _ed,
   for (auto it = range.first; it != range.second && !_ed_dist.param_range_.empty(); ++it)
   {
     if (it->second.status_ != EdgeDistance::Status::Keep)
+    //if (it->second.status_ == EdgeDistance::Status::Remove)
       continue;
     auto int_res = intersect(_ed_dist, it->second);
     if (!int_res.any())

@@ -38,7 +38,7 @@ public:
     extr_[_max] = _val;
   }
 
-  const TypeT& operator[](int _i) const
+  const TypeT& operator[](size_t _i) const
   {
     return extr_[_i];
   }
