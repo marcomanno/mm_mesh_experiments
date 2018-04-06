@@ -6,6 +6,8 @@
 #include "Topology/iterator.hh"
 #include "Utils/error_handling.hh"
 
+#include <boost/math/tools/roots.hpp>
+
 #include <bitset>
 #include <functional>
 #include <fstream>
@@ -47,7 +49,7 @@ struct EdgeDistance
     distance_range_.add(sqrt(Geo::sq(x_) + Geo::sq(y_[0])) + dist0_);
     distance_range_.add(sqrt(Geo::sq(x_) + Geo::sq(y_[1])) + dist0_);
     if ((y_[0] > 0) != (y_[1] > 0))
-      distance_range_.add(x_);
+      distance_range_.add(x_ + dist0_);
     origin_face_ = _f;
     parent_ = _parent;
   }
@@ -60,17 +62,21 @@ struct EdgeDistance
     return Geo::VectorD3{ { Geo::sq(x_) + Geo::sq(y_ed_[0]) + dist0_, 2 * y_ed_[0] * dy, Geo::sq(dy) } };
   }
 
-  double get_distance(double _par) const
+  double get_distance(double _par,  double* _first_der = nullptr) const
   {
-    auto coe = get_square_distance_function();
-    return sqrt(coe[0] + _par * (coe[1] + _par * coe[2]));
+    auto dy = y_ed_[1] - y_ed_[0];
+    auto y_part = y_ed_[0] + _par * dy;
+    auto dist = sqrt(Geo::sq(x_) + Geo::sq(y_part));
+    if (_first_der != nullptr)
+      *_first_der = dy * y_part / dist;
+    return dist0_ + dist;
   }
 
   size_t parameters(const double _dist, std::array<double, 2>& _pars)
   {
     if (!distance_range_.contain_close(_dist))
       return 0;
-    auto y = std::sqrt(Geo::sq(_dist) - Geo::sq(x_));
+    auto y = std::sqrt(Geo::sq(_dist - dist0_) - Geo::sq(x_));
     size_t sol_nmbr = 0;
     auto get_solution = [this, &sol_nmbr, &_pars](double _y)
     {
@@ -97,6 +103,27 @@ struct EdgeDistance
   std::array<EdgeAndDistance*, 2> children_ = {nullptr};
   const EdgeAndDistance* parent_ = nullptr;
 };
+
+// Return 0 if _apr is a root, else 
+// < 0 ==> _a < _b
+// > 0 ==> _b < _a 
+
+int find_minimum(const EdgeDistance& _a, const EdgeDistance& _b,
+                    double& _par)
+{
+  auto func = [&_a, &_b](const double& _t)
+  {
+    double der_a, der_b;
+    auto val_a = _a.get_distance(_t, &der_a);
+    auto val_b = _b.get_distance(_t, &der_b);
+    return std::make_tuple(val_a - val_b, der_a - der_b);
+  };
+  boost::uintmax_t max_iter = 20;
+  _par = boost::math::tools::newton_raphson_iterate(func, 0.5, 0., 1., std::numeric_limits<double>::digits - 4, max_iter);
+  if (max_iter < 20)
+    return 0;
+  return std::get<0>(func(_par)) > 0 ? 1 : -1;
+}
 
 struct GeodesicDistance: public IGeodesic
 {
@@ -363,18 +390,17 @@ void GeodesicDistance::advance(
       merge(fe, new_edd);
     }
 
-#if 0
     size_t bndr_to_fill = !inv;
-    size_t par_bndr_to_fill = !idx;
+    size_t par_bndr_to_fill = idx;
     if ((tmp[bndr_to_fill] != bndr_to_fill) && 
         (_parent->second.param_range_[par_bndr_to_fill] == par_bndr_to_fill))
     {
       EdgeDistance new_edd2;
       new_edd2.dist0_ = _parent->second.get_distance(static_cast<double>(par_bndr_to_fill));
-      auto orig = Geo::VectorD2{ _parent->second.x_, _parent->second.y_ed_[!idx] };
+      auto orig = Geo::VectorD2{ _parent->second.x_, _parent->second.y_ed_[par_bndr_to_fill] };
       Gen::Segment<double, 2> new_seg;
-      new_seg[0] = v2[!inv] - orig;
-      new_seg[1] = v2[inv] - orig;
+      new_seg[0] = v2[inv] - orig;
+      new_seg[1] = v2[!inv] - orig;
       compute_x_y_ed(new_seg, new_edd2);
       if (inv)
         new_edd2.param_range_ = Geo::Interval<double>(0, tmp[0]);
@@ -383,7 +409,6 @@ void GeodesicDistance::advance(
       new_edd2.init(_f, _parent);
       merge(fe, new_edd2);
     }
-#endif
 
   }
   THROW_IF(!oth_eds[0].ed_.get() || !oth_eds[1].ed_.get(), "");
@@ -394,45 +419,42 @@ static std::bitset<2> intersect(EdgeDistance& _a, EdgeDistance& _b)
   auto inters_par_range = _a.param_range_ * _b.param_range_;
   if (inters_par_range.empty())
     return 0;
-  auto poly_a = _a.get_square_distance_function();
-  auto poly_b = _b.get_square_distance_function();
-  auto poly = poly_a - poly_b;
-  THROW_IF(fabs(poly[2]) > 1e-8, "x^3 Coefficeient is notzero");
-  if (poly[1] == 0)
-  {
-    if (poly[2] > 0)
-    {
-      _a.param_range_.set_empty();
-      return 0;
-    }
-    else
-    {
-      _b.param_range_.set_empty();
-      return 1;
-    }
-  }
-  // 
-  auto root = -poly[0] / poly[1];
-  auto snap_to_boundary = [](double& _root, const Geo::Interval<double>& _interv)
-  {
-    for (int i = 0; i < 2; ++i)
-      if (fabs(_root - _interv[i]) < 1e-12)
-      {
-        _root = _interv[i];
-        return true;
-      }
-    return false;
-  };
-  snap_to_boundary(root, _a.param_range_) || snap_to_boundary(root, _b.param_range_);
-  Geo::Interval<double> near_a(Geo::Interval<double>::min(), root);
-  Geo::Interval<double> near_b(root, Geo::Interval<double>::max());
-  if (poly[1] < 0)
-    std::swap(near_a, near_b);
-
+  double value;
+  auto a_minus_b = find_minimum(_a, _b, value);
   std::bitset<2> res;
-  Geo::Interval<double> extra;
-  res[0] = _a.param_range_.subtract(near_b, extra);
-  res[1] = _b.param_range_.subtract(near_a, extra);
+  if (a_minus_b > 0)
+  {
+    _a.param_range_.set_empty();
+    res[0] = true;
+  }
+  else if (a_minus_b < 0)
+  {
+    _b.param_range_.set_empty();
+    res[1] = true;
+  }
+  else
+  {
+    auto root = value;
+    auto snap_to_boundary = [](double& _root, const Geo::Interval<double>& _interv)
+    {
+      for (int i = 0; i < 2; ++i)
+        if (fabs(_root - _interv[i]) < 1e-12)
+        {
+          _root = _interv[i];
+          return true;
+        }
+      return false;
+    };
+    snap_to_boundary(root, _a.param_range_) || snap_to_boundary(root, _b.param_range_);
+    Geo::Interval<double> near_a(Geo::Interval<double>::min(), root);
+    Geo::Interval<double> near_b(root, Geo::Interval<double>::max());
+    if (_a.get_distance(root - 1) > _b.get_distance(root - 1))
+      std::swap(near_a, near_b);
+
+    Geo::Interval<double> extra;
+    res[0] = _a.param_range_.subtract(near_b, extra);
+    res[1] = _b.param_range_.subtract(near_a, extra);
+  }
   return res;
 }
 
@@ -442,8 +464,8 @@ void GeodesicDistance::merge(Topo::Wrap<Topo::Type::EDGE> _ed,
   auto range = edge_distances_.equal_range(_ed);
   for (auto it = range.first; it != range.second && !_ed_dist.param_range_.empty(); ++it)
   {
-    if (it->second.status_ != EdgeDistance::Status::Keep)
-    //if (it->second.status_ == EdgeDistance::Status::Remove)
+    //if (it->second.status_ != EdgeDistance::Status::Keep)
+    if (it->second.status_ == EdgeDistance::Status::Remove)
       continue;
     auto int_res = intersect(_ed_dist, it->second);
     if (!int_res.any())
