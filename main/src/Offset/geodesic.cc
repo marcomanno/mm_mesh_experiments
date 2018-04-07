@@ -43,6 +43,13 @@ struct EdgeDistance
       y_ed_[0] *= -1;
       y_ed_[1] *= -1;
     }
+    update_parameter();
+    origin_face_ = _f;
+    parent_ = _parent;
+  }
+
+  void update_parameter()
+  {
     y_[0] = y_ed_[0] + (y_ed_[1] - y_ed_[0]) * param_range_[0];
     y_[1] = y_ed_[0] + (y_ed_[1] - y_ed_[0]) * param_range_[1];
     distance_range_.set_empty();
@@ -50,16 +57,6 @@ struct EdgeDistance
     distance_range_.add(sqrt(Geo::sq(x_) + Geo::sq(y_[1])) + dist0_);
     if ((y_[0] > 0) != (y_[1] > 0))
       distance_range_.add(x_ + dist0_);
-    origin_face_ = _f;
-    parent_ = _parent;
-  }
-
-  Geo::VectorD3 get_square_distance_function() const
-  {
-    // x_^2 + (y0 + t * (y1 - y0))^2 = 
-    // = (x^2 + y0^2) + t * (2 * y0 * (y1 - y0)) + t^2 * (y1 - y0)^2
-    auto dy = y_ed_[1] - y_ed_[0];
-    return Geo::VectorD3{ { Geo::sq(x_) + Geo::sq(y_ed_[0]) + dist0_, 2 * y_ed_[0] * dy, Geo::sq(dy) } };
   }
 
   double get_distance(double _par,  double* _first_der = nullptr) const
@@ -109,7 +106,7 @@ struct EdgeDistance
 // > 0 ==> _b < _a 
 
 int find_minimum(const EdgeDistance& _a, const EdgeDistance& _b,
-                    double& _par)
+                 double& _par, Geo::Interval<double> _range)
 {
   auto func = [&_a, &_b](const double& _t)
   {
@@ -119,7 +116,9 @@ int find_minimum(const EdgeDistance& _a, const EdgeDistance& _b,
     return std::make_tuple(val_a - val_b, der_a - der_b);
   };
   boost::uintmax_t max_iter = 20;
-  _par = boost::math::tools::newton_raphson_iterate(func, 0.5, 0., 1., std::numeric_limits<double>::digits - 4, max_iter);
+  _par = boost::math::tools::newton_raphson_iterate(
+    func, (_range[0] + _range[1]) / 2, _range[0], _range[1],
+    std::numeric_limits<double>::digits - 4, max_iter);
   if (max_iter < 20)
     return 0;
   return std::get<0>(func(_par)) > 0 ? 1 : -1;
@@ -420,7 +419,7 @@ static std::bitset<2> intersect(EdgeDistance& _a, EdgeDistance& _b)
   if (inters_par_range.empty())
     return 0;
   double value;
-  auto a_minus_b = find_minimum(_a, _b, value);
+  auto a_minus_b = find_minimum(_a, _b, value, inters_par_range);
   std::bitset<2> res;
   if (a_minus_b > 0)
   {
@@ -453,7 +452,9 @@ static std::bitset<2> intersect(EdgeDistance& _a, EdgeDistance& _b)
 
     Geo::Interval<double> extra;
     res[0] = _a.param_range_.subtract(near_b, extra);
+    if (res[0]) _a.update_parameter();
     res[1] = _b.param_range_.subtract(near_a, extra);
+    if (res[1]) _a.update_parameter();
   }
   return res;
 }
