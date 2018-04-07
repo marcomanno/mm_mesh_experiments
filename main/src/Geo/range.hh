@@ -102,6 +102,10 @@ public:
     return (Interval<TypeT>(*this) += _oth);
   }
 
+  TypeT length() const { return extr_[1] - extr_[0]; }
+
+  TypeT interpolate(TypeT _par) const { return _par * extr_[1] + (1 - _par) *  extr_[0]; }
+
   bool subtract(const Interval<TypeT>& _oth, Interval<TypeT>& _part2)
   {
     _part2.set_empty();

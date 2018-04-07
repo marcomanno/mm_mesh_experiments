@@ -220,7 +220,7 @@ bool GeodesicDistance::compute(const Topo::Wrap<Topo::Type::VERTEX>& _v)
     ed_dist.y_ed_[0] = Geo::length(seg[0] - proj);
     ed_dist.y_ed_[1] = Geo::length(seg[1] - proj);
     if (t < 1 && t > 0)
-      ed_dist.y_ed_[1] *= -1;
+      ed_dist.y_ed_[ed_dist.y_ed_[1] < ed_dist.y_ed_[0]] *= -1;
     ed_dist.param_range_ = { 0, 1 };
     ed_dist.init(f, nullptr);
     insert_element(curr_ed, ed_dist);
@@ -336,7 +336,7 @@ void GeodesicDistance::advance(
       _new_ed.y_ed_[0] = Geo::length(_v[0] - proj);
       _new_ed.y_ed_[1] = Geo::length(_v[1] - proj);
       if (par > 0 && par < 1)
-        _new_ed.y_ed_[0] *= -1;
+        _new_ed.y_ed_[_new_ed.y_ed_[0] >_new_ed.y_ed_[1]] *= -1;
       THROW_IF((fabs(_new_ed.y_ed_[1] - _new_ed.y_ed_[0]) - dist_3d) > 1e-8,
                "Wrong y reange");
     };
@@ -389,22 +389,37 @@ void GeodesicDistance::advance(
       merge(fe, new_edd);
     }
 
-    size_t bndr_to_fill = !inv;
     size_t par_bndr_to_fill = idx;
-    if ((tmp[bndr_to_fill] != bndr_to_fill) && 
+    if (tmp.empty() &&
         (_parent->second.param_range_[par_bndr_to_fill] == par_bndr_to_fill))
     {
       EdgeDistance new_edd2;
       new_edd2.dist0_ = _parent->second.get_distance(static_cast<double>(par_bndr_to_fill));
       auto orig = Geo::VectorD2{ _parent->second.x_, _parent->second.y_ed_[par_bndr_to_fill] };
       Gen::Segment<double, 2> new_seg;
-      new_seg[0] = v2[inv] - orig;
-      new_seg[1] = v2[!inv] - orig;
+      new_seg[0] = v2[0] - orig;
+      new_seg[1] = v2[1] - orig;
+      compute_x_y_ed(new_seg, new_edd2);
+      new_edd2.param_range_ = { 0., 1. };
+      new_edd2.init(_f, _parent);
+      merge(fe, new_edd2);
+    }
+    par_bndr_to_fill = !idx;
+    size_t new_par = !inv;
+    if (tmp[new_par] != new_par &&
+      (_parent->second.param_range_[par_bndr_to_fill] == par_bndr_to_fill))
+    {
+      EdgeDistance new_edd2;
+      new_edd2.dist0_ = _parent->second.get_distance(static_cast<double>(par_bndr_to_fill));
+      auto orig = Geo::VectorD2{ _parent->second.x_, _parent->second.y_ed_[par_bndr_to_fill] };
+      Gen::Segment<double, 2> new_seg;
+      new_seg[0] = v2[0] - orig;
+      new_seg[1] = v2[1] - orig;
       compute_x_y_ed(new_seg, new_edd2);
       if (inv)
-        new_edd2.param_range_ = Geo::Interval<double>(0, tmp[0]);
+        new_edd2.param_range_ = Geo::Interval<double>(0., tmp[0]);
       else
-        new_edd2.param_range_ = Geo::Interval<double>(tmp[1], 1);
+        new_edd2.param_range_ = Geo::Interval<double>(tmp[1], 1.);
       new_edd2.init(_f, _parent);
       merge(fe, new_edd2);
     }
@@ -454,7 +469,7 @@ static std::bitset<2> intersect(EdgeDistance& _a, EdgeDistance& _b)
     res[0] = _a.param_range_.subtract(near_b, extra);
     if (res[0]) _a.update_parameter();
     res[1] = _b.param_range_.subtract(near_a, extra);
-    if (res[1]) _a.update_parameter();
+    if (res[1]) _b.update_parameter();
   }
   return res;
 }
