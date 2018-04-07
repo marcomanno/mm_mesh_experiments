@@ -286,13 +286,12 @@ void GeodesicDistance::advance(
   };
   Gen::Segment<double, 2> parent_seg{ {
     { _parent->second.x_, _parent->second.y_[0] },
-  { _parent->second.x_, _parent->second.y_[1] } } };
+    { _parent->second.x_, _parent->second.y_[1] } } };
   Gen::Segment<double, 2> parent_trace_segs[2];
   for (int i = 0; i < 2; ++i)
   {
     parent_trace_segs[i][0] = {};
-    parent_trace_segs[i][1] = 
-      Gen::evaluate(parent_seg, _parent->second.param_range_[i]);;
+    parent_trace_segs[i][1] = parent_seg[i];
   }
 
   OtherEdge oth_eds[2];
