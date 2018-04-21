@@ -46,12 +46,12 @@ TEST_CASE("mod_square_little", "[Geodesic]")
 
 TEST_CASE("ciminiera", "[Geodesic]")
 {
-  geodesic_test("ciminiera", { 0.3, 0.8 });
+  geodesic_test("ciminiera", { 0.3, 0.8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
 }
 
 TEST_CASE("ciminiera_01", "[Geodesic]")
 {
-  geodesic_test("ciminiera_01", { 5.5 });
+  geodesic_test("ciminiera_01", { 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 });
 }
 
 TEST_CASE("ciminiera_02", "[Geodesic]")
@@ -66,5 +66,30 @@ TEST_CASE("ciminiera_03", "[Geodesic]")
 
 TEST_CASE("ciminiera_04", "[Geodesic]")
 {
-  geodesic_test("ciminiera_04", { 4, 4.5,5, 5.5, 6 });
+  geodesic_test("ciminiera_04", { 4, 4.5,5, 5.5, 6,6.5, 7, 7.5, 8 });
+}
+
+TEST_CASE("ciminiera_05", "[Geodesic]")
+{
+  geodesic_test("ciminiera_05", { 7, 7.1, 7.2, 7.3, 7.4, 7.5, 8, 8.1, 8.2 });
+}
+
+TEST_CASE("sphere_10", "[Geodesic]")
+{
+  geodesic_test("sphere_10", { 0.2, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.5, 2, 2.5, 3 });
+}
+
+TEST_CASE("sphere_10_p0", "[Geodesic]")
+{
+  geodesic_test("sphere_10_p0",{ 0.2, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.5, 2, 2.5, 3 });
+}
+
+TEST_CASE("sphere_10_p1", "[Geodesic]")
+{
+  geodesic_test("sphere_10_p1", { 0.2, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.5, 2, 2.5, 3 });
+}
+
+TEST_CASE("sphere_10_p2", "[Geodesic]")
+{
+  geodesic_test("sphere_10_p2", { 0.2, 0.5, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.5, 3 });
 }

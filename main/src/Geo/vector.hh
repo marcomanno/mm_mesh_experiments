@@ -114,6 +114,12 @@ ValT length(const std::array<ValT, N>& _a)
   return sqrt(length_square(_a));
 }
 
+template <typename ValT, typename ParametrT>
+ValT interpolate(const ValT& _a, const ValT& _b, const ParametrT& _par)
+{
+  return (1 - _par) * _a + _par * _b;
+}
+
 template <typename ValT, size_t N>
 bool same(const std::array<ValT, N>& _a, const std::array<ValT, N>& _b, const ValT& _tol)
 {

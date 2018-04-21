@@ -81,6 +81,8 @@ public:
     extr_[1] = _val;
     return true;
   }
+
+  // Intersection
   Interval<TypeT>& operator*=(const Interval<TypeT>& _oth)
   {
     if (extr_[0] < _oth.extr_[0]) extr_[0] = _oth.extr_[0];
