@@ -2,7 +2,9 @@
 #pragma once
 
 #include <boost/intrusive/set.hpp>
+#include <iterator>
 #include <memory>
+
 
 namespace Base {
 
@@ -22,11 +24,14 @@ class LookupList
   template <class Element>  class iterator_base :
     public std::iterator<std::bidirectional_iterator_tag, Element>
   {
-    pointer pos_;
+    using Ptr = typename std::iterator<std::bidirectional_iterator_tag, Element>::pointer;
+    using Ref = typename std::iterator<std::bidirectional_iterator_tag, Element>::reference;
+
+    Ptr pos_;
   public:
     iterator_base(Element* v = nullptr) : pos_(v) {}
-    reference operator* () const { return *pos_; }
-    pointer   operator->() const { return pos_; }
+    Ref operator* () const { return *pos_; }
+    Ptr operator->() const { return pos_; }
     bool operator==(const iterator_base& rhs) const
     { return pos_ == rhs.pos_; }
     bool operator!=(const iterator_base& rhs) const
