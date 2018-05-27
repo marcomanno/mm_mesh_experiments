@@ -6,20 +6,23 @@
 
 namespace Geo
 {
+
+template <size_t DimPartT, size_t DimValT> struct Derivative
+{
+  std::array<size_t, DimPartT> der_order_ = { 0 };
+  Geo::Vector<double, DimValT> val_;
+};
+
 template <size_t DimPartT, size_t DimValT> struct MathFunc
 {
-  using Parameter = Geo::Vector<double, DimPartT>;
-  using Point = Geo::Vector<double, DimValT>;
-  struct Derivative
-  {
-    std::array<size_t, DimPartT> der_order_ = { 1 };
-    Point val_;
-  };
-  virtual void evaluate(const Parameter& _par, Point& _val,
-                        std::vector<Derivative>* ders_ = nullptr, 
+  virtual void evaluate(const Geo::Vector<double, DimPartT>& _par,
+                        Geo::Vector<double, DimValT>& _val,
+                        std::vector<Derivative<1, DimValT>>* ders_ = nullptr,
                         bool _right = false) = 0;
-  virtual void curvature(const Parameter& _par, Point& _val) = 0;
-  virtual void torsion(const Parameter& _par, Point& _val) = 0;
+  virtual void curvature(const Geo::Vector<double, DimPartT>& _par, 
+                         Geo::Vector<double, DimValT>& _val) = 0;
+  virtual void torsion(const Geo::Vector<double, DimPartT>& _par,
+                       Geo::Vector<double, DimValT>& _val) = 0;
   virtual double max_derivative(int _order) = 0;
   virtual Geo::Range<DimPartT> range() = 0;
   virtual Geo::Range<DimValT> box() = 0;

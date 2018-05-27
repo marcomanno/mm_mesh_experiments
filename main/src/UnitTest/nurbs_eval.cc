@@ -67,7 +67,7 @@ TEST_CASE("Curve00", "[NURBS]")
   MyPt pt;
   crv->evaluate({ 0 }, pt);
   REQUIRE((pt[0] == 0 && pt[1] == 0));
-  std::vector<Geo::Curve<2>::Derivative> ders(2);
+  std::vector<Geo::Derivative<1,2>> ders(2);
   ders[0].der_order_[0] = 1;
   ders[1].der_order_[0] = 3;
   crv->evaluate({ 0.5 }, pt, &ders);
@@ -82,7 +82,7 @@ TEST_CASE("Curve00", "[NURBS]")
   std::vector<double> knots3 = { 0, 1, 2 };
   auto crv3 = Geo::make_nurbs_curve<3>(pts3, knots3);
   MyPt3 pt3;
-  std::vector<Geo::Curve<3>::Derivative> ders3(1);
+  std::vector<Geo::Derivative<1,3>> ders3(1);
   crv3->evaluate({ 1 }, pt3, &ders3);
   REQUIRE((ders3[0].val_ == MyPt3{1, 2, 3}));
   crv3->evaluate({ 1 }, pt3, &ders3, true);
